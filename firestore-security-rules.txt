@@ -1,0 +1,107 @@
+/**
+ * Firestore Security Rules for Kapoori-Ka
+ * 
+ * Data Structure:
+ * - users/{userId}
+ *   - profile (user info)
+ *   - subscription (premium status)
+ *   - children/{childId} (child records)
+ *   - healthRecords/{recordId} (growth, immunization, nutrition)
+ *   - consultations/{consultationId} (online consultation bookings)
+ * 
+ * Rules Strategy:
+ * - Users can only access their own data
+ * - Anonymous users have limited access
+ * - Premium users have full access
+ * - Consultations are visible to both user and consultant
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isPremium(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.subscription.status == 'active';
+    }
+    
+    function isAnonymous() {
+      return request.auth.provider_id == 'anonymous';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Only user can read/write their own data
+      allow read: if isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+      
+      // User profile document
+      match /profile {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // Subscription document
+      match /subscription {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // Children collection (nested under users)
+      match /children/{childId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['name', 'dob', 'gender']);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Health records collection
+      match /healthRecords/{recordId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['type', 'date', 'childId']);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Consultations collection
+      match /consultations/{consultationId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isPremium(userId) && request.resource.data.keys().hasAll(['consultantId', 'date', 'topic']);
+        allow update: if isOwner(userId) || request.auth.uid == resource.data.consultantId;
+        allow delete: if isOwner(userId);
+      }
+      
+      // Catch-all: deny all other access
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+    
+    // Consultants collection (read-only for users)
+    match /consultants/{consultantId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admin can manage consultants
+    }
+    
+    // Public data collection (for app configuration)
+    match /public/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admin can manage
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

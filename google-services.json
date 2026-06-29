@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "391729474242",
+    "project_id": "kapoori-ka",
+    "storage_bucket": "kapoori-ka.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:391729474242:android:8789d0f47d174bb5b2295b",
+        "android_client_info": {
+          "package_name": "com.kapoori.ka"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "391729474242-tdog29ue1m8p06606mhnn9l7gjre8gf0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvPSAayRE8WNXx_XCGXAQ5GCpyYkpPl5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "391729474242-tdog29ue1m8p06606mhnn9l7gjre8gf0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
