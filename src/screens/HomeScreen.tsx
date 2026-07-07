@@ -7,8 +7,10 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { collection, getDocs, query, where, doc, writeBatch } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
+import { Linking } from 'react-native';
 
 import { db, auth } from '../../firebase';
+import { AuthContext } from '../context/AuthContext';
 import { Child } from '../types';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
@@ -37,11 +39,44 @@ const HOW_TO_STEPS_NE = [
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { language, setLanguage } = useContext(LanguageContext);
+  const authContext = useContext(AuthContext);
   const t = translations[language];
   const isNe = language === 'ne';
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      isNe ? 'लग आउट गर्नुहोस्?' : 'Logout?',
+      isNe ? 'के तपाई लग आउट गर्न निश्चित हुनुहुन्छ?' : 'Are you sure you want to logout?',
+      [
+        { text: isNe ? 'रद्द गर्नुहोस्' : 'Cancel', onPress: () => {} },
+        {
+          text: isNe ? 'लग आउट' : 'Logout',
+          onPress: async () => {
+            try {
+              if (authContext?.signOutUser) {
+                await authContext.signOutUser();
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
+  const openWhatsApp = () => {
+    const phoneNumber = '+9779840516603';
+    const message = isNe ? 'नमस्ते, मलाई सहायता चाहिन्छ।' : 'Hello, I need help.';
+    const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'WhatsApp is not installed or could not be opened.');
+    });
+  };
 
   const steps = isNe ? HOW_TO_STEPS_NE : HOW_TO_STEPS_EN;
 
@@ -101,16 +136,35 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <TouchableOpacity
       style={styles.childCard}
       onPress={() => navigation.navigate('ChildDashboard', { child: item })}
+      activeOpacity={0.7}
     >
-      <View style={[styles.avatar, { backgroundColor: item.sex === 'male' ? '#1a73e8' : '#e91e8c' }]}>
-        <Text style={styles.avatarText}>{item.sex === 'male' ? '👦' : '👧'}</Text>
+      <View style={styles.childCardContent}>
+        {/* Avatar */}
+        <View 
+          style={[
+            styles.avatar, 
+            { backgroundColor: item.sex === 'male' ? '#1a73e8' : '#e91e8c' }
+          ]}
+        >
+          <Text style={styles.avatarText}>
+            {item.sex === 'male' ? '👦' : '👧'}
+          </Text>
+        </View>
+
+        {/* Child Info */}
+        <View style={styles.childInfo}>
+          <Text style={styles.childName}>{item.name}</Text>
+          {item.nameNepali && (
+            <Text style={styles.childNameNepali}>{item.nameNepali}</Text>
+          )}
+          <Text style={styles.childAge}>
+            {item.dateOfBirth ? String(formatAge(item.dateOfBirth, language) || '') : (isNe ? 'मिति अज्ञात' : 'Date unknown')}
+          </Text>
+        </View>
+
+        {/* Arrow Icon */}
+        <Ionicons name="chevron-forward" size={24} color="#999" />
       </View>
-      <View style={styles.childInfo}>
-        <Text style={styles.childName}>{item.name}</Text>
-        {item.nameNepali && <Text style={styles.childNameNepali}>{item.nameNepali}</Text>}
-        <Text style={styles.childAge}>{formatAge(item.dateOfBirth, language)}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={24} color="#999" />
     </TouchableOpacity>
   );
 
@@ -120,9 +174,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.headerTop}>
         <TouchableOpacity style={styles.aboutBtn} onPress={() => navigation.navigate('About')}>
           <Ionicons name="information-circle-outline" size={24} color="#1a73e8" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.aboutBtn} onPress={() => navigation.navigate('Subscription')}>
-          <Ionicons name="star-outline" size={24} color="#FFD700" />
         </TouchableOpacity>
         <View style={styles.langToggle}>
           <TouchableOpacity
@@ -138,6 +189,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>English</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#F44336" />
+        </TouchableOpacity>
       </View>
 
       {/* Welcome / How-to Banner */}
@@ -215,6 +269,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         />
       )}
 
+      {/* WhatsApp Support Card */}
+      {children.length > 0 && (
+        <View style={styles.whatsappCard}>
+          <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp}>
+            <Ionicons name="logo-whatsapp" size={24} color="#fff" />
+            <View style={styles.whatsappText}>
+              <Text style={styles.whatsappTitle}>{isNe ? 'व्हाट्सअप सहायता' : 'WhatsApp Support'}</Text>
+              <Text style={styles.whatsappSub}>{isNe ? 'प्रश्न वा सहायताको लागि संपर्क गर्नुहोस्' : 'Contact us for help'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddChild')}>
         <Ionicons name="add" size={30} color="#fff" />
       </TouchableOpacity>
@@ -257,11 +325,24 @@ const styles = StyleSheet.create({
 
   list: { paddingHorizontal: 12, paddingBottom: 120 },
   childCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-    borderRadius: 12, padding: 16, marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 10,
     elevation: 2,
   },
-  avatar: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  childCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  avatar: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 14 
+  },
   avatarText: { fontSize: 24 },
   childInfo: { flex: 1 },
   childName: { fontSize: 17, fontWeight: '600', color: '#222' },
@@ -289,4 +370,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#333', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
   fabHintText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  logoutBtn: { padding: 8, marginLeft: 4 },
+  whatsappCard: { paddingHorizontal: 12, marginBottom: 12 },
+  whatsappBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#25D366', 
+    borderRadius: 12, 
+    padding: 14, 
+    gap: 12, 
+    elevation: 3 
+  },
+  whatsappText: { flex: 1 },
+  whatsappTitle: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  whatsappSub: { fontSize: 12, color: '#f0f0f0', marginTop: 2 },
 });

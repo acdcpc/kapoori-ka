@@ -32,7 +32,7 @@ export default function ConsultationScreen({ navigation }: any) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Alert.alert(
         isNe ? 'सफल' : 'Success',
-        isNe ? 'परामर्श बुक किया गया' : 'Consultation booked'
+        isNe ? 'परामर्श सफलतापूर्वक बुक भयो' : 'Consultation booked'
       );
     } catch (error) {
       Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'विफल' : 'Failed');
@@ -48,7 +48,7 @@ export default function ConsultationScreen({ navigation }: any) {
           <Ionicons name="lock-closed" size={48} color="#ffc107" />
           <Text style={styles.lockedTitle}>{isNe ? 'प्रीमियम' : 'Premium'}</Text>
           <Text style={styles.lockedText}>
-            {isNe ? 'केवल प्रीमियम उपयोगकर्ताओं के लिए' : 'Premium only'}
+            {isNe ? 'केवल प्रीमियम प्रयोगकर्ताहरूका लागि' : 'Premium only'}
           </Text>
           <TouchableOpacity
             style={styles.upgradeBtn}
@@ -74,7 +74,7 @@ export default function ConsultationScreen({ navigation }: any) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{isNe ? 'डॉक्टर' : 'Doctors'}</Text>
-          {['Dr. Ramesh', 'Dr. Priya', 'Dr. Anita'].map((doctor, i) => (
+          {['Dr. Prakash'].map((doctor, i) => (
             <View key={i} style={styles.doctor}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{doctor.charAt(4)}</Text>
@@ -96,7 +96,7 @@ export default function ConsultationScreen({ navigation }: any) {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.bookBtnText}>{isNe ? 'बुक करें' : 'Book'}</Text>
+            <Text style={styles.bookBtnText}>{isNe ? 'बुक गर्नुहोस्' : 'Book'}</Text>
           )}
         </TouchableOpacity>
       </View>

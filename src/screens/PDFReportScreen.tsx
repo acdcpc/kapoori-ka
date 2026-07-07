@@ -1,19 +1,4 @@
 // src/screens/PDFReportScreen.tsx
-// ✅ FIXES:
-//   1. expo-file-system/legacy — the correct fix (not /next which lacks permissions)
-//   2. Removed orderBy — silently fails on Android without composite index
-//   3. Delete before move — prevents "file already exists" crash on Android
-//   4. Bilingual PDF with BS dates, WAZ scores, emoji status
-//   5. WhatsApp quick share
-//   6. Full error message shown on failure
-// src/screens/PDFReportScreen.tsx
-// ✅ Fixed: Used copyAsync instead of moveAsync + legacy FileSystem
-
-// src/screens/PDFReportScreen.tsx
-// ✅ Final Fix: Share directly from Print cache (no copy/move) + legacy FileSystem only if needed
-// src/screens/PDFReportScreen.tsx
-// ✅ FINAL FIX: Copy to documentDirectory first, then share (reliable on Android Expo Go)
-
 import React, { useState, useContext } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
@@ -24,8 +9,11 @@ import * as Sharing from 'expo-sharing';
 import { LanguageContext } from '../context/LanguageContext';
 import { translations } from '../i18n/translations';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { RootStackParamList } from '../navigation/types';
 import dayjs from 'dayjs';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import { PremiumGuard } from '../components/PremiumGuard';
 
 // BS ↔ AD conversion for PDF
 const BS_MONTHS_NE = [
@@ -65,13 +53,16 @@ const BS_YEAR_DATA: number[][] = [
   [31,32,31,32,31,30,30,30,29,29,30,31],[31,31,32,32,31,30,30,29,30,29,30,30],
   [31,32,31,32,31,30,30,30,29,29,30,31],[30,32,31,32,31,30,30,30,29,30,29,31],
   [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,30,30,29,30,29,30,30],
-  [31,32,31,32,31,30,30,30,29,29,30,31],[30,32,31,32,31,30,30,30,29,30,29,31],
-  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,30,30,29,30,29,30,30],
-  [31,32,31,32,31,30,30,30,29,29,30,31],[31,31,32,32,31,30,30,29,30,29,30,30],
-  [31,32,31,32,31,30,30,30,29,29,30,31],[30,32,31,32,31,30,30,30,29,30,29,31],
-  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,30,30,29,30,29,30,30],
-  [31,32,31,32,31,30,30,30,29,29,30,31],[30,32,31,32,31,30,30,30,29,30,29,31],
-  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,30,30,29,30,29,30,30],
+  [31,32,31,32,31,30,30,30,29,29,30,31],[31,32,31,32,31,30,30,30,29,30,29,31],
+  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,31,30,29,30,29,30,30],
+  [31,32,31,32,31,30,30,30,29,29,30,31],[31,32,31,32,31,30,30,30,29,30,29,31],
+  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,31,30,29,30,29,30,30],
+  [31,32,31,32,31,30,30,30,29,29,30,31],[31,32,31,32,31,30,30,30,29,30,29,31],
+  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,31,30,29,30,29,30,30],
+  [31,32,31,32,31,30,30,30,29,29,30,31],[31,32,31,32,31,30,30,30,29,30,29,31],
+  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,31,30,29,30,29,30,30],
+  [31,32,31,32,31,30,30,30,29,29,30,31],[31,32,31,32,31,30,30,30,29,30,29,31],
+  [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,31,30,29,30,29,30,30],
   [31,32,31,32,31,30,30,30,29,29,30,31],[31,31,32,32,31,30,30,29,30,29,30,30],
   [31,32,31,32,31,30,30,30,29,29,30,31],[30,32,31,32,31,30,30,30,29,30,29,31],
   [31,31,32,31,31,31,30,29,30,29,30,30],[31,31,32,31,31,30,30,29,30,29,30,30],
@@ -112,9 +103,6 @@ function adToBs(adDateStr: string): string {
   } catch { return adDateStr; }
 }
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db, auth } from '../../firebase.ts';
-
 type Props = NativeStackScreenProps<RootStackParamList, 'PDFReport'>;
 
 export default function PDFReportScreen({ route }: Props) {
@@ -133,7 +121,6 @@ export default function PDFReportScreen({ route }: Props) {
 
     try {
       const user = auth.currentUser;
-      // Fetch growth data
       const gQuery = query(
         collection(db, 'growth_records'), 
         where('childId', '==', child.id),
@@ -144,7 +131,6 @@ export default function PDFReportScreen({ route }: Props) {
       gSnap.forEach(doc => growthData.push(doc.data()));
       growthData.sort((a, b) => a.date.localeCompare(b.date));
 
-      // Fetch vaccine data
       const vQuery = query(
         collection(db, 'vaccinations'), 
         where('childId', '==', child.id),
@@ -213,13 +199,10 @@ export default function PDFReportScreen({ route }: Props) {
         </html>
       `;
 
-      // 1. Generate PDF in cache
       const { uri: tempUri } = await Print.printToFileAsync({ 
         html: htmlContent,
       });
 
-      // 2. Fix for Android "Not allowed to read file" error:
-      // Copy the temp file to a safe document location before sharing
       const fileName = `Growth_Report_${child.name.replace(/\s+/g, '_')}_${dayjs().format('YYYYMMDD')}.pdf`;
       const safeUri = `${FileSystem.documentDirectory}${fileName}`;
       
@@ -228,7 +211,6 @@ export default function PDFReportScreen({ route }: Props) {
         to: safeUri
       });
 
-      // 3. Share from the safe location
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(safeUri, {
           mimeType: 'application/pdf',
@@ -252,35 +234,37 @@ export default function PDFReportScreen({ route }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        {isNe ? 'PDF स्वास्थ्य रिपोर्ट' : 'Generate PDF Health Report'}
-      </Text>
-      
-      <Text style={styles.childName}>
-        {child?.name} {child?.nameNepali ? `(${child.nameNepali})` : ''}
-      </Text>
+    <PremiumGuard>
+      <View style={styles.container}>
+        <Text style={styles.title}>
+          {isNe ? 'PDF स्वास्थ्य रिपोर्ट' : 'Generate PDF Health Report'}
+        </Text>
+        
+        <Text style={styles.childName}>
+          {child?.name} {child?.nameNepali ? `(${child.nameNepali})` : ''}
+        </Text>
 
-      <TouchableOpacity
-        style={[styles.generateButton, generating && styles.buttonDisabled]}
-        onPress={generatePDF}
-        disabled={generating}
-      >
-        {generating ? (
-          <ActivityIndicator color="#fff" size="large" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {isNe ? '📄 PDF रिपोर्ट तयार पार्नुहोस्' : '📄 Generate & Share PDF Report'}
-          </Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.generateButton, generating && styles.buttonDisabled]}
+          onPress={generatePDF}
+          disabled={generating}
+        >
+          {generating ? (
+            <ActivityIndicator color="#fff" size="large" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isNe ? '📄 PDF रिपोर्ट तयार पार्नुहोस्' : '📄 Generate & Share PDF Report'}
+            </Text>
+          )}
+        </TouchableOpacity>
 
-      <Text style={styles.note}>
-        {isNe 
-          ? 'PDF तयार भएपछि शेयर गर्न सकिनेछ।' 
-          : 'The PDF will be generated and ready to share.'}
-      </Text>
-    </View>
+        <Text style={styles.note}>
+          {isNe 
+            ? 'PDF तयार भएपछि शेयर गर्न सकिनेछ।' 
+            : 'The PDF will be generated and ready to share.'}
+        </Text>
+      </View>
+    </PremiumGuard>
   );
 }
 

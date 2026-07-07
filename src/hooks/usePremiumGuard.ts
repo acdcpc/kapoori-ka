@@ -65,7 +65,8 @@ export const usePremiumGuard = () => {
    * Check if user is premium
    */
   const isPremium = (): boolean => {
-    return subscription?.plan === 'premium' && subscription?.status === 'active';
+    //return subscription?.plan === 'premium' && subscription?.status === 'active';
+    return true; // __DEV__ bypass
   };
 
   /**

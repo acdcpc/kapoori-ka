@@ -95,11 +95,16 @@ export interface MChatResponse {
 
 export interface SubscriptionStatus {
   userId: string;
-  plan: 'beta_free' | 'monthly' | 'yearly' | 'none';
+  plan: 'free' | 'beta_free' | 'monthly' | 'yearly' | 'premium';
+  status: 'active' | 'expired' | 'cancelled' | 'pending';
   startDate: string;
   endDate: string;
   isActive: boolean;
+  paymentMethod?: 'esewa' | 'khalti' | 'manual';
+  transactionId?: string;
   paymentReference?: string;
+  consultationsRemaining: number;
+  purchasedAt?: string;
 }
 
 export interface NotificationPreferences {

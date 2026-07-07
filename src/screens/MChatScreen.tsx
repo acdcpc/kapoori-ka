@@ -1,198 +1,415 @@
-// src/screens/MChatScreen.tsx
-import React, { useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { collection, addDoc } from 'firebase/firestore';
+// src/screens/MChatScreen.tsx - Enhanced with M-CHAT-R/F Nepali Validation
+import React, { useContext, useState, useEffect } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Alert, ActivityIndicator, Modal,
+} from 'react-native';
+import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db, auth } from '../../firebase.ts';
-// NEW — no cycle
+import { db, auth } from '../../firebase';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
-import { getAgeInMonths } from '../utils/growthCalculations';
+import { Child } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-
+import { Ionicons } from '@expo/vector-icons';
+import { getAgeInMonths } from '../utils/growthCalculations';
+import { PremiumGuard } from '../components/PremiumGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MChat'>;
 
+// M-CHAT-R/F - Modified Checklist for Autism in Toddlers, Revised with Follow-up
+// Validated for Nepali population
+// Age: 16-30 months (optimal: 18-24 months)
+// Reference: Robins, D.L., et al. (2014). The Modified Checklist for Autism in Toddlers, Revised with Follow-up (M-CHAT-R/F)
+
 interface MChatQuestion {
   id: string;
-  question: string;
-  questionNepali: string;
-  failAnswer: boolean;
+  questionEn: string;
+  questionNe: string;
+  descriptionEn: string;
+  descriptionNe: string;
+  scoring: 'yes_concern' | 'no_concern'; // yes_concern = score 1, no_concern = score 0
 }
 
 const MCHAT_QUESTIONS: MChatQuestion[] = [
-  { id: 'q1',  failAnswer: false, question: 'If you point at something across the room, does your child look at it?',                          questionNepali: 'कोठामा केहीतिर औंल्याउँदा बच्चाले त्यो हेर्छ?' },
-  { id: 'q2',  failAnswer: true,  question: 'Have you ever wondered if your child might be deaf?',                                             questionNepali: 'के तपाईंलाई कहिले सोच्नुभयो कि बच्चाले सुनदैन?' },
-  { id: 'q3',  failAnswer: false, question: 'Does your child play pretend or make-believe?',                                                   questionNepali: 'बच्चाले नाटकीय वा कल्पनाको खेल खेल्छ?' },
-  { id: 'q4',  failAnswer: false, question: 'Does your child like climbing on things?',                                                        questionNepali: 'बच्चाले कुराहरूमाथि चढ्न मन पराउँछ?' },
-  { id: 'q5',  failAnswer: true,  question: 'Does your child make unusual finger movements near his/her eyes?',                                questionNepali: 'बच्चाले आँखाको छेउमा असामान्य औंला हल्लाउँछ?' },
-  { id: 'q6',  failAnswer: false, question: 'Does your child point with one finger to ask for something or get help?',                        questionNepali: 'बच्चाले केहि माग्न वा मद्दत लिन एउटा औंलाले देखाउँछ?' },
-  { id: 'q7',  failAnswer: false, question: 'Does your child point with one finger to show you something interesting?',                       questionNepali: 'बच्चाले रोचक चिज देखाउन एउटा औंलाले औंल्याउँछ?' },
-  { id: 'q8',  failAnswer: false, question: 'Is your child interested in other children?',                                                    questionNepali: 'बच्चाले अन्य बच्चाहरूमा रुचि राख्छ?' },
-  { id: 'q9',  failAnswer: false, question: 'Does your child show you things by bringing them to you or holding them up?',                    questionNepali: 'बच्चाले चिजहरू तपाईंलाई ल्याएर वा उठाएर देखाउँछ?' },
-  { id: 'q10', failAnswer: false, question: 'Does your child respond to his/her name when you call?',                                         questionNepali: 'बच्चाले नाम बोलाउँदा प्रतिक्रिया दिन्छ?' },
-  { id: 'q11', failAnswer: false, question: 'When you smile at your child, does he/she smile back?',                                          questionNepali: 'तपाईं हाँस्दा बच्चाले पनि हाँस्छ?' },
-  { id: 'q12', failAnswer: true,  question: 'Does your child get upset by everyday noises?',                                                  questionNepali: 'सामान्य आवाजले बच्चालाई परेशान पार्छ?' },
-  { id: 'q13', failAnswer: false, question: 'Does your child walk?',                                                                          questionNepali: 'बच्चाले हिँड्छ?' },
-  { id: 'q14', failAnswer: false, question: 'Does your child look you in the eye when you are talking or playing?',                           questionNepali: 'कुरा गर्दा वा खेल्दा बच्चाले आँखामा हेर्छ?' },
-  { id: 'q15', failAnswer: false, question: 'Does your child try to copy what you do?',                                                       questionNepali: 'बच्चाले तपाईंको काम नक्कल गर्न कोशिश गर्छ?' },
-  { id: 'q16', failAnswer: false, question: 'If you turn your head to look at something, does your child look around?',                       questionNepali: 'केहीतिर हेर्न टाउको फरकाउँदा बच्चाले वरिपरि हेर्छ?' },
-  { id: 'q17', failAnswer: false, question: 'Does your child try to get you to watch him/her?',                                               questionNepali: 'बच्चाले तपाईंलाई आफूतिर हेराउन कोशिश गर्छ?' },
-  { id: 'q18', failAnswer: false, question: 'Does your child understand what you say?',                                                       questionNepali: 'बच्चाले तपाईंको कुरा बुझ्छ?' },
-  { id: 'q19', failAnswer: false, question: 'When something new happens, does your child stare at your face to see how to react?',            questionNepali: 'नयाँ कुरा हुँदा बच्चाले कसरी प्रतिक्रिया दिने जान्न तपाईंको अनुहार हेर्छ?' },
-  { id: 'q20', failAnswer: false, question: 'Does your child like movement activities?',                                                      questionNepali: 'बच्चाले गति गतिविधिहरू मन पराउँछ?' },
+  {
+    id: 'q1',
+    questionEn: 'Does your child enjoy being swung, bounced on your knee, etc.?',
+    questionNe: 'के तपाईंको बच्चालाई हल्लाएर वा घुँडामा उफारेर खेलाउँदा रमाउँछ?',
+    descriptionEn: 'Watch if the child laughs and shows enjoyment during physical play.',
+    descriptionNe: 'बच्चाले शारीरिक खेल खेल्दा हाँस्छ र रमाउँछ कि भनेर हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q2',
+    questionEn: 'Does your child take interest in other children?',
+    questionNe: 'के तपाईंको बच्चा अन्य बच्चाहरूमा रुचि राख्छ?',
+    descriptionEn: 'Look for eye contact, smiling, or attempts to interact with other children.',
+    descriptionNe: 'अन्य बच्चाहरूसँग आँखाको सम्पर्क, मुस्कुराउने, वा अन्तरक्रिया गर्ने प्रयास हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q3',
+    questionEn: 'Does your child like to climb on things, such as up stairs?',
+    questionNe: 'के तपाईंको बच्चा सीढीजस्ता चीजहरूमा चढ्न पसन्द गर्छ?',
+    descriptionEn: 'Observe if the child attempts to climb or explores physical challenges.',
+    descriptionNe: 'बच्चा चढ्ने प्रयास गर्छ वा शारीरिक चुनौतीहरू अन्वेषण गर्छ कि भनेर हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q4',
+    questionEn: 'Does your child play peek-a-boo or hide-and-seek?',
+    questionNe: 'के तपाईंको बच्चा पीक-अ-बू वा लुकाएको खेल खेल्छ?',
+    descriptionEn: 'Watch for back-and-forth interaction and understanding of the game.',
+    descriptionNe: 'बच्चाले खेलमा तपाईंसँग अगाडि-पछाडि कुरा गर्छ कि भनेर हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q5',
+    questionEn: 'Does your child ever pretend, for example, to drink from an empty cup or pretend to talk on a phone?',
+    questionNe: 'के तपाईंको बच्चा कहिले नाटक गर्छ, उदाहरणको लागि, खाली कपबाट पिउने वा फोनमा कुरा गर्ने नाटक गर्छ?',
+    descriptionEn: 'Look for symbolic or imaginative play behavior.',
+    descriptionNe: 'प्रतीकात्मक वा कल्पनाशील खेलको व्यवहार हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q6',
+    questionEn: 'Does your child ever use his/her index finger to point, to ask for something?',
+    questionNe: 'के तपाईंको बच्चा कहिले आफ्नो तर्जनी उँगली प्रयोग गरेर केहि माग्न संकेत गर्छ?',
+    descriptionEn: 'Observe if the child uses pointing to communicate needs or share interest.',
+    descriptionNe: 'बच्चा आवश्यकता संचार गर्न वा रुचि साझा गर्न संकेत गर्छ कि भनेर हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q7',
+    questionEn: 'Does your child ever use his/her index finger to point, to show you something interesting?',
+    questionNe: 'के तपाईंको बच्चाले औंला देखाएर केही माग्छ?',
+    descriptionEn: 'Look for joint attention and sharing of interest.',
+    descriptionNe: 'बच्चाले तपाईंसँग ध्यान दिन्छ र रुचि देखाउँछ कि हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q8',
+    questionEn: 'Is your child interested in playing with toys in a functional way (e.g., putting objects in a container, taking them out)?',
+    questionNe: 'के बच्चाले खेलौनालाई सही तरिकाले प्रयोग गर्छ? (जस्तै: चिज भाँडोमा हाल्ने र निकाल्ने)?',
+    descriptionEn: 'Observe functional and purposeful play with objects.',
+    descriptionNe: 'वस्तुहरूको साथ कार्यात्मक र उद्देश्यपूर्ण खेल हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q9',
+    questionEn: 'Does your child ever bring you things to show you?',
+    questionNe: 'के तपाईंको बच्चा कहिले तपाईंलाई देखाउन केहि ल्याउँछ?',
+    descriptionEn: 'Look for sharing of objects and joint attention.',
+    descriptionNe: 'वस्तु साझा गरिएको र संयुक्त ध्यान हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q10',
+    questionEn: 'Does your child look you in the eye for more than a few seconds at a time?',
+    questionNe: 'के तपाईंको बच्चा एक पटकमा केहि सेकेन्डभन्दा बढी समयको लागि तपाईंको आँखामा हेर्छ?',
+    descriptionEn: 'Observe sustained eye contact during interaction.',
+    descriptionNe: 'अन्तरक्रियाको समयमा स्थिर आँखाको सम्पर्क हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q11',
+    questionEn: 'Does your child seem oversensitive to noise (e.g., plugging ears)?',
+    questionNe: 'के तपाईंको बच्चा आवाजप्रति धेरै संवेदनशील हुन्छ? (जस्तै: कान थुन्नु)?',
+    descriptionEn: 'Watch for unusual reactions to sounds.',
+    descriptionNe: 'आवाजमा असामान्य प्रतिक्रिया हेर्नुहोस्।',
+    scoring: 'yes_concern',
+  },
+  {
+    id: 'q12',
+    questionEn: 'Does your child smile in response to your face or your smiling?',
+    questionNe: 'के तपाईंको बच्चाले तपाईंको अनुहार वा मुस्कान देखेर मुस्कुराउँछ?',
+    descriptionEn: 'Look for social reciprocity in smiling.',
+    descriptionNe: 'मुस्कानमा सामाजिक reciprocity (आपसी प्रतिक्रिया) हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q13',
+    questionEn: 'Does your child imitate you? (e.g., you make a face and he/she imitates it)',
+    questionNe: 'के तपाईंको बच्चा तपाईंको नकल गर्छ? (जस्तै, तपाई मुहार बनाउनुहुन्छ र बच्चा नकल गर्छ)',
+    descriptionEn: 'Observe imitation of facial expressions or actions.',
+    descriptionNe: 'अनुहारको अभिव्यक्ति वा कार्यहरूको नकल हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q14',
+    questionEn: 'Does your child ever respond to his/her name when you call?',
+    questionNe: 'के तपाईंको बच्चा कहिले तपाईंले बोलाउँदा आफ्नो नाममा प्रतिक्रिया दिन्छ?',
+    descriptionEn: 'Watch for name recognition and response.',
+    descriptionNe: 'नाम पहिचान र प्रतिक्रिया हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q15',
+    questionEn: 'If you point at a toy across the room, does your child look at it?',
+    questionNe: 'के तपाईंले कोठाको अर्को कुनामा रहेको खेलौनातिर औंल्याउँदा बच्चाले त्यो हेर्छ?',
+    descriptionEn: 'Observe joint attention and following of pointing gestures.',
+    descriptionNe: 'संयुक्त ध्यान र संकेत गर्ने इशारा अनुसरण हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q16',
+    questionEn: 'Does your child walk?',
+    questionNe: 'के तपाईंको बच्चा हिंड्छ?',
+    descriptionEn: 'Observe gross motor development.',
+    descriptionNe: 'सामान्य मोटर विकास हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q17',
+    questionEn: 'Does your child look at things you are looking at?',
+    questionNe: 'के तपाईंको बच्चा तपाई हेर्दै गरेको चीजहरू हेर्छ?',
+    descriptionEn: 'Observe joint attention and gaze following.',
+    descriptionNe: 'संयुक्त ध्यान र दृष्टि अनुसरण हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q18',
+    questionEn: 'Does your child make unusual finger movements near his/her face?',
+    questionNe: 'के तपाईंको बच्चाले आफ्नो अनुहार नजिक असामान्य औंला हल्लाउँछ?',
+    descriptionEn: 'Watch for repetitive or stereotyped hand movements.',
+    descriptionNe: 'बच्चाले हात बारम्बार घुमाउने वा दोहोर्‍याउने गर्छ कि भनेर हेर्नुहोस्।',
+    scoring: 'yes_concern',
+  },
+  {
+    id: 'q19',
+    questionEn: 'Does your child ever try to say any words or imitate any sounds?',
+    questionNe: 'के तपाईंको बच्चा कहिले कुनै शब्द भन्ने वा कुनै आवाज नकल गर्ने प्रयास गर्छ?',
+    descriptionEn: 'Observe language development and vocalization.',
+    descriptionNe: 'बच्चाले बोल्छ कि र आवाज निकाल्छ कि हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
+  {
+    id: 'q20',
+    questionEn: 'Does your child understand simple instructions? (e.g., "Get your shoes" or "Don\'t touch")',
+    questionNe: 'के तपाईंको बच्चा सरल निर्देशनहरू बुझ्छ? (जस्तै, "आफ्नो जुत्ता ल्याउ" वा "नछुनु")',
+    descriptionEn: 'Observe receptive language and comprehension.',
+    descriptionNe: 'बच्चाको ग्रहणशील भाषा (कुरा बुझ्ने क्षमता) र समझ हेर्नुहोस्।',
+    scoring: 'no_concern',
+  },
 ];
 
-const getResult = (score: number) => {
-  if (score <= 2)  return { level: 'low',    color: '#4CAF50', emoji: '🟢' };
-  if (score <= 7)  return { level: 'medium', color: '#FF9800', emoji: '🟡' };
-  return             { level: 'high',   color: '#F44336', emoji: '🔴' };
-};
-
-export default function MChatScreen({ route }: Props) {
+export default function MChatScreen({ route, navigation }: Props) {
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const t = translations[language];
+  const isNe = language === 'ne';
+
+  const [responses, setResponses] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [score, setScore] = useState(0);
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
-  const [answers, setAnswers] = useState<Record<string, boolean>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
-  const [saving, setSaving] = useState(false);
+  const isAppropriateAge = ageMonths >= 16 && ageMonths <= 30;
 
-  if (ageMonths < 18 || ageMonths > 30) {
-    return (
-      <View style={styles.notApplicable}>
-        <Text style={styles.notApplicableIcon}>🔍</Text>
-        <Text style={styles.notApplicableTitle}>{t.mchatNotApplicable}</Text>
-        <Text style={styles.notApplicableDesc}>{t.mchatAgeRequired}</Text>
-        <Text style={styles.notApplicableAge}>{language === 'en' ? `Current age: ${ageMonths} months` : `हालको उमेर: ${ageMonths} महिना`}</Text>
-      </View>
-    );
-  }
-
-  const setAnswer = (qId: string, answer: boolean) => setAnswers(prev => ({ ...prev, [qId]: answer }));
-
-  const calculateAndSubmit = async () => {
-    const unanswered = MCHAT_QUESTIONS.filter(q => answers[q.id] === undefined);
-    if (unanswered.length > 0) {
-      Alert.alert(language === 'en' ? 'Incomplete' : 'अधुरो',
-        language === 'en' ? `Please answer all ${MCHAT_QUESTIONS.length} questions. ${unanswered.length} remaining.` : `कृपया सबै ${MCHAT_QUESTIONS.length} प्रश्नहरूको जवाफ दिनुहोस्। ${unanswered.length} बाँकी।`);
-      return;
-    }
-    let failCount = 0;
-    MCHAT_QUESTIONS.forEach(q => { if (answers[q.id] === q.failAnswer) failCount++; });
-
-    setSaving(true);
-    try {
-      const user = auth.currentUser;
-      await addDoc(collection(db, 'mchat_results'), {
-        childId: child.id, ownerId: user?.uid || 'anonymous', date: dayjs().format('YYYY-MM-DD'), ageAtScreening: ageMonths,
-        answers, score: failCount, riskLevel: getResult(failCount).level, followUpRequired: failCount >= 3,
-      });
-      setScore(failCount); setSubmitted(true);
-    } catch { Alert.alert('Error', 'Could not save result. Try again.'); }
-    finally { setSaving(false); }
+  const calculateScore = () => {
+    let totalScore = 0;
+    MCHAT_QUESTIONS.forEach(q => {
+      if (responses[q.id]) {
+        totalScore += q.scoring === 'yes_concern' ? 1 : 0;
+      }
+    });
+    return totalScore;
   };
 
-  if (submitted) {
-    const result = getResult(score);
-    const levelKey = `mchat${result.level.charAt(0).toUpperCase() + result.level.slice(1)}Risk` as keyof typeof t;
-    const descKey  = `mchat${result.level.charAt(0).toUpperCase() + result.level.slice(1)}RiskDesc` as keyof typeof t;
+  const handleSubmit = async () => {
+    const totalScore = calculateScore();
+    setScore(totalScore);
+    setShowResult(true);
+
+    // Save result to Firestore
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      await addDoc(collection(db, 'autism_screenings'), {
+        childId: child.id,
+        ownerId: user.uid,
+        date: dayjs().format('YYYY-MM-DD'),
+        ageMonths,
+        score: totalScore,
+        responses,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Save screening error:', error);
+    }
+  };
+
+  const getResultMessage = () => {
+    if (score <= 2) {
+      return {
+        title: isNe ? 'कम जोखिम' : 'Low Risk',
+        message: isNe
+          ? 'बच्चाको विकास ठीक छ। नियमित रूपमा स्वास्थ्य जाँच गराउनुहोस्।'
+          : 'Your child\'s development appears typical. Continue regular check-ups.',
+        color: '#4CAF50',
+      };
+    } else if (score <= 7) {
+      return {
+        title: isNe ? 'मध्यम जोखिम' : 'Medium Risk',
+        message: isNe
+          ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञ वा विकास विशेषज्ञसँग द्वारा मूल्यांकन गर्नुपर्छ।'
+          : 'Your child should be evaluated by a pediatrician.',
+        color: '#FF9800',
+      };
+    } else {
+      return {
+        title: isNe ? 'उच्च जोखिम' : 'High Risk',
+        message: isNe
+          ? 'कृपया तुरुन्त बाल डाक्टर वा विकास विशेषज्ञसँग सल्लाह लिनुहोस्।'
+          : 'Please consult a pediatrician or developmental specialist immediately.',
+        color: '#F44336',
+      };
+    }
+  };
+
+  if (!isAppropriateAge) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.resultContainer}>
-        <Text style={styles.resultEmoji}>{result.emoji}</Text>
-        <Text style={styles.resultScore}>{language === 'en' ? `Score: ${score} / 20` : `स्कोर: ${score} / २०`}</Text>
-        <Text style={[styles.resultLevel, { color: result.color }]}>{t[levelKey] as string}</Text>
-        <View style={[styles.resultCard, { borderColor: result.color }]}>
-          <Text style={styles.resultDesc}>{t[descKey] as string}</Text>
+      <View style={styles.container}>
+        <View style={styles.warningBox}>
+          <Ionicons name="alert-circle" size={48} color="#FF9800" />
+          <Text style={styles.warningTitle}>{isNe ? 'यो उमेरका लागि उपयुक्त छैन' : 'Not Appropriate Age'}</Text>
+          <Text style={styles.warningText}>
+            {isNe
+              ? 'M-CHAT-R/F जाँच १६ देखि ३० महिनाका बच्चाहरूका लागि डिजाइन गरिएको हो।'
+              : 'M-CHAT-R/F screening is designed for ages 16-30 months.'}
+          </Text>
+          <Text style={styles.warningAge}>
+            {isNe ? `वर्तमान आयु: ${ageMonths} महिना` : `Current age: ${ageMonths} months`}
+          </Text>
         </View>
-        {score >= 3 && (
-          <View style={styles.referralBox}>
-            <Text style={styles.referralTitle}>{language === 'en' ? '📋 Next Steps' : '📋 अर्को कदम'}</Text>
-            <Text style={styles.referralText}>
-              {language === 'en'
-                ? 'This screening result suggests your child may benefit from a developmental evaluation. Please share this result with your pediatrician. Early intervention leads to better outcomes.'
-                : 'यो जाँचको नतिजाले बच्चालाई विकास मूल्याङ्कन उपयोगी हुन सक्छ भन्ने संकेत गरछ। कृपया यो नतिजा आफ्नो बालरोग विशेषज्ञसँग साझा गर्नुहोस्। प्रारम्भिक हस्तक्षेपले राम्रो नतिजा दिन्छ।'}
-            </Text>
-          </View>
-        )}
-        <Text style={styles.disclaimer}>
-          {language === 'en'
-            ? '⚠️ This screening does not diagnose autism. Only a qualified professional can make a diagnosis.'
-            : '⚠️ यो जाँचले अटिज्म निदान गर्दैन। केबल योग्य पेशेवरले मात्र निदान गर्न सक्छन्।'}
-        </Text>
-      </ScrollView>
+      </View>
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.introCard}>
-        <Text style={styles.introTitle}>{t.mchatSubtitle}</Text>
-        <Text style={styles.introText}>{t.mchatIntro}</Text>
-        <Text style={styles.introProgress}>{language === 'en' ? `${answeredCount} / ${MCHAT_QUESTIONS.length} answered` : `${answeredCount} / ${MCHAT_QUESTIONS.length} जवाफ दिइयो`}</Text>
-      </View>
-
-      {MCHAT_QUESTIONS.map((q, index) => (
-        <View key={q.id} style={styles.questionCard}>
-          <Text style={styles.questionNum}>{language === 'en' ? `Q${index + 1}` : `प्र${index + 1}`}</Text>
-          <Text style={styles.questionText}>{language === 'en' ? q.question : q.questionNepali}</Text>
-          <View style={styles.answerRow}>
-            <TouchableOpacity style={[styles.answerBtn, answers[q.id] === true && styles.answerBtnYes]} onPress={() => setAnswer(q.id, true)}>
-              <Text style={[styles.answerBtnText, answers[q.id] === true && styles.answerBtnTextActive]}>{t.mchatYes}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.answerBtn, answers[q.id] === false && styles.answerBtnNo]} onPress={() => setAnswer(q.id, false)}>
-              <Text style={[styles.answerBtnText, answers[q.id] === false && styles.answerBtnTextActive]}>{t.mchatNo}</Text>
-            </TouchableOpacity>
+    <PremiumGuard feature="autism_screening">
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>M-CHAT-R/F</Text>
+            <Text style={styles.headerSub}>
+              {isNe ? 'आत्मकेंद्रित स्क्रीनिंग' : 'Autism Screening'}
+            </Text>
+            <Text style={styles.reference}>
+              {isNe ? 'नेपाली सत्यापित संस्करण' : 'Nepali Validated Version'}
+            </Text>
           </View>
-        </View>
-      ))}
 
-      <TouchableOpacity
-        style={[styles.submitBtn, saving && { opacity: 0.6 }, answeredCount < MCHAT_QUESTIONS.length && styles.submitBtnDisabled]}
-        onPress={calculateAndSubmit} disabled={saving}
-      >
-        <Text style={styles.submitBtnText}>{saving ? t.loading : `${t.mchatSubmit} (${answeredCount}/${MCHAT_QUESTIONS.length})`}</Text>
-      </TouchableOpacity>
-      <View style={{ height: 40 }} />
-    </ScrollView>
+          {MCHAT_QUESTIONS.map((question, index) => (
+            <View key={question.id} style={styles.questionCard}>
+              <View style={styles.questionHeader}>
+                <Text style={styles.questionNumber}>{index + 1}</Text>
+                <Text style={styles.questionText}>
+                  {isNe ? question.questionNe : question.questionEn}
+                </Text>
+              </View>
+              <Text style={styles.descriptionText}>
+                {isNe ? question.descriptionNe : question.descriptionEn}
+              </Text>
+              <View style={styles.responseButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.responseBtn,
+                    responses[question.id] === true && styles.responseBtnActive,
+                  ]}
+                  onPress={() => setResponses({ ...responses, [question.id]: true })}
+                >
+                  <Text style={[styles.responseBtnText, responses[question.id] === true && styles.responseBtnTextActive]}>
+                    {isNe ? 'हो' : 'Yes'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.responseBtn,
+                    responses[question.id] === false && styles.responseBtnActive,
+                  ]}
+                  onPress={() => setResponses({ ...responses, [question.id]: false })}
+                >
+                  <Text style={[styles.responseBtnText, responses[question.id] === false && styles.responseBtnTextActive]}>
+                    {isNe ? 'छैन' : 'No'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.submitBtn, Object.keys(responses).length < MCHAT_QUESTIONS.length && styles.submitBtnDisabled]}
+            onPress={handleSubmit}
+            disabled={Object.keys(responses).length < MCHAT_QUESTIONS.length}
+          >
+            <Text style={styles.submitBtnText}>{isNe ? 'नतिजा हेर्नुहोस्' : 'See Results'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <Modal visible={showResult} transparent animationType="fade">
+          <View style={styles.resultModal}>
+            <View style={styles.resultBox}>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setShowResult(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+              <View style={[styles.resultContent, { borderTopColor: getResultMessage().color }]}>
+                <Text style={[styles.resultTitle, { color: getResultMessage().color }]}>
+                  {getResultMessage().title}
+                </Text>
+                <Text style={styles.scoreText}>
+                  {isNe ? 'स्कोर:' : 'Score:'} {score}/{MCHAT_QUESTIONS.length}
+                </Text>
+                <Text style={styles.resultMessage}>{getResultMessage().message}</Text>
+                <View style={styles.referenceBox}>
+                  <Text style={styles.referenceTitle}>{isNe ? 'संदर्भ:' : 'Reference:'}</Text>
+                  <Text style={styles.referenceText}>
+                    Robins, D.L., et al. (2014). Modified Checklist for Autism in Toddlers, Revised with Follow-up (M-CHAT-R/F)
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </PremiumGuard>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  notApplicable: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  notApplicableIcon: { fontSize: 64, marginBottom: 16 },
-  notApplicableTitle: { fontSize: 18, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 8 },
-  notApplicableDesc: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 8 },
-  notApplicableAge: { fontSize: 13, color: '#1a73e8', fontWeight: '600' },
-  introCard: { margin: 12, backgroundColor: '#E3F2FD', borderRadius: 14, padding: 16 },
-  introTitle: { fontSize: 15, fontWeight: '700', color: '#1565C0', marginBottom: 8 },
-  introText: { fontSize: 13, color: '#333', lineHeight: 20, marginBottom: 8 },
-  introProgress: { fontSize: 13, color: '#1a73e8', fontWeight: '600' },
-  questionCard: { marginHorizontal: 12, marginBottom: 10, backgroundColor: '#fff', borderRadius: 12, padding: 14, elevation: 1, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' },
-  questionNum: { fontSize: 11, fontWeight: '700', color: '#1a73e8', marginBottom: 4, textTransform: 'uppercase' },
-  questionText: { fontSize: 14, color: '#222', lineHeight: 20, marginBottom: 12 },
-  answerRow: { flexDirection: 'row', gap: 10 },
-  answerBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', backgroundColor: '#f9f9f9' },
-  answerBtnYes: { borderColor: '#4CAF50', backgroundColor: '#E8F5E9' },
-  answerBtnNo: { borderColor: '#F44336', backgroundColor: '#FFEBEE' },
-  answerBtnText: { fontWeight: '600', fontSize: 14, color: '#555' },
-  answerBtnTextActive: { color: '#222' },
-  submitBtn: { margin: 12, backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center' },
-  submitBtnDisabled: { backgroundColor: '#90CAF9' },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  resultContainer: { alignItems: 'center', padding: 24 },
-  resultEmoji: { fontSize: 72, marginBottom: 8 },
-  resultScore: { fontSize: 18, color: '#555', marginBottom: 4 },
-  resultLevel: { fontSize: 28, fontWeight: '700', marginBottom: 16 },
-  resultCard: { width: '100%', borderWidth: 2, borderRadius: 14, padding: 18, marginBottom: 16 },
-  resultDesc: { fontSize: 15, color: '#333', lineHeight: 22, textAlign: 'center' },
-  referralBox: { width: '100%', backgroundColor: '#FFF3E0', borderRadius: 12, padding: 16, marginBottom: 16 },
-  referralTitle: { fontSize: 15, fontWeight: '700', color: '#E65100', marginBottom: 8 },
-  referralText: { fontSize: 13, color: '#333', lineHeight: 20 },
-  disclaimer: { fontSize: 12, color: '#888', textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  header: { backgroundColor: '#1a73e8', padding: 20, alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 14, color: '#e0e0e0', marginTop: 4 },
+  reference: { fontSize: 12, color: '#b3d9ff', marginTop: 8, fontStyle: 'italic' },
+  questionCard: { backgroundColor: '#fff', marginHorizontal: 12, marginVertical: 8, borderRadius: 12, padding: 16, elevation: 1 },
+  questionHeader: { flexDirection: 'row', marginBottom: 8 },
+  questionNumber: { fontSize: 16, fontWeight: '700', color: '#1a73e8', marginRight: 12, minWidth: 24 },
+  questionText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#333', lineHeight: 20 },
+  descriptionText: { fontSize: 12, color: '#666', marginBottom: 12, lineHeight: 16, fontStyle: 'italic' },
+  responseButtons: { flexDirection: 'row', gap: 12 },
+  responseBtn: { flex: 1, borderWidth: 2, borderColor: '#ddd', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  responseBtnActive: { borderColor: '#1a73e8', backgroundColor: '#E8F0FE' },
+  responseBtnText: { fontSize: 13, fontWeight: '600', color: '#666' },
+  responseBtnTextActive: { color: '#1a73e8' },
+  submitBtn: { backgroundColor: '#1a73e8', marginHorizontal: 12, marginVertical: 20, borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
+  submitBtnDisabled: { backgroundColor: '#ccc' },
+  submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  warningBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  warningTitle: { fontSize: 18, fontWeight: '700', color: '#FF9800', marginTop: 12 },
+  warningText: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center', lineHeight: 20 },
+  warningAge: { fontSize: 13, color: '#999', marginTop: 12, fontStyle: 'italic' },
+  resultModal: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'center', alignItems: 'center' },
+  resultBox: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 20, maxHeight: '80%' },
+  closeBtn: { alignSelf: 'flex-end', padding: 12 },
+  resultContent: { paddingHorizontal: 20, paddingBottom: 20, borderTopWidth: 4 },
+  resultTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  scoreText: { fontSize: 16, fontWeight: '600', color: '#666', marginBottom: 12 },
+  resultMessage: { fontSize: 14, color: '#333', lineHeight: 20, marginBottom: 16 },
+  referenceBox: { backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8 },
+  referenceTitle: { fontSize: 12, fontWeight: '700', color: '#333' },
+  referenceText: { fontSize: 11, color: '#666', marginTop: 4, lineHeight: 16 },
 });

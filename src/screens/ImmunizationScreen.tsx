@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db, auth } from '../../firebase.ts';
+import { db, auth } from '../../firebase';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
@@ -29,27 +29,28 @@ interface NIPEntry {
   route: string;
   routeNe: string;
   dose: string;
+  doseNe: string;
 }
 
 const NIP_SCHEDULE: NIPEntry[] = [
-  { id:'bcg', ageInDays:0, ageLabel:'At Birth', ageLabelNe:'जन्मदा', name:'BCG', nameNe:'बीसीजी', diseases:'Tuberculosis', diseasesNe:'क्षयरोग', route:'Intradermal', routeNe:'छालामुनि', dose:'0.05 ml' },
-  { id:'penta1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'Penta 1', nameNe:'पेन्टा १', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'opv1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'OPV 1', nameNe:'ओपीभी १', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 थोपा' },
-  { id:'pcv1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'PCV 1', nameNe:'पीसीभी १', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'rota1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'Rota 1', nameNe:'रोटा १', diseases:'Diarrhea', diseasesNe:'झाडापखाला', route:'Oral', routeNe:'मुखबाट', dose:'0.5 ml' },
-  { id:'penta2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'Penta 2', nameNe:'पेन्टा २', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'opv2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'OPV 2', nameNe:'ओपीभी २', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 थोपा' },
-  { id:'pcv2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'PCV 2', nameNe:'पीसीभी २', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'rota2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'Rota 2', nameNe:'रोटा २', diseases:'Diarrhea', diseasesNe:'झाडापखाला', route:'Oral', routeNe:'मुखबाट', dose:'0.5 ml' },
-  { id:'penta3', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'Penta 3', nameNe:'पेन्टा ३', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'opv3', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'OPV 3', nameNe:'ओपीभी ३', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 थोपा' },
-  { id:'fipv1', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'fIPV 1', nameNe:'fIPV १', diseases:'Polio', diseasesNe:'पोलियो', route:'ID', routeNe:'छालामुनि', dose:'0.1 ml' },
-  { id:'mr1', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'MR 1', nameNe:'एमआर १', diseases:'Measles', diseasesNe:'दादुरा-रुबेला', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml' },
-  { id:'pcv3', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'PCV 3', nameNe:'पीसीभी ३', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
-  { id:'fipv2', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'fIPV 2', nameNe:'fIPV २', diseases:'Polio', diseasesNe:'पोलियो', route:'ID', routeNe:'छालामुनि', dose:'0.1 ml' },
-  { id:'je', ageInDays:365, ageLabel:'12 Months', ageLabelNe:'१२ महिना', name:'JE', nameNe:'जेई (दिमागी ज्वरो)', diseases:'Encephalitis', diseasesNe:'दिमागी ज्वरो', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml' },
-  { id:'mr2', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'MR 2', nameNe:'एमआर २', diseases:'Measles', diseasesNe:'दादुरा-रुबेला', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml' },
-  { id:'typhoid', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'Typhoid', nameNe:'टाइफाइड', diseases:'Typhoid', diseasesNe:'टाइफाइड ज्वरो', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml' },
+  { id:'bcg', ageInDays:0, ageLabel:'At Birth', ageLabelNe:'जन्मदा', name:'BCG', nameNe:'बीसीजी', diseases:'Tuberculosis', diseasesNe:'क्षयरोग', route:'Intradermal', routeNe:'छालामुनि', dose:'0.05 ml', doseNe:'०.०५ मिली' },
+  { id:'penta1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'Penta 1', nameNe:'पेन्टा १', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'opv1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'OPV 1', nameNe:'ओपीभी १', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 drops', doseNe:'२ थोपा' },
+  { id:'pcv1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'PCV 1', nameNe:'पीसीभी १', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'rota1', ageInDays:42, ageLabel:'6 Weeks', ageLabelNe:'६ हप्ता', name:'Rota 1', nameNe:'रोटा १', diseases:'Diarrhea', diseasesNe:'झाडापखाला', route:'Oral', routeNe:'मुखबाट', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'penta2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'Penta 2', nameNe:'पेन्टा २', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'opv2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'OPV 2', nameNe:'ओपीभी २', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 drops', doseNe:'२ थोपा' },
+  { id:'pcv2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'PCV 2', nameNe:'पीसीभी २', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'rota2', ageInDays:70, ageLabel:'10 Weeks', ageLabelNe:'१० हप्ता', name:'Rota 2', nameNe:'रोटा २', diseases:'Diarrhea', diseasesNe:'झाडापखाला', route:'Oral', routeNe:'मुखबाट', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'penta3', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'Penta 3', nameNe:'पेन्टा ३', diseases:'DPT, HepB, Hib', diseasesNe:'डीपीटी, हेपबी, हिब', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'opv3', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'OPV 3', nameNe:'ओपीभी ३', diseases:'Polio', diseasesNe:'पोलियो', route:'Oral', routeNe:'मुखबाट', dose:'2 drops', doseNe:'२ थोपा' },
+  { id:'fipv1', ageInDays:98, ageLabel:'14 Weeks', ageLabelNe:'१४ हप्ता', name:'fIPV 1', nameNe:'fIPV १', diseases:'Polio', diseasesNe:'पोलियो', route:'ID', routeNe:'छालामुनि', dose:'0.1 ml', doseNe:'०.१ मिली' },
+  { id:'mr1', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'MR 1', nameNe:'एमआर १', diseases:'Measles', diseasesNe:'दादुरा-रुबेला', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'pcv3', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'PCV 3', nameNe:'पीसीभी ३', diseases:'Pneumonia', diseasesNe:'निमोनिया', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'fipv2', ageInDays:274, ageLabel:'9 Months', ageLabelNe:'९ महिना', name:'fIPV 2', nameNe:'fIPV २', diseases:'Polio', diseasesNe:'पोलियो', route:'ID', routeNe:'छालामुनि', dose:'0.1 ml', doseNe:'०.१ मिली' },
+  { id:'je', ageInDays:365, ageLabel:'12 Months', ageLabelNe:'१२ महिना', name:'JE', nameNe:'जेई (दिमागी ज्वरो)', diseases:'Encephalitis', diseasesNe:'दिमागी ज्वरो', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'mr2', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'MR 2', nameNe:'एमआर २', diseases:'Measles', diseasesNe:'दादुरा-रुबेला', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  { id:'typhoid', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'Typhoid', nameNe:'टाइफाइड', diseases:'Typhoid', diseasesNe:'टाइफाइड ज्वरो', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
 ];
 
 const AGE_GROUPS = [
@@ -90,17 +91,24 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
 const STATUS_COLOR: Record<VaccineStatus, string> = { given: '#4CAF50', due: '#F44336', upcoming: '#1a73e8', missed: '#FF5722' };
 const STATUS_ICON: Record<VaccineStatus, string> = { given: '✅', due: '⚠️', upcoming: '📅', missed: '❗' };
 const STATUS_LABEL_EN: Record<VaccineStatus, string> = { given: 'Given', due: 'Due Now', upcoming: 'Upcoming', missed: 'Missed' };
-// All Nepali — no English words in Nepali mode
 const STATUS_LABEL_NE: Record<VaccineStatus, string> = { given: 'दिइयो', due: 'दिनुपर्छ', upcoming: 'आउँदो', missed: 'छुट्यो' };
 
-// Convert AD date to Nepali-readable format
 function formatDateNe(dateStr: string): string {
   try {
-    const d = dayjs(dateStr);
-    const months = ['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'];
-    const ne = (n: number) => n.toString().split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
-    return `${ne(d.date())} ${months[d.month()]} ${ne(d.year())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr, 'YYYY-MM-DD');
+    if (!d.isValid()) return dateStr;
+    const months = ['माघ','फाल्गुन','चैत','बैशाख','जेठ','असार','श्रावण','भदौ','असोज','कार्तिक','मंसिर','पुष'];
+    const ne = (n: number) => {
+      if (isNaN(n)) return '';
+      return n.toString().split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
+    };
+    const day = ne(d.date());
+    const month = months[d.month()];
+    const year = ne(d.year());
+    return `${day} ${month} ${year}`;
+  } catch (e) {
+    return dateStr;
+  }
 }
 
 export default function ImmunizationScreen({ route }: Props) {
@@ -143,7 +151,6 @@ export default function ImmunizationScreen({ route }: Props) {
         isMissed: status === 'missed'
       });
       await loadRecords();
-      // Schedule reminders after updating
       if (status === 'given') {
         const givenIds2 = new Set([...Array.from(new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName))), vaccine.id]);
         const missedIds2 = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
@@ -160,19 +167,17 @@ export default function ImmunizationScreen({ route }: Props) {
   const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds);
   const childAgeMonths = dayjs().diff(dayjs(child.dateOfBirth), 'month');
   
-  // Upcoming vaccine summary banner
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
 
   return (
     <View style={styles.container}>
-      {/* Next vaccine reminder banner */}
       {nextDue && (
         <View style={[styles.nextVaccineBanner, { borderLeftColor: nextDue.status === 'due' ? '#F44336' : '#1a73e8' }]}>
           <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#F44336' : '#1a73e8'} />
           <Text style={[styles.nextVaccineText, { color: nextDue.status === 'due' ? '#c62828' : '#1a73e8' }]}>
             {isNe
-              ? `अर्को खोप: ${nextDue.nameNe} — ${formatDateNe(nextDue.scheduledDate)}`
-              : `Next vaccine: ${nextDue.name} — ${nextDue.scheduledDate}`}
+              ? `अर्को खोप: ${nextDue.nameNe} (${nextDue.ageLabelNe}) — ${formatDateNe(nextDue.scheduledDate)} — ${STATUS_LABEL_NE[nextDue.status]}`
+              : `Next vaccine: ${nextDue.name} (${nextDue.ageLabel}) — ${nextDue.scheduledDate} — ${STATUS_LABEL_EN[nextDue.status]}`}
           </Text>
         </View>
       )}
@@ -223,7 +228,6 @@ export default function ImmunizationScreen({ route }: Props) {
                     <View key={v.id} style={styles.vItem}>
                       <View style={styles.vMain}>
                         <View style={{ flex: 1 }}>
-                          {/* Vaccine name always in Nepali when Nepali mode */}
                           <Text style={styles.vName}>{isNe ? v.nameNe : v.name}</Text>
                           <Text style={styles.vDisease}>{isNe ? v.diseasesNe : v.diseases}</Text>
                           <Text style={styles.vDate}>
@@ -268,7 +272,7 @@ export default function ImmunizationScreen({ route }: Props) {
                   <Text style={[styles.cell, styles.wAge]}>{isNe ? v.ageLabelNe : v.ageLabel}</Text>
                   <Text style={[styles.cell, styles.wName, { fontWeight: 'bold' }]}>{isNe ? v.nameNe : v.name}</Text>
                   <Text style={[styles.cell, styles.wDisease]}>{isNe ? v.diseasesNe : v.diseases}</Text>
-                  <Text style={[styles.cell, styles.wRoute]}>{isNe ? v.routeNe : v.route} ({v.dose})</Text>
+                  <Text style={[styles.cell, styles.wRoute]}>{isNe ? v.routeNe : v.route} ({isNe ? v.doseNe : v.dose})</Text>
                 </View>
               ))}
             </View>
@@ -317,13 +321,13 @@ const styles = StyleSheet.create({
   cWhite: { color: '#fff' },
   noMoreCard: { backgroundColor: '#E8F5E9', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
   noMoreText: { color: '#2E7D32', fontWeight: 'bold', fontSize: 13 },
-  tableWrapper: { backgroundColor: '#fff', marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
+  tableWrapper: { backgroundColor: '#fff', marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#eee', minWidth: 640 },
   tableHeader: { flexDirection: 'row', backgroundColor: '#1a73e8', borderBottomWidth: 1, borderBottomColor: '#eee' },
   hText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee' },
   cell: { padding: 10, fontSize: 11, color: '#333', borderRightWidth: 1, borderRightColor: '#eee', justifyContent: 'center' },
-  wAge: { width: 85 },
-  wName: { width: 100 },
-  wDisease: { width: 160 },
-  wRoute: { width: 140 },
+  wAge: { width: 100 },
+  wName: { width: 120 },
+  wDisease: { width: 200 },
+  wRoute: { width: 180 },
 });

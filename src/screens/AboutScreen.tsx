@@ -38,7 +38,7 @@ export default function AboutScreen({ navigation }: Props) {
             <Text style={styles.infoText}>
               {language === 'en'
                 ? 'A comprehensive digital health companion for Nepali parents to track their child\'s growth, development, and immunization.'
-                : 'नेपाली अभिभावकहरूको लागि एक व्यापक डिजिटल स्वास्थ्य साथी जो बच्चाको वृद्धि, विकास र खोपको ट्र्याकिङ गर्न मदद गर्छ।'}
+                : 'नेपाली अभिभावकहरूको लागि एक  डिजिटल स्वास्थ्य साथी जो बच्चाको वृद्धि, विकास र खोपको ट्र्याकिङ गर्न मदद गर्छ।'}
             </Text>
           </View>
         </View>
@@ -127,7 +127,7 @@ export default function AboutScreen({ navigation }: Props) {
             <Text style={styles.disclaimerText}>
               {language === 'en'
                 ? 'This application is designed for educational and informational purposes only. The content provided is based on WHO, CDC, and NIP guidelines and is not a substitute for professional medical advice, diagnosis, or treatment.'
-                : 'यो अनुप्रयोग केवल शैक्षिक र सूचनात्मक उद्देश्यहरूको लागि डिजाइन गरिएको हो। प्रदान गरिएको सामग्री WHO, CDC, र NIP दिशानिर्देशहरूमा आधारित छ र यो व्यावसायिक चिकित्सा सल्लाह, निदान, वा उपचारको विकल्प होइन।'}
+                : 'यो अनुप्रयोग केवल शैक्षिक र सूचनात्मक उद्देश्यहरूको लागि डिजाइन गरिएको हो। प्रदान गरिएको सामग्री WHO, CDC, र NIP दिशानिर्देशहरूमा आधारित छ र यो  चिकित्सा सल्लाह, निदान, वा उपचारको विकल्प होइन।'}
             </Text>
           </View>
         </View>
