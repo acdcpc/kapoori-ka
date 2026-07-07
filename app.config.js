@@ -1,8 +1,6 @@
-// app.config.js
-const dotenv = require('dotenv');
-dotenv.config();
+import 'dotenv/config';
 
-module.exports = {
+export default {
   expo: {
     name: process.env.APP_NAME || "कपूरी क (Kapoori Ka)",
     slug: "kapoori-ka",
@@ -10,39 +8,37 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
       backgroundColor: "#E6F4FE"
     },
-
     ios: {
-      supportsTablet: true
+      supportsTablet: true,
+      bundleIdentifier: "com.kapoorika.app"
     },
-
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/android-icon-foreground.png",
-        backgroundColor: "#E6F4FE",
-        //backgroundImage: "./assets/android-icon-background.png"
+        backgroundColor: "#E6F4FE"
       },
-      package: "com.kapoorika.app"
+      package: "com.kapoorika.app",
+      permissions: [
+        "android.permission.INTERNET"
+      ]
     },
-
     web: {
       favicon: "./assets/favicon.png"
     },
-
     plugins: [
       "expo-font",
       "expo-splash-screen",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-web-browser"
     ],
-
     extra: {
       eas: {
-        projectId: "01d906cd-047c-4e63-b718-19b4658cb8de"   // ← This was wrong before
+        projectId: "01d906cd-047c-4e63-b718-19b4658cb8de"
       },
       firebaseApiKey: process.env.VITE_FIREBASE_API_KEY,
       firebaseAuthDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -51,6 +47,9 @@ module.exports = {
       firebaseMessagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
       firebaseAppId: process.env.VITE_FIREBASE_APP_ID,
       firebaseMeasurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID,
+      googleAndroidClientId: process.env.VITE_GOOGLE_ANDROID_CLIENT_ID,
+      googleIosClientId: process.env.VITE_GOOGLE_IOS_CLIENT_ID,
+      googleWebClientId: process.env.VITE_GOOGLE_WEB_CLIENT_ID,
     }
   }
 };

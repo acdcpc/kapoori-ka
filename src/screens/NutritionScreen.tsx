@@ -1,22 +1,20 @@
-// src/screens/NutritionScreen.tsx
-// Based on Nepal Ministry of Health & Population, Child Health Division guidelines,
-// IYCF (Infant and Young Child Feeding) national guidelines, and FCHV training materials.
-import React, { useContext, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+// src/screens/NutritionScreen.tsx - Enhanced with Tabs
+import React, { useContext, useRef, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Dimensions } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import dayjs from 'dayjs';
+import { PremiumGuard } from '../components/PremiumGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Nutrition'>;
 
-// Age group data — key content per age band
 const AGE_GROUPS_EN = [
   {
     range: '0–6 Months',
     subtitle: 'Exclusive Breastfeeding Only',
-    icon: 'heart',
+    icon: '',
     color: '#E91E63',
     minMonths: 0,
     maxMonths: 6,
@@ -32,7 +30,7 @@ const AGE_GROUPS_EN = [
   {
     range: '6–9 Months',
     subtitle: 'Start Complementary Foods',
-    icon: 'restaurant',
+    icon: '',
     color: '#4CAF50',
     minMonths: 6,
     maxMonths: 9,
@@ -49,7 +47,7 @@ const AGE_GROUPS_EN = [
   {
     range: '9–12 Months',
     subtitle: 'More Variety & Texture',
-    icon: 'nutrition',
+    icon: '',
     color: '#FF9800',
     minMonths: 9,
     maxMonths: 12,
@@ -66,7 +64,7 @@ const AGE_GROUPS_EN = [
   {
     range: '12–24 Months',
     subtitle: 'Family Pot Foods',
-    icon: 'people',
+    icon: '',
     color: '#2196F3',
     minMonths: 12,
     maxMonths: 24,
@@ -81,21 +79,22 @@ const AGE_GROUPS_EN = [
     malnutritionTip: 'Check weight monthly. If the child has not gained for 2 consecutive months, see a doctor.',
   },
   {
-    range: '2–5 Years',
-    subtitle: 'Growing Child Nutrition',
-    icon: 'walk',
-    color: '#9C27B0',
+    range: '24–60 Months',
+    subtitle: 'Balanced Family Diet',
+    icon: '',
+    color: '#673AB7',
     minMonths: 24,
     maxMonths: 60,
     points: [
-      'Feed 3 main meals + 2 healthy snacks per day.',
-      'Maintain balanced diet: carbohydrates 50–55%, protein 15%, fat 30%.',
-      'Protein sources: lentils, eggs, milk, meat, soybeans.',
-      'Give fruit or vegetables in every meal.',
-      'Ensure child food plate: 1/2 vegetables, 1/4 grains, 1/4 protein.',
-      'Micronutrients: Vitamin A supplement every 6 months (Nepal NIP).',
+      'Continue breastfeeding if desired.',
+      'Eat all family meals with the family.',
+      'Frequency: 3 meals + 1–2 snacks per day.',
+      'Amount: 1–1.5 cups per meal.',
+      'Include all four food groups at each meal.',
+      'Encourage hand-washing before meals.',
+      'Teach table manners and food safety.',
     ],
-    malnutritionTip: 'For wasted children (very thin): therapeutic feeding (RUTF/F-100) — refer to health post immediately.',
+    malnutritionTip: 'Monitor growth monthly. Ensure variety and adequate portions of protein, vegetables, and fruits.',
   },
 ];
 
@@ -103,282 +102,510 @@ const AGE_GROUPS_NE = [
   {
     range: '०–६ महिना',
     subtitle: 'केवल आमाको दूध',
-    icon: 'heart',
+    icon: '',
     color: '#E91E63',
     minMonths: 0,
     maxMonths: 6,
     points: [
-      'जन्मेको १ घण्टाभित्रै स्तनपान सुरु गर्नुहोस्।',
-      'पहिलो पहेँलो दूध (कोलोस्ट्रम) फ्याँक्नु हुँदैन — बच्चालाई दिनुहोस्।',
-      '६ महिनासम्म केवल आमाको दूध — पानी, जुस, फर्मुला केही नदिनुहोस्।',
-      'बच्चाले चाहेको बेलामा दिनुहोस् — दिनमा कम्तिमा ८–१२ पटक।',
-      'बोतल वा प्याकिफायर प्रयोग नगर्नुहोस्।',
+      'जन्मपछि १ घन्टामा दुध खुवाउन सुरु गर्नुहोस्।',
+      'पहिलो पहेँलो दूध (कोलोस्ट्रम) दिनुहोस् — कहिले पनि फ्याँक्नु हुँदैन।',
+      '६ महिनासम्म केवल आमाको दूध दिनुहोस्।',
+      'माग अनुसार दुध खुवाउनुहोस् — दिनमा कम्तिमा ८-१२ पटक।',
+      'बोतल वा निप्पल प्रयोग नगर्नुहोस्।',
     ],
-    malnutritionTip: 'बच्चाले दूध राम्ररी नखाएको छ, तौल घट्दैछ, वा अति दुब्लो देखिन्छ भने तुरुन्त स्वास्थ्य चौकी जानुहोस्।',
+    malnutritionTip: 'बच्चा राम्रोसँग खाँदैन, तौल घट्छ वा निकै दुब्लो देखिन्छ भने तुरुन्त स्वास्थ्य चौकी जानुहोस्।',
   },
   {
     range: '६–९ महिना',
-    subtitle: 'पूरक खानाको सुरुवात',
-    icon: 'restaurant',
+    subtitle: 'पूरक खाना सुरु गर्नुहोस्',
+    icon: '',
     color: '#4CAF50',
     minMonths: 6,
     maxMonths: 9,
     points: [
-      'आमाको दूधको साथमा थप खाना सुरु गर्नुहोस्।',
-      'सर्वोत्तम लिटोबाट सुरु गर्नुहोस् — पातलो, नरम जाउलो।',
-      'दिनमा २–३ पटक खुवाउनुहोस् र बीचमा स्तनपान।',
-      'मात्रा: २–३ चम्चाबाट सुरु गर्नुहोस्, बिस्तारै बढाउनुहोस्।',
-      'बनावट: एकदम नरम, ढोद्रो नहुने।',
-      'हरेक छाकमा चारतारे खाद्य समूह समावेश गर्नुहोस्।',
+      'आमाको दूध जारी राख्नुहोस् र नयाँ खाना दिनुहोस्।',
+      'सर्वोत्तम लिटोबाट सुरु गर्नुहोस् — पातलो, चिल्लो लिटो।',
+      'दिनमा २–३ पटक + १–२ पटक स्तनपान।',
+      'सुरुमा २–३ चम्चा दिनुहोस्, बिस्तारै बढाउनुहोस्।',
+      'बनावट: एकदमै मुलायम र चिल्लो, कुनै डल्ला हुँदैन।',
+      'प्रत्येक खानामा चार तारे खाद्य समूह समावेश गर्नुहोस्।',
     ],
-    malnutritionTip: 'बच्चाले खाना अस्वीकार गर्छ, झाडापखाला लाग्छ, वा तौल बढेको छैन भने FCHV वा स्वास्थ्य चौकी सम्पर्क गर्नुहोस्।',
+    malnutritionTip: 'बच्चाले खान मान्दैन, दिसा लागिरहन्छ वा तौल बढ्दैन भने स्वास्थ्य स्वयंसेविका  वा स्वास्थ्य चौकीमा जानुहोस्।',
   },
   {
     range: '९–१२ महिना',
-    subtitle: 'थप विविधता र बनावट',
-    icon: 'nutrition',
+    subtitle: 'अधिक विविधता र बनावट',
+    icon: '',
     color: '#FF9800',
     minMonths: 9,
     maxMonths: 12,
     points: [
-      'स्तनपान जारी राख्नुहोस्।',
-      'दिनमा ३ मुख्य खाना + १–२ पटक खाजा।',
-      'मात्रा: हरेक पटक ३/४ कप (१२५–१७५ मिलि)।',
-      'बनावट: मुसारेको/बारीक काटेको — पिसेको नहोस् भए पनि हुन्छ।',
-      'समावेश गर्नुहोस्: अन्डा, माछा, मासु, दाल, हरियो सब्जी, फलफूल।',
-      'हरेक छाकमा १ चम्चा तेल/घिउ थप्नुहोस् — ऊर्जाको लागि।',
+      'आमाको दूध जारी राख्नुहोस्।',
+      'आवृत्ति: दिनमा ३ मुख्य खाना + १-२ पोषक खाजा।',
+      'मात्रा: ३/४ कप (१२५-१७५ मिली) प्रति खाना।',
+      'बनावट: नरम बनाएर मसिनो बनाएर  दिनुहोस्। पिस्नु पर्दैन।',
+      'समावेश गर्नुहोस्: अण्डा, माछा, मासु, दाल, हरियो पात, फलफूल।',
+      'प्रत्येक खानामा १ चम्चा तेल वा घिउ हाल्नुहोस् (शक्ति बढोस् भनेर)।',
     ],
-    malnutritionTip: 'बच्चाको अनुहार सेतो देखिन्छ (एनिमिया) भने फलाम भएको खाना (मासु, कलेजो, हरियो पात) दिनुहोस्।',
+    malnutritionTip: 'बच्चाको अनुहार फिका (सेतो) देखिन्छ भने रगतको कमीको लागि मासु, कलेजो, हरियो सागपात जस्ता खानेकुरा दिनुहोस्।',
   },
   {
     range: '१२–२४ महिना',
-    subtitle: 'घरको खाना',
-    icon: 'people',
+    subtitle: 'पारिवारिक खाना',
+    icon: '',
     color: '#2196F3',
     minMonths: 12,
     maxMonths: 24,
     points: [
-      '२ वर्षसम्म र सकेसम्म लामो समय स्तनपान जारी राख्नुहोस्।',
-      'दाल–भात–तरकारी — चारतारे खाद्य समूह सहित।',
-      'दिनमा ३–४ मुख्य खाना + १–२ खाजा।',
-      'मात्रा: हरेक पटक ३/४–१ कप।',
-      'चम्चाले आफैँ खान प्रोत्साहित गर्नुहोस्।',
-      'नदिनुहोस्: तिखो, तलेको, नुनिलो, प्याकेट खाना र सफ्ट ड्रिंक।',
+      'आमाको दूध २ वर्ष र त्यसपछि पनि जारी राख्नुहोस्।',
+      'घरको खाना खुवाउनुहोस् — दाल-भात-तरकारीसँगै चारै किसिमका खानेकुरा (दाल, मासु/अण्डा, साग, फल)।',
+      'कति पटक खुवाउने? दिनमा ३–४ पटक मुख्य खाना + १–२ पटक खाजा।',
+      'कति खुवाउने? एक पटकमा ३/४ देखि १ कप।',
+      'बच्चालाई आफैं चम्चाले खान प्रोत्साहन गर्नुहोस्।',
+      'यस्ता कुरा नदिनुहोस्: पिरो, भुटेको, नुनिलो, प्याकेटका खानेकुरा र सोडा/जुस।',
     ],
-    malnutritionTip: 'हरेक महिना तौल जाँच गर्नुहोस्। लगातार २ महिना तौल नबढेको छ भने चिकित्सकलाई देखाउनुहोस्।',
+    malnutritionTip: 'हरेक महिना तौल जाँच गर्नुहोस्। यदि २ महिनासम्म तौल बढेन भने डाक्टरलाई देखाउनुहोस्।',
   },
   {
-    range: '२–५ वर्ष',
-    subtitle: 'बढ्दो बच्चाको पोषण',
-    icon: 'walk',
-    color: '#9C27B0',
+    range: '२४–६० महिना',
+    subtitle: 'संतुलित पारिवारिक खाना',
+    icon: '',
+    color: '#673AB7',
     minMonths: 24,
     maxMonths: 60,
     points: [
-      'दिनमा ३ मुख्य खाना + २ स्वस्थ खाजा।',
-      'सन्तुलित आहार: कार्बोहाइड्रेट ५०–५५%, प्रोटिन १५%, बोसो ३०%।',
-      'प्रोटिनका स्रोत: दाल, अन्डा, दूध, मासु, सोयाबिन।',
-      'हरेक छाकमा फलफूल वा सब्जी दिनुहोस्।',
-      'बच्चाको थालमा: आधा सब्जी, एक चौथाइ अन्न, एक चौथाइ प्रोटिन।',
-      'सूक्ष्म पोषक: हरेक ६ महिनामा भिटामिन A क्याप्सुल (नेपाल NIP)।',
+      'आमाको दूध चाहिएमा जारी राख्नुहोस्।',
+      'परिवारसँगै घरको खाना खानुहोस्।',
+      'कति पटक खुवाउने? दिनमा ३ पटक मुख्य खाना + १–२ पटक खाजा।',
+      'कति खुवाउने? एक पटकमा १ देखि १.५ कप।',
+      'प्रत्येक खानामा चारै किसिमका खानेकुरा हाल्नुहोस् (दाल, मासु/अण्डा, साग, फल)।',
+      'खाना खानुअघि हात धुन प्रोत्साहित गर्नुहोस्।',
+      'टेबल शिष्टाचार र खाना सफा राख्ने तरिका सिकाउनुहोस्।',
     ],
-    malnutritionTip: 'अति दुब्लो बच्चाको लागि: RUTF/F-100 उपचारात्मक खाना — तुरुन्त स्वास्थ्य चौकी रेफर गर्नुहोस्।',
+    malnutritionTip: 'हरेक महिना बच्चाको विकास हेर्नुहोस्। खानामा दाल-मासु, सागपात र फलफूल सबै किसिमका हाल्नुहोस् र पर्याप्त मात्रामा दिनुहोस्।',
   },
 ];
 
-const FOUR_STAR_EN = [
-  { name: 'Grains & Tubers', desc: 'Energy: rice, wheat, maize, potato', color: '#FFD54F', examples: 'Bhat, roti, chiura, potato' },
-  { name: 'Pulses & Legumes', desc: 'Body building: protein & iron', color: '#81C784', examples: 'Lentil dal, black gram, soybean, beans' },
-  { name: 'Animal & Dairy', desc: 'Protective: vitamins & calcium', color: '#F06292', examples: 'Egg, milk, curd, meat, fish' },
-  { name: 'Fruits & Vegetables', desc: 'Disease fighting: vitamins A & C', color: '#64B5F6', examples: 'Spinach, pumpkin, banana, citrus' },
-];
-const FOUR_STAR_NE = [
-  { name: 'अन्न र कन्दमूल', desc: 'ऊर्जा: चामल, गहुँ, मकै, आलु', color: '#FFD54F', examples: 'भात, रोटी, चिउरा, आलु' },
-  { name: 'गेडागुडी', desc: 'शरीर बनाउने: प्रोटिन र फलाम', color: '#81C784', examples: 'मसुरको दाल, राजमा, सोयाबिन' },
-  { name: 'पशुजन्य र दुग्ध', desc: 'सुरक्षा दिने: भिटामिन र क्याल्सियम', color: '#F06292', examples: 'अन्डा, दूध, दही, मासु, माछा' },
-  { name: 'फलफूल र सागपात', desc: 'रोगसँग लड्ने: भिटामिन A र C', color: '#64B5F6', examples: 'पालुंगो, कद्दु, केरा, सुन्तला' },
+const SARBOTTAM_PITHO_EN = {
+  title: 'Sarbottam Pitho (Super-Flour)',
+  description: 'A traditional Nepali complementary food that is highly nutritious and affordable.',
+  recipe: {
+    title: 'Recipe & Preparation',
+    ingredients: [
+      '2 parts pulse (soybeans preferred, or other small beans)',
+      '1 part whole grain cereal (maize or rice)',
+      '1 part another whole grain cereal (wheat, millet, or buckwheat)',
+    ],
+    steps: [
+      'Clean all ingredients thoroughly.',
+      'Roast each ingredient separately until light brown and fragrant.',
+      'Grind each roasted ingredient into fine flour separately.',
+      'Mix all flours together.',
+      'Store in an airtight container for 1–3 months.',
+    ],
+  },
+  feeding: {
+    title: 'Feeding Guide',
+    content: [
+      '6+ months: 1–2 teaspoons, 2–3 times daily with breastfeeding',
+      '1–3 years: Up to 100g (4 tablespoons) per day across 3 feeds',
+      'Preparation: Stir flour into boiling water, cook briefly',
+      'Add ground leafy greens for Vitamin A',
+      'Add ghee or oil for energy and absorption',
+      'NO salt or sugar for infants under 1 year',
+    ],
+  },
+  nutrition: {
+    title: 'Nutritional Value',
+    content: [
+      '100g provides 13.5–25g protein',
+      '345–370 calories per 100g',
+      'Rich in calcium, iron, and various vitamins',
+      'Meets most protein and energy needs when combined with breastfeeding',
+      'WHO-recommended for malnourished children',
+    ],
+  },
+};
+
+const SARBOTTAM_PITHO_NE = {
+  title: 'सर्वोत्तम पिठो (सुपर-फ्लोर)',
+  description: 'एक परम्परागत नेपाली पूरक खाना जो अत्यन्त पोषक र सस्तो छ।',
+  recipe: {
+    title: 'रेसिपी र तयारी',
+    ingredients: [
+      '२ भाग दाल ((सोयाबिन राम्रो, वा अन्य साना दाल)',
+      '१ भाग सम्पूर्ण अनाज (मकै वा चामल)',
+      '१ भाग अन्य सम्पूर्ण अनाज (गहू, कोदो, वा फापर)',
+    ],
+    steps: [
+      'सबै सामग्री राम्ररी सफा गर्नुहोस्।',
+      'प्रत्येक सामग्री अलग-अलग हल्का खैरो र सुगन्धित नभएसम्म भुट्नुहोस्।',
+      'भुटेका प्रत्येक सामग्रीलाई छुट्टाछुट्टै मसिनो पिठो बनाउनुहोस्।',
+      'सबै पिठोलाई राम्ररी मिसाउनुहोस्।',
+      'एयरटाइट डब्बामा राख्नुहोस्। १ देखि ३ महिनासम्म प्रयोग गर्न सकिन्छ।',
+    ],
+  },
+  feeding: {
+    title: 'खुवाउने तरिका',
+    content: [
+      '६ महिनामाथि: १–२ चम्चा, दिनमा २–३ पटक स्तनपानसँगै।',
+      '१–३ वर्ष: दिनमा जम्मा १०० ग्राम (४ चम्चा) सम्म, ३ पटकमा बाँडेर।',
+      'बनाउने तरिका: पिठोलाई उम्लिरहेको पानीमा हाल्नुहोस् र छोटो समय पकाउनुहोस्।',
+      'भिटामिन ए को लागि मसिनो काटेको हरियो साग हाल्नुहोस्।',
+      'शक्ति र राम्रो पाचनको लागि घिउ वा तेल हाल्नुहोस्।',
+      '१ वर्षभन्दा कम उमेरका बच्चालाई नुन र चिनी नहाल्नुहोस्।',
+    ],
+  },
+  nutrition: {
+    title: 'पोषणको जानकारी',
+    content: [
+      '१०० ग्राम मा १३.५ देखि २५ ग्राम प्रोटिन हुन्छ।',
+      '१०० ग्राम मा ३४५–३७० क्यालोरी हुन्छ।',
+      'क्याल्सियम, आइरन र विभिन्न भिटामिन प्रशस्त मात्रामा पाइन्छ।',
+      'स्तनपानसँगै खुवाउँदा बच्चाको प्रोटिन र शक्ति को धेरैजसो आवश्यकता पूरा हुन्छ।',
+      'WHO-सिफारिस गरिएको',
+    ],
+  },
+};
+
+const MYTHS_EN = [
+  {
+    myth: 'Sugar and salt are good for infants',
+    reality: 'NO. Avoid sugar and salt for children under 1 year. They can cause kidney damage and increase risk of obesity and hypertension later.',
+    recommendation: 'Use only natural flavors from foods. Salt and sugar can be introduced after 1 year in very small amounts.',
+  },
+  {
+    myth: 'Honey is safe for babies',
+    reality: 'NO. Honey can contain botulism spores, which can cause serious illness in infants under 1 year.',
+    recommendation: 'Never give honey to children under 1 year. After 1 year, honey is generally safe.',
+  },
+  {
+    myth: 'Cow\'s milk is better than breast milk',
+    reality: 'NO. Breast milk is perfectly designed for infants. Cow\'s milk lacks essential nutrients and can cause kidney stress.',
+    recommendation: 'Exclusive breastfeeding until 6 months. Cow\'s milk can be introduced after 1 year as part of a balanced diet.',
+  },
+  {
+    myth: 'Rice water or plain porridge is enough for 6+ months',
+    reality: 'NO. Plain rice water lacks protein, fat, and micronutrients needed for growth.',
+    recommendation: 'Use Sarbottam Pitho or other nutrient-dense complementary foods with protein, fat, and vegetables.',
+  },
+  {
+    myth: 'More food = faster growth',
+    reality: 'NO. Overfeeding can cause obesity and digestive problems. Responsive feeding is key.',
+    recommendation: 'Feed according to child\'s hunger cues. Offer appropriate portions and let the child decide when to stop.',
+  },
 ];
 
-export default function NutritionScreen({ route }: Props) {
+const MYTHS_NE = [
+  {
+    myth: 'बच्चालाई चिनी र नुन राम्रो हुन्छ।',
+    reality: 'होइन। १ वर्षभन्दा कम उमेरका बच्चालाई चिनी र नुन नदिनुहोस्। यसले मिर्गौला बिगार्न सक्छ र पछि मोटोपन र उच्च रक्तचापको खतरा बढाउँछ।',
+    recommendation: 'खानेकुराको आफ्नै प्राकृतिक स्वाद मात्र प्रयोग गर्नुहोस्। १ वर्षपछि मात्र एकदम थोरै मात्रामा नुन र चिनी दिन सकिन्छ।',
+  },
+  {
+    myth: 'बच्चालाई मह सुरक्षित छ।',
+    reality: 'होइन। महमा खतरनाक कीटाणु हुन सक्छ जसले १ वर्षभन्दा कम उमेरका बच्चालाई गम्भीर बिरामी बनाउँछ।',
+    recommendation: '१ वर्षभन्दा कम उमेरका बच्चालाई मह कदापि नदिनुहोस्। १ वर्षपछि मात्र दिन सकिन्छ।',
+  },
+  {
+    myth: 'गाईको दूध आमाको दूधभन्दा राम्रो छ',
+    reality: 'होइन। आमाको दुध बच्चाको लागि उत्तम र पूर्ण खाना हो। गाईको दुधमा आवश्यक पोषण कम हुन्छ र मिर्गौलालाई समस्या पार्न सक्छ।',
+    recommendation: '६ महिनासम्म मात्र स्तनपान गराउनुहोस्। १ वर्षपछि मात्र गाईको दुध सन्तुलित खानासँग दिन सकिन्छ।',
+  },
+  {
+    myth: '६ महिनापछि चामल पानी वा सादा खोले पर्याप्त छ',
+    reality: 'होइन। भातको पानीमा वा सादा खोले प्रोटिन, बोसो र आवश्यक भिटामिन हुँदैन।',
+    recommendation: 'सर्वोत्तम पिठो वा अन्य पूरक खाना भएको पौष्टिक खाना दिनुहोस्।',
+  },
+  {
+    myth: 'जति धेरै खुवायो उति छिटो बच्चा बढ्छ।',
+    reality: 'होइन। अधिक खुवाउनु मोटोपना र पाचन समस्या हुन सक्छ।',
+    recommendation: 'बच्चा कति खान चाहन्छ त्यही अनुसार खुवाउनुहोस्। उचित मात्रा दिनुहोस् र बच्चाले आफैं खान छोडेपछि रोक्नुहोस्।',
+  },
+];
+
+const FEEDING_DIFFICULTIES_EN = {
+  title: 'Feeding Difficulties',
+  challenges: [
+    {
+      challenge: 'Child refuses to eat',
+      solutions: [
+        'Offer food when the child is calm and alert',
+        'Try different foods and textures',
+        'Eat together as a family to model eating',
+        'Don\'t force-feed; let the child decide',
+        'If persistent, consult a pediatrician',
+      ],
+    },
+    {
+      challenge: 'Child gags or chokes',
+      solutions: [
+        'Ensure food is age-appropriate texture',
+        'Start with smoother textures and gradually progress',
+        'Never leave the child alone while eating',
+        'Sit the child upright while eating',
+        'Consult a pediatrician if severe',
+      ],
+    },
+    {
+      challenge: 'Child has diarrhea after eating',
+      solutions: [
+        'Ensure food is clean and freshly prepared',
+        'Introduce new foods one at a time',
+        'Check for food allergies',
+        'Continue breastfeeding',
+        'Offer oral rehydration solution (ORS)',
+        'See a doctor if diarrhea persists',
+      ],
+    },
+    {
+      challenge: 'Child is very picky',
+      solutions: [
+        'Offer variety without pressure',
+        'Repeat exposure to new foods (10–15 times)',
+        'Involve the child in food preparation',
+        'Make mealtimes fun and stress-free',
+        'Model eating a variety of foods',
+      ],
+    },
+  ],
+};
+
+const FEEDING_DIFFICULTIES_NE = {
+  title: 'खुवाउन गाह्रो भएमा',
+  challenges: [
+    {
+      challenge: 'बच्चा खाना खान मान्दैन',
+      solutions: [
+        'बच्चा शान्त र खुशी भएका बेला खाना दिनुहोस्',
+        'अलिकति फरक-फरक खानेकुरा दिन प्रयास गर्नुहोस्',
+        'परिवार सबैले सँगै बसेर खाना खाएर देखाउनुहोस्',
+        'जबरजस्ती नखुवाउनुहोस्, बच्चालाई आफैं खान दिनुहोस्',
+        'समस्या धेरै दिनसम्म रहे भने डाक्टरलाई देखाउनुहोस्',
+      ],
+    },
+    {
+      challenge: 'बच्चा खाँदा बान्ता जस्तो गर्छ वा अड्किन्छ',
+      solutions: [
+        'बच्चाको उमेर अनुसार नरम खाना दिनुहोस्',
+        'पहिले निकै नरम खानाबाट सुरु गर्नुहोस्, बिस्तारै बढाउनुहोस्',
+        'खाना खाँदा बच्चालाई एक्लै नछोड्नुहोस्',
+        'खाना खाँदा बच्चालाई सीधा बसाल्नुहोस्',
+        'धेरै गाह्रो भए डाक्टरलाई देखाउनुहोस्',
+      ],
+    },
+    {
+      challenge: 'खाना खाएपछि बच्चालाई दिसा लाग्छ',
+      solutions: [
+        'खाना राम्रोसँग सफा र ताजा बनाएर दिनुहोस्',
+        'नयाँ खाना एक-एक गरेर मात्र दिनुहोस्',
+        'कुनै खानाबाट एलर्जी छ कि हेर्नुहोस्',
+        'आमाको दूध निरन्तर दिनुहोस्',
+        'ORS झोल दिनुहोस्',
+        'दिसा नरोकिए डाक्टरलाई देखाउनुहोस्',
+      ],
+    },
+    {
+      challenge: 'बच्चा खाना छान्ने हुन्छ',
+      solutions: [
+        'दबाब नदिई विभिन्न खानेकुरा दिनुहोस्',
+        'नयाँ खाना पटक-पटक दिनुहोस् (१०–१५ पटक)',
+        'बच्चालाई खाना बनाउनमा सघाउन लगाउनुहोस्',
+        'खाना खाने समय रमाइलो बनाउनुहोस्',
+        'आफैं विभिन्न खानेकुरा खाएर बच्चालाई देखाउनुहोस्',
+      ],
+    },
+  ],
+};
+
+export default function NutritionScreen({ route, navigation }: Props) {
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
-  const scrollRef = useRef<ScrollView>(null);
-
-  const child = route?.params?.child;
-  const highlightAge = route?.params?.highlightAge;
-
-  // Determine the child's current age in months for auto-scroll highlight
-  const childAgeMonths = child
-    ? dayjs().diff(dayjs(child.dateOfBirth), 'month')
-    : null;
+  const [activeTab, setActiveTab] = useState<'age' | 'sarbottam' | 'myths' | 'difficulties'>('age');
 
   const ageGroups = isNe ? AGE_GROUPS_NE : AGE_GROUPS_EN;
-  const fourStar = isNe ? FOUR_STAR_NE : FOUR_STAR_EN;
-
-  // Find the matching age group for this child
-  const activeGroupIndex = childAgeMonths !== null
-    ? ageGroups.findIndex(g => childAgeMonths >= g.minMonths && childAgeMonths < g.maxMonths)
-    : -1;
+  const sarbottamData = isNe ? SARBOTTAM_PITHO_NE : SARBOTTAM_PITHO_EN;
+  const mythsData = isNe ? MYTHS_NE : MYTHS_EN;
+  const difficultiesData = isNe ? FEEDING_DIFFICULTIES_NE : FEEDING_DIFFICULTIES_EN;
 
   return (
-    <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{isNe ? 'पोषण मार्गनिर्देशन' : 'Nutrition Guidelines'}</Text>
-        <Text style={styles.headerSubtitle}>
-          {isNe
-            ? 'नेपाल स्वास्थ्य मन्त्रालय र IYCF दिशानिर्देशमा आधारित'
-            : 'Based on Nepal MoHP & IYCF Guidelines'}
-        </Text>
-        {child && (
-          <View style={styles.childChip}>
-            <Text style={styles.childChipText}>
-              {isNe
-                ? `${child.name} को उमेर: ${childAgeMonths} महिना`
-                : `${child.name}'s age: ${childAgeMonths} months`}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Four Star Food Box */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>⭐ {isNe ? 'चारतारे खाना' : 'Four Star Food'}</Text>
-        <Text style={styles.cardSubtitle}>
-          {isNe
-            ? 'हरेक छाकमा यी ४ समूहका खाना समावेश गर्नुहोस्:'
-            : 'Include these 4 food groups in every meal:'}
-        </Text>
-        <View style={styles.grid}>
-          {fourStar.map((item, i) => (
-            <View key={i} style={[styles.gridItem, { backgroundColor: item.color + 'CC' }]}>
-              <Text style={styles.gridName}>{item.name}</Text>
-              <Text style={styles.gridDesc}>{item.desc}</Text>
-              <Text style={styles.gridExamples}>{item.examples}</Text>
-            </View>
+    <PremiumGuard>
+      <View style={styles.container}>
+        {/* Tab Bar */}
+        <View style={styles.tabBar}>
+          {[
+            { key: 'age', label: isNe ? 'उमेर अनुसार' : 'By Age' },
+            { key: 'sarbottam', label: isNe ? 'सर्वोत्तम पिठो' : 'Sarbottam' },
+            { key: 'myths', label: isNe ? 'गलत-धारणा' : 'Myths' },
+            { key: 'difficulties', label: isNe ? 'चुनौतीहरू' : 'Challenges' },
+          ].map(tab => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tab, activeTab === tab.key && styles.activeTab]}
+              onPress={() => setActiveTab(tab.key as any)}
+            >
+              <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
-      </View>
 
-      {/* Child Food Plate */}
-      <View style={styles.plateCard}>
-        <Text style={styles.cardTitle}>🍽 {isNe ? 'बच्चाको थाल' : "Child's Food Plate"}</Text>
-        <View style={styles.plateRow}>
-          <View style={[styles.platePart, { backgroundColor: '#A5D6A7', flex: 2 }]}>
-            <Text style={styles.plateLabel}>{isNe ? '½ सब्जी/फलफूल' : '½ Vegetables/Fruit'}</Text>
-          </View>
-          <View style={{ flex: 2 }}>
-            <View style={[styles.platePart, { backgroundColor: '#FFE082', flex: 1 }]}>
-              <Text style={styles.plateLabel}>{isNe ? '¼ अन्न' : '¼ Grains'}</Text>
-            </View>
-            <View style={[styles.platePart, { backgroundColor: '#F48FB1', flex: 1 }]}>
-              <Text style={styles.plateLabel}>{isNe ? '¼ प्रोटिन' : '¼ Protein'}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Age Group Sections */}
-      <Text style={styles.sectionHeading}>
-        {isNe ? '📅 उमेर अनुसार खुवाइ' : '📅 Feeding by Age'}
-      </Text>
-
-      {ageGroups.map((group, idx) => {
-        const isActive = idx === activeGroupIndex;
-        return (
-          <View
-            key={idx}
-            style={[styles.timelineCard, isActive && { borderWidth: 2, borderColor: group.color, backgroundColor: '#fff' }]}
-          >
-            {isActive && (
-              <View style={[styles.activeBadge, { backgroundColor: group.color }]}>
-                <Text style={styles.activeBadgeText}>
-                  {isNe ? `${child?.name} अहिले यहाँ छ` : `${child?.name} is here now`}
-                </Text>
-              </View>
-            )}
-            <View style={[styles.ageHeader, { backgroundColor: group.color }]}>
-              <Ionicons name={group.icon as any} size={20} color="#fff" />
-              <Text style={styles.ageHeaderText}>{group.range}</Text>
-              <Text style={styles.ageHeaderSubtext}>{group.subtitle}</Text>
-            </View>
-            <View style={styles.pointsBox}>
-              {group.points.map((pt, pi) => (
-                <View key={pi} style={styles.pointRow}>
-                  <Text style={[styles.bullet, { color: group.color }]}>•</Text>
-                  <Text style={styles.pointText}>{pt}</Text>
+        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
+          {activeTab === 'age' && (
+            <View>
+              {ageGroups.map((group, i) => (
+                <View key={i} style={styles.ageCard}>
+                  <View style={[styles.ageHeader, { backgroundColor: group.color }]}>
+                    <Text style={styles.ageIcon}>{group.icon}</Text>
+                    <View style={styles.ageHeaderText}>
+                      <Text style={styles.ageRange}>{group.range}</Text>
+                      <Text style={styles.ageSubtitle}>{group.subtitle}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.ageBody}>
+                    {group.points.map((point, j) => (
+                      <View key={j} style={styles.pointRow}>
+                        <Text style={styles.pointBullet}>•</Text>
+                        <Text style={styles.pointText}>{point}</Text>
+                      </View>
+                    ))}
+                    <View style={styles.tipBox}>
+                      <Ionicons name="warning" size={16} color="#FF9800" />
+                      <Text style={styles.tipText}>{group.malnutritionTip}</Text>
+                    </View>
+                  </View>
                 </View>
               ))}
             </View>
-            {/* Malnutrition tip */}
-            <View style={styles.malnutTip}>
-              <Ionicons name="alert-circle-outline" size={16} color="#F44336" />
-              <Text style={styles.malnutTipText}>{group.malnutritionTip}</Text>
+          )}
+
+          {activeTab === 'sarbottam' && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>{sarbottamData.title}</Text>
+              <Text style={styles.sectionDesc}>{sarbottamData.description}</Text>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>{sarbottamData.recipe.title}</Text>
+                <Text style={styles.subsubtitle}>{isNe ? 'सामग्री:' : 'Ingredients:'}</Text>
+                {sarbottamData.recipe.ingredients.map((ing, i) => (
+                  <View key={i} style={styles.pointRow}>
+                    <Text style={styles.pointBullet}>•</Text>
+                    <Text style={styles.pointText}>{ing}</Text>
+                  </View>
+                ))}
+                <Text style={styles.subsubtitle}>{isNe ? 'चरणहरू:' : 'Steps:'}</Text>
+                {sarbottamData.recipe.steps.map((step, i) => (
+                  <View key={i} style={styles.pointRow}>
+                    <Text style={styles.pointBullet}>{i + 1}.</Text>
+                    <Text style={styles.pointText}>{step}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>{sarbottamData.feeding.title}</Text>
+                {sarbottamData.feeding.content.map((item, i) => (
+                  <View key={i} style={styles.pointRow}>
+                    <Text style={styles.pointBullet}>•</Text>
+                    <Text style={styles.pointText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>{sarbottamData.nutrition.title}</Text>
+                {sarbottamData.nutrition.content.map((item, i) => (
+                  <View key={i} style={styles.pointRow}>
+                    <Text style={styles.pointBullet}>•</Text>
+                    <Text style={styles.pointText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        );
-      })}
+          )}
 
-      {/* General Malnutrition Card */}
-      <View style={styles.malnutritionCard}>
-        <Ionicons name="alert-circle" size={30} color="#F44336" />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.malnutritionTitle}>
-            {isNe ? 'कुपोषणका संकेत' : 'Signs of Malnutrition'}
-          </Text>
-          <Text style={styles.malnutritionDesc}>
-            {isNe
-              ? 'अति दुब्लो (Wasted), ठिग्नो (Stunted), हात–खुट्टा सुन्निएको, पहेँलो–सुस्त बच्चा देखिएमा तुरुन्त नजिकैको स्वास्थ्य केन्द्र वा FCHV सम्पर्क गर्नुहोस्।'
-              : 'Very thin (wasted), short for age (stunted), swollen limbs, pale or lethargic child — contact your nearest health post or FCHV immediately.'}
-          </Text>
-        </View>
+          {activeTab === 'myths' && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>{isNe ? 'खाना सम्बन्धी गलत-धारणा' : 'Nutrition Myths'}</Text>
+              {mythsData.map((item, i) => (
+                <View key={i} style={styles.mythCard}>
+                  <View style={styles.mythHeader}>
+                    <Ionicons name="close-circle" size={20} color="#F44336" />
+                    <Text style={styles.mythTitle}>{item.myth}</Text>
+                  </View>
+                  <View style={styles.mythContent}>
+                    <Text style={styles.mythLabel}>{isNe ? 'सत्य:' : 'Reality:'}</Text>
+                    <Text style={styles.mythText}>{item.reality}</Text>
+                    <Text style={styles.mythLabel}>{isNe ? 'सल्लाह:' : 'Recommendation:'}</Text>
+                    <Text style={styles.mythText}>{item.recommendation}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {activeTab === 'difficulties' && (
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>{isNe ? 'चुनौतीहरू' : 'Challenges'}</Text>
+              {difficultiesData.challenges.map((item, i) => (
+                <View key={i} style={styles.challengeCard}>
+                  <View style={styles.challengeHeader}>
+                    <Ionicons name="help-circle" size={20} color="#1a73e8" />
+                    <Text style={styles.challengeTitle}>{item.challenge}</Text>
+                  </View>
+                  <View style={styles.challengeContent}>
+                    {item.solutions.map((solution, j) => (
+                      <View key={j} style={styles.pointRow}>
+                        <Text style={styles.pointBullet}>✓</Text>
+                        <Text style={styles.pointText}>{solution}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
       </View>
-
-      {/* DoHS Link */}
-      <TouchableOpacity style={styles.resourceBtn} onPress={() => Linking.openURL('https://dohs.gov.np/nutrition/')}>
-        <Ionicons name="open-outline" size={16} color="#1a73e8" />
-        <Text style={styles.resourceBtnText}>
-          {isNe ? 'थप जानकारी (DoHS Nepal)' : 'More Information (DoHS Nepal)'}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </PremiumGuard>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { backgroundColor: '#1a73e8', padding: 24, paddingBottom: 32 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
-  headerSubtitle: { fontSize: 13, color: '#e3f2fd', lineHeight: 18 },
-  childChip: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10, alignSelf: 'flex-start' },
-  childChipText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  card: { backgroundColor: '#fff', margin: 16, borderRadius: 12, padding: 16, elevation: 2, marginTop: -20 },
-  cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#333', marginBottom: 6 },
-  cardSubtitle: { fontSize: 13, color: '#666', marginBottom: 14 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  gridItem: { width: '48%', padding: 12, borderRadius: 10 },
-  gridName: { fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 3 },
-  gridDesc: { fontSize: 11, color: '#555', marginBottom: 4 },
-  gridExamples: { fontSize: 10, color: '#777', fontStyle: 'italic' },
-  plateCard: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 16, borderRadius: 12, padding: 16, elevation: 2 },
-  plateRow: { flexDirection: 'row', height: 90, gap: 6, marginTop: 10 },
-  platePart: { borderRadius: 8, alignItems: 'center', justifyContent: 'center', padding: 4 },
-  plateLabel: { fontSize: 11, fontWeight: '700', color: '#333', textAlign: 'center' },
-  sectionHeading: { fontSize: 16, fontWeight: '700', color: '#333', paddingHorizontal: 16, marginBottom: 10 },
-  timelineCard: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 16, borderRadius: 12, overflow: 'hidden', elevation: 2 },
-  activeBadge: { padding: 6, alignItems: 'center' },
-  activeBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  ageHeader: { padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  ageHeaderText: { fontSize: 15, fontWeight: 'bold', color: '#fff' },
-  ageHeaderSubtext: { fontSize: 12, color: 'rgba(255,255,255,0.85)', flex: 1 },
-  pointsBox: { padding: 12 },
-  pointRow: { flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' },
-  bullet: { fontSize: 16, marginRight: 8, lineHeight: 20, fontWeight: 'bold' },
-  pointText: { flex: 1, fontSize: 13, color: '#444', lineHeight: 19 },
-  malnutTip: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#ffebee', padding: 10, gap: 6 },
-  malnutTipText: { flex: 1, fontSize: 11, color: '#c62828', lineHeight: 16 },
-  malnutritionCard: { flexDirection: 'row', backgroundColor: '#fff', margin: 16, padding: 16, borderRadius: 12, borderLeftWidth: 5, borderLeftColor: '#F44336', elevation: 2, alignItems: 'flex-start' },
-  malnutritionTitle: { fontSize: 15, fontWeight: 'bold', color: '#c62828', marginBottom: 6 },
-  malnutritionDesc: { fontSize: 13, color: '#555', lineHeight: 19 },
-  resourceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 16, padding: 14, backgroundColor: '#e3f2fd', borderRadius: 12, gap: 8 },
-  resourceBtnText: { color: '#1a73e8', fontWeight: 'bold', fontSize: 14 },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#ddd', paddingHorizontal: 8 },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  activeTab: { borderBottomColor: '#1a73e8' },
+  tabText: { fontSize: 12, fontWeight: '600', color: '#666' },
+  activeTabText: { color: '#1a73e8' },
+  content: { flex: 1, padding: 12 },
+  ageCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 16, overflow: 'hidden', elevation: 2 },
+  ageHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  ageIcon: { fontSize: 32 },
+  ageHeaderText: { flex: 1 },
+  ageRange: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  ageSubtitle: { fontSize: 13, color: '#fff', marginTop: 2 },
+  ageBody: { padding: 16 },
+  pointRow: { flexDirection: 'row', marginBottom: 8, gap: 8 },
+  pointBullet: { fontSize: 14, fontWeight: '700', color: '#1a73e8', minWidth: 16 },
+  pointText: { flex: 1, fontSize: 13, color: '#444', lineHeight: 18 },
+  tipBox: { flexDirection: 'row', backgroundColor: '#FFF3E0', padding: 12, borderRadius: 8, marginTop: 12, gap: 8 },
+  tipText: { flex: 1, fontSize: 12, color: '#E65100', lineHeight: 16 },
+  sectionContent: { paddingHorizontal: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 8 },
+  sectionDesc: { fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 18 },
+  subsection: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 16, elevation: 1 },
+  subsectionTitle: { fontSize: 15, fontWeight: '700', color: '#1a73e8', marginBottom: 12 },
+  subsubtitle: { fontSize: 13, fontWeight: '600', color: '#333', marginTop: 12, marginBottom: 6 },
+  mythCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, overflow: 'hidden', elevation: 1, borderLeftWidth: 4, borderLeftColor: '#F44336' },
+  mythHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: '#FFEBEE' },
+  mythTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#C62828' },
+  mythContent: { padding: 12 },
+  mythLabel: { fontSize: 12, fontWeight: '700', color: '#1a73e8', marginBottom: 4 },
+  mythText: { fontSize: 13, color: '#444', marginBottom: 10, lineHeight: 18 },
+  challengeCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, overflow: 'hidden', elevation: 1, borderLeftWidth: 4, borderLeftColor: '#1a73e8' },
+  challengeHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: '#E8F0FE' },
+  challengeTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1a73e8' },
+  challengeContent: { padding: 12 },
 });

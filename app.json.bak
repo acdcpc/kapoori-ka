@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Kapoori-Ka",
+    "name": "कपूरी क (Kapoori Ka)",
     "slug": "kapoori-ka",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,33 +9,34 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#E6F4FE"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
-      "supportsTabletMode": true,
-      "bundleIdentifier": "com.kapoori.ka"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kapoorika.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png"
+        "backgroundColor": "#E6F4FE"
       },
-      "package": "com.kapoori.ka"
+      "package": "com.kapoorika.app",
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#1a73e8"
-        }
-      ]
-    ]
+      "expo-font",
+      "expo-splash-screen",
+      "expo-sharing"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "01d906cd-047c-4e63-b718-19b4658cb8de"
+      }
+    }
   }
 }

@@ -6,6 +6,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LanguageContext } from '../context/LanguageContext';
+import { AuthContext } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { formatAge } from '../utils/growthCalculations';
@@ -15,16 +16,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChildDashboard'>;
 export default function ChildDashboard({ route, navigation }: Props) {
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
+  const { subscription } = useContext(AuthContext);
   const t = translations[language];
   const isNe = language === 'ne';
 
+  //const isPremium = subscription?.status === 'premium';
+  const isPremium = true; // __DEV__ bypass
+
   const menuItems = [
-    { title: t.growthChart,    icon: '📈', color: '#4CAF50', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height' },
-    { title: t.immunization,   icon: '💉', color: '#1a73e8', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders' },
-    { title: t.milestones,     icon: '🧠', color: '#9C27B0', screen: 'Milestones' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones' },
-    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide' },
-    { title: t.mchat,          icon: '🔍', color: '#FF5722', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool' },
-    { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report' },
+    { title: t.growthChart,    icon: '📈', color: '#4CAF50', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
+    { title: t.immunization,   icon: '💉', color: '#1a73e8', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
+    { title: t.milestones,     icon: '🧠', color: '#9C27B0', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
+    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
+    { title: t.mchat,          icon: '🔍', color: '#FF5722', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
+    { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
   ];
 
   return (
@@ -59,7 +64,6 @@ export default function ChildDashboard({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* How-to hint for first time */}
         <View style={styles.hintBox}>
           <Ionicons name="information-circle" size={18} color="#1a73e8" />
           <Text style={styles.hintText}>
@@ -87,16 +91,26 @@ export default function ChildDashboard({ route, navigation }: Props) {
               <Text style={styles.menuIcon}>{item.icon}</Text>
             </View>
             <View style={styles.menuTextBox}>
-              <Text style={styles.menuTitle}>{item.title}</Text>
+              <View style={styles.titleRow}>
+                <Text style={styles.menuTitle}>{item.title}</Text>
+                {item.premium && !isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="star" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>{isNe ? 'प्रिमियम' : 'Premium'}</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.menuDesc}>{item.desc}</Text>
             </View>
             <Ionicons name="chevron-forward" size={22} color="#999" />
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={styles.subBanner} onPress={() => navigation.navigate('Subscription')}>
-          <Text style={styles.subBannerText}>🎉 {isNe ? 'बिटा — १ महिना निःशुल्क ›' : 'Beta — Free for 1 Month ›'}</Text>
-        </TouchableOpacity>
+        {!isPremium && (
+          <TouchableOpacity style={styles.subBanner} onPress={() => navigation.navigate('Subscription')}>
+            <Text style={styles.subBannerText}>✨ {isNe ? 'प्रिमियममा अपग्रेड गर्नुहोस् र सबै सुविधाहरू खोल्नुहोस् ›' : 'Upgrade to Premium & Unlock All Features ›'}</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,7 +139,10 @@ const styles = StyleSheet.create({
   menuIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   menuIcon: { fontSize: 24 },
   menuTextBox: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   menuTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  premiumBadge: { backgroundColor: '#FF9800', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  premiumBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   menuDesc: { fontSize: 12, color: '#999', marginTop: 2 },
   subBanner: { margin: 15, backgroundColor: '#1a73e8', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
   subBannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },

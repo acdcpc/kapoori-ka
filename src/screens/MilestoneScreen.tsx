@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { collection, getDocs, addDoc, query, where, doc, setDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db } from '../../firebase.ts';
+import { db } from '../../firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ import { Milestone, MilestoneRecord } from '../types';
 import { getMilestonesForAge, AGE_BANDS, MILESTONES } from '../data/milestones';
 import { getAgeInMonths } from '../utils/growthCalculations';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { PremiumGuard } from '../components/PremiumGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Milestone'>;
 
@@ -32,13 +33,12 @@ export default function MilestoneScreen({ route, navigation }: Props) {
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());
-  const [deniedIds, setDeniedIds] = useState<Set<string>>(new Set()); // New: Parent explicitly said "Not achieved"
+  const [deniedIds, setDeniedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showFullChart, setShowFullChart] = useState(false);
 
   const currentMilestones = getMilestonesForAge(ageMonths);
   
-  // Separate into two lists
   const positiveMilestones = currentMilestones.filter(m => m.flagLevel !== 'red');
   const redFlagMilestones = currentMilestones.filter(m => m.flagLevel === 'red');
 
@@ -157,57 +157,59 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   if (loading) return <ActivityIndicator size="large" color="#1a73e8" style={{ flex: 1 }} />;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Ionicons name="arrow-back" size={24} color="#333" /></TouchableOpacity>
-        <Text style={styles.headerTitle}>{t.milestones}</Text>
-        <TouchableOpacity onPress={() => setShowFullChart(true)} style={styles.fullBtn}><Ionicons name="calendar" size={20} color="#fff" /><Text style={styles.fullBtnText}>{isNe ? 'तालिका' : 'Full'}</Text></TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-        {hasAnyWarning && (
-          <View style={styles.topWarningBanner}>
-            <Text style={styles.topWarningText}>{isNe ? '⚠️ चेतावनी पत्ता लाग्यो। कृपया बालरोग विशेषज्ञसँग परामर्श गर्नुहोस्।' : '⚠️ Concern detected. Please consult your pediatrician.'}</Text>
-          </View>
-        )}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{isNe ? 'हासिल गर्नुपर्ने कोशेढुङ्गाहरू' : 'Milestones to be Achieved'}</Text>
-          <Text style={styles.sectionSub}>{isNe ? `${ageMonths} महिनाको लागि` : `For ${ageMonths} months`}</Text>
+    <PremiumGuard>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Ionicons name="arrow-back" size={24} color="#333" /></TouchableOpacity>
+          <Text style={styles.headerTitle}>{t.milestones}</Text>
+          <TouchableOpacity onPress={() => setShowFullChart(true)} style={styles.fullBtn}><Ionicons name="calendar" size={20} color="#fff" /><Text style={styles.fullBtnText}>{isNe ? 'तालिका' : 'Full'}</Text></TouchableOpacity>
         </View>
-        {positiveMilestones.map(m => renderMilestoneItem(m, false))}
 
-        <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-          <Text style={[styles.sectionTitle, { color: '#f44336' }]}>{isNe ? 'चेतावनीका संकेतहरू' : 'Red Flags to Watch For'}</Text>
-          <Text style={styles.sectionSub}>{isNe ? 'यदि यी लक्षण देखिएमा डाक्टरसँग सल्लाह लिनुहोस्' : 'Consult a doctor if you notice these'}</Text>
-        </View>
-        {redFlagMilestones.map(m => renderMilestoneItem(m, true))}
-      </ScrollView>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+          {hasAnyWarning && (
+            <View style={styles.topWarningBanner}>
+              <Text style={styles.topWarningText}>{isNe ? '⚠️ चेतावनी पत्ता लाग्यो। कृपया बालरोग विशेषज्ञसँग परामर्श गर्नुहोस्।' : '⚠️ Concern detected. Please consult your pediatrician.'}</Text>
+            </View>
+          )}
 
-      <Modal visible={showFullChart} animationType="slide">
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowFullChart(false)}><Ionicons name="close" size={28} color="#333" /></TouchableOpacity>
-            <Text style={styles.modalTitle}>{t.milestoneFullChart}</Text>
-            <View style={{ width: 28 }} />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{isNe ? 'हासिल गर्नुपर्ने कोशेढुङ्गाहरू' : 'Milestones to be Achieved'}</Text>
+            <Text style={styles.sectionSub}>{isNe ? `${ageMonths} महिनाको लागि` : `For ${ageMonths} months`}</Text>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            {AGE_BANDS.map(band => (
-              <View key={band} style={styles.bandRow}>
-                <Text style={styles.bandTitle}>{band} {isNe ? 'महिना' : 'Months'}</Text>
-                {MILESTONES.filter(m => m.ageMonthsMax === band).map(m => (
-                  <View key={m.id} style={styles.miniItem}>
-                    <Text style={[styles.miniDot, { backgroundColor: m.flagLevel === 'red' ? '#f44336' : '#4CAF50' }]} />
-                    <Text style={styles.miniText}>{isNe ? m.descriptionNepali : m.description}</Text>
-                  </View>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+          {positiveMilestones.map(m => renderMilestoneItem(m, false))}
+
+          <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+            <Text style={[styles.sectionTitle, { color: '#f44336' }]}>{isNe ? 'चेतावनीका संकेतहरू' : 'Red Flags to Watch For'}</Text>
+            <Text style={styles.sectionSub}>{isNe ? 'यदि यी लक्षण देखिएमा डाक्टरसँग सल्लाह लिनुहोस्' : 'Consult a doctor if you notice these'}</Text>
+          </View>
+          {redFlagMilestones.map(m => renderMilestoneItem(m, true))}
+        </ScrollView>
+
+        <Modal visible={showFullChart} animationType="slide">
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowFullChart(false)}><Ionicons name="close" size={28} color="#333" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>{t.milestoneFullChart}</Text>
+              <View style={{ width: 28 }} />
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16 }}>
+              {AGE_BANDS.map(band => (
+                <View key={band} style={styles.bandRow}>
+                  <Text style={styles.bandTitle}>{band} {isNe ? 'महिना' : 'Months'}</Text>
+                  {MILESTONES.filter(m => m.ageMonthsMax === band).map(m => (
+                    <View key={m.id} style={styles.miniItem}>
+                      <Text style={[styles.miniDot, { backgroundColor: m.flagLevel === 'red' ? '#f44336' : '#4CAF50' }]} />
+                      <Text style={styles.miniText}>{isNe ? m.descriptionNepali : m.description}</Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </PremiumGuard>
   );
 }
 

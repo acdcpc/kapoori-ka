@@ -886,17 +886,16 @@ export const getCurrentBandMax = (ageMonths: number): number => {
 /**
  * Get milestones relevant for a child's current age.
  * Shows:
- *   • All bands up to and including the child's current band (for catch-up review)
+ *   • Milestones for the child's current age band
  *   • The next upcoming band (so parents can see what's coming)
  *
- * For a brand-new app user we don't flood them with all 60 months —
- * we show the last 2 completed bands + current band + next band.
+ * This prevents overwhelming parents with all previous milestones.
  */
 export const getMilestonesForAge = (ageMonths: number): Milestone[] => {
   const currentBandMax = getCurrentBandMax(ageMonths);
   const currentBandIndex = AGE_BANDS.indexOf(currentBandMax);
 
-  // Only show milestones up to and including the child's current band
-  const showUpTo = currentBandMax;
-  return MILESTONES.filter(m => m.ageMonthsMax <= showUpTo);
+  // Show milestones for current band and next band only
+  const nextBandMax = currentBandIndex < AGE_BANDS.length - 1 ? AGE_BANDS[currentBandIndex + 1] : 60;
+  return MILESTONES.filter(m => m.ageMonthsMax === currentBandMax || m.ageMonthsMax === nextBandMax);
 };

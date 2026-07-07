@@ -1,124 +1,33 @@
-/**
- * Kapoori-Ka: Child Development Tracker
- *
- * Main App Component
- */
-
-import React, { useState } from 'react';
+// App.tsx
+import 'react-native-get-random-values';
+import React, { useState, useEffect, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
-
-import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageContext } from './src/context/LanguageContext';
-import LoginScreen from './src/screens/LoginScreen';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActivityIndicator, View } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
-import ChildDashboard from './src/screens/ChildDashboard';
 import AddChildScreen from './src/screens/AddChildScreen';
+import ChildDashboard from './src/screens/ChildDashboard';
 import GrowthChartScreen from './src/screens/GrowthChartScreen';
 import ImmunizationScreen from './src/screens/ImmunizationScreen';
 import MilestoneScreen from './src/screens/MilestoneScreen';
-import NutritionScreen from './src/screens/NutritionScreen';
 import MChatScreen from './src/screens/MChatScreen';
 import PDFReportScreen from './src/screens/PDFReportScreen';
-import AboutScreen from './src/screens/AboutScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
+import AboutScreen from './src/screens/AboutScreen';
+import NutritionScreen from './src/screens/NutritionScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { registerForPushNotifications } from './src/utils/notifications';
+import { RootStackParamList } from './src/navigation/types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Navigation Stack for Authenticated Users
- */
-function AuthenticatedStack() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#1a73e8' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
-      }}
-    >
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: 'कपूरी क | Kapoori-Ka' }}
-      />
-      <Stack.Screen
-        name="ChildDashboard"
-        component={ChildDashboard}
-        options={{ title: 'Dashboard' }}
-      />
-      <Stack.Screen
-        name="AddChild"
-        component={AddChildScreen}
-        options={{ title: 'Add Child' }}
-      />
-      <Stack.Screen
-        name="GrowthChart"
-        component={GrowthChartScreen}
-        options={{ title: 'Growth Chart' }}
-      />
-      <Stack.Screen
-        name="Immunization"
-        component={ImmunizationScreen}
-        options={{ title: 'Immunization' }}
-      />
-      <Stack.Screen
-        name="Milestones"
-        component={MilestoneScreen}
-        options={{ title: 'Milestones' }}
-      />
-      <Stack.Screen
-        name="Nutrition"
-        component={NutritionScreen}
-        options={{ title: 'Nutrition' }}
-      />
-      <Stack.Screen
-        name="MChat"
-        component={MChatScreen}
-        options={{ title: 'M-CHAT Screening' }}
-      />
-      <Stack.Screen
-        name="PDFReport"
-        component={PDFReportScreen}
-        options={{ title: 'Health Report' }}
-      />
-      <Stack.Screen
-        name="About"
-        component={AboutScreen}
-        options={{ title: 'About' }}
-      />
-      <Stack.Screen
-        name="Subscription"
-        component={SubscriptionScreen}
-        options={{ title: 'Premium' }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Navigation Stack for Unauthenticated Users
- */
-function UnauthenticatedStack() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="Login" component={LoginScreen} />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Root Navigator Component
- */
-function RootNavigator() {
-  const { user, loading } = useAuth();
+function Navigation() {
+  const { user, loading, subscription } = useAuth();
+  const { language } = useContext(LanguageContext);
 
   if (loading) {
     return (
@@ -128,25 +37,52 @@ function RootNavigator() {
     );
   }
 
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'beta_free';
+
   return (
     <NavigationContainer>
-      {user ? <AuthenticatedStack /> : <UnauthenticatedStack />}
+      <StatusBar style="auto" />
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: '#1a73e8' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
+        {user ? (
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'कपूरी क (Kapoori Ka)' }} />
+            <Stack.Screen name="AddChild" component={AddChildScreen} options={{ title: 'बच्चा थप्नुहोस् | Add Child' }} />
+            <Stack.Screen name="ChildDashboard" component={ChildDashboard} options={({ route }) => ({ title: route.params.child.name })} />
+            <Stack.Screen name="GrowthChart" component={GrowthChartScreen} options={{ title: 'वृद्धि चार्ट | Growth Chart' }} />
+            <Stack.Screen name="Immunization" component={ImmunizationScreen} options={{ title: 'खोप | Immunization' }} />
+            <Stack.Screen name="Milestone" component={MilestoneScreen} options={{ title: 'विकास | Milestones' }} />
+            <Stack.Screen name="MChat" component={MChatScreen} options={{ title: 'अटिज्म जाँच | M-CHAT' }} />
+            <Stack.Screen name="PDFReport" component={PDFReportScreen} options={{ title: 'PDF रिपोर्ट | Report' }} />
+            <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'सदस्यता | Subscription' }} />
+            <Stack.Screen name="About" component={AboutScreen} options={{ title: 'हाम्रो बारेमा | About' }} />
+            <Stack.Screen name="Nutrition" component={NutritionScreen} options={{ title: 'पोषण | Nutrition' }} />
+          </>
+        ) : (
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-/**
- * Main App Component
- */
 export default function App() {
-  const [language, setLanguage] = useState<'ne' | 'en'>('ne');
+  const [language, setLanguage] = useState<'en' | 'ne'>('ne');
+
+  useEffect(() => {
+    registerForPushNotifications().catch(() => {});
+  }, []);
 
   return (
     <SafeAreaProvider>
       <LanguageContext.Provider value={{ language, setLanguage }}>
         <AuthProvider>
-          <RootNavigator />
-          <StatusBar style="auto" />
+          <Navigation />
         </AuthProvider>
       </LanguageContext.Provider>
     </SafeAreaProvider>
