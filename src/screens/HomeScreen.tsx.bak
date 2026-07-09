@@ -200,16 +200,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Header Row */}
+      {/* Header Row */}
       <View style={styles.headerTop}>
-        <View style={styles.headerIconWrap}>
-          <TouchableOpacity style={styles.aboutBtn} onPress={() => navigation.navigate('About')}>
-            <Ionicons name="information-circle-outline" size={24} color="#1a73e8" />
-          </TouchableOpacity>
-          <View style={styles.headerHint} pointerEvents="none">
-            <Text style={styles.headerHintText}>{isNe ? 'लेखकको बारेमा' : 'About the Author'}</Text>
-          </View>
-        </View>
+        <TouchableOpacity style={styles.aboutBtn} onPress={() => navigation.navigate('About')}>
+          <Ionicons name="information-circle-outline" size={24} color="#1a73e8" />
+        </TouchableOpacity>
         <View style={styles.langToggle}>
           <TouchableOpacity
             style={[styles.langBtn, language === 'ne' && styles.langBtnActive]}
@@ -224,14 +219,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>English</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.headerIconWrap}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#F44336" />
-          </TouchableOpacity>
-          <View style={styles.headerHint} pointerEvents="none">
-            <Text style={styles.headerHintText}>{isNe ? 'लग आउट' : 'Logout'}</Text>
-          </View>
-        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#F44336" />
+        </TouchableOpacity>
       </View>
 
       {/* Welcome / How-to Banner */}
@@ -424,9 +414,6 @@ const styles = StyleSheet.create({
   },
   fabHintText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   logoutBtn: { padding: 8, marginLeft: 4 },
-  headerIconWrap: { alignItems: 'center' },
-  headerHint: { marginTop: 2 },
-  headerHintText: { fontSize: 9, color: '#999', fontWeight: '500' },
   whatsappCard: { paddingHorizontal: 12, marginBottom: 80 },
   whatsappBtn: { 
     flexDirection: 'row', 

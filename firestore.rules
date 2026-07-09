@@ -22,35 +22,35 @@ service cloud.firestore {
     // Children records
     match /children/{childId} {
       allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // Growth records
     match /growth/{recordId} {
       allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // Vaccination records
     match /vaccinations/{recordId} {
       allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // Milestone records
     match /milestones/{recordId} {
       allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // Subscription requests (for manual verification)
     match /subscription_requests/{requestId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
     }
   }

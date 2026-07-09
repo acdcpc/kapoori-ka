@@ -28,8 +28,9 @@ export interface AuthContextType {
   subscription: Subscription | null;
   loading: boolean;
   error: string | null;
-  signInAnonymously: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   upgradeToGoogle: () => Promise<void>;
@@ -46,19 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Google Sign-In hooks
-  const [requestGoogleSignIn, responseGoogleSignIn, promptGoogleSignIn] = Google.useAuthRequest({
+  // Google Auth hooks
+  const [requestGoogle, responseGoogle, promptGoogle] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
   });
-
-  // Google Upgrade hooks
-  const [requestGoogleUpgrade, responseGoogleUpgrade, promptGoogleUpgrade] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
-  });
+  
+  const [googleAuthMode, setGoogleAuthMode] = useState<'signin' | 'upgrade'>('signin');
 
   /**
    * Initialize user profile in Firestore
@@ -141,9 +137,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [initializeUserProfile]);
 
   /**
+   * Sign up with Email and Password
+   */
+  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await initializeUserProfile(result.user);
+    } catch (err: any) {
+      console.error('Email sign-up error:', err);
+      setError(err.message || 'Failed to sign up with email');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [initializeUserProfile]);
+
+  /**
    * Sign in anonymously
    */
-  const signInAnonymously = useCallback(async () => {
+  const signInAsGuest = useCallback(async () => {
     try {
       setError(null);
       setLoading(true);
@@ -164,27 +179,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      await promptGoogleSignIn();
+      setGoogleAuthMode('signin');
+      await promptGoogle();
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       setError(err.message || 'Failed to sign in with Google');
     } finally {
       setLoading(false);
     }
-  }, [promptGoogleSignIn]);
-
-  useEffect(() => {
-    if (responseGoogleSignIn?.type === 'success') {
-      const { authentication } = responseGoogleSignIn;
-      const credential = GoogleAuthProvider.credential(authentication?.idToken);
-      signInWithCredential(auth, credential)
-        .then((result) => initializeUserProfile(result.user))
-        .catch((err) => {
-          console.error('Google sign-in error:', err);
-          setError(err.message || 'Failed to sign in with Google');
-        });
-    }
-  }, [responseGoogleSignIn, initializeUserProfile]);
+  }, [promptGoogle]);
 
   /**
    * Upgrade anonymous user to Google account
@@ -194,28 +197,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       setLoading(true);
       if (!user) throw new Error('No user logged in');
-      await promptGoogleUpgrade();
+      setGoogleAuthMode('upgrade');
+      await promptGoogle();
     } catch (err: any) {
       console.error('Upgrade to Google error:', err);
       setError(err.message || 'Failed to upgrade account');
     } finally {
       setLoading(false);
     }
-  }, [user, promptGoogleUpgrade]);
+  }, [user, promptGoogle]);
 
   useEffect(() => {
-    if (responseGoogleUpgrade?.type === 'success') {
-      const { authentication } = responseGoogleUpgrade;
+    if (responseGoogle?.type === 'success') {
+      const { authentication } = responseGoogle;
       const credential = GoogleAuthProvider.credential(authentication?.idToken);
-      if (!user) throw new Error('No user logged in');
-      user.linkWithCredential(credential)
-        .then(() => initializeUserProfile(user))
-        .catch((err) => {
-          console.error('Upgrade to Google error:', err);
-          setError(err.message || 'Failed to upgrade account');
-        });
+      
+      if (googleAuthMode === 'signin') {
+        signInWithCredential(auth, credential)
+          .then((result) => initializeUserProfile(result.user))
+          .catch((err) => {
+            console.error('Google sign-in error:', err);
+            setError(err.message || 'Failed to sign in with Google');
+          });
+      } else if (googleAuthMode === 'upgrade') {
+        if (!user) return;
+        // @ts-ignore - linkWithCredential exists on Firebase User
+        user.linkWithCredential(credential)
+          .then(() => initializeUserProfile(user))
+          .catch((err: any) => {
+            console.error('Upgrade to Google error:', err);
+            setError(err.message || 'Failed to upgrade account');
+          });
+      }
     }
-  }, [responseGoogleUpgrade, user, initializeUserProfile]);
+  }, [responseGoogle, user, initializeUserProfile, googleAuthMode]);
 
   /**
    * Upgrade to premium subscription
@@ -317,8 +332,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     subscription,
     loading,
     error,
-    signInAnonymously,
+    signInAsGuest,
     signInWithEmail,
+    signUpWithEmail,
     signInWithGoogle,
     signOutUser,
     upgradeToGoogle,

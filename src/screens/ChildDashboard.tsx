@@ -6,7 +6,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LanguageContext } from '../context/LanguageContext';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { formatAge } from '../utils/growthCalculations';
@@ -16,18 +16,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChildDashboard'>;
 export default function ChildDashboard({ route, navigation }: Props) {
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
-  const { subscription } = useContext(AuthContext);
+  const { subscription } = useAuth();
   const t = translations[language];
   const isNe = language === 'ne';
 
-  //const isPremium = subscription?.status === 'premium';
-  const isPremium = true; // __DEV__ bypass
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
   const menuItems = [
     { title: t.growthChart,    icon: '📈', color: '#4CAF50', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
     { title: t.immunization,   icon: '💉', color: '#1a73e8', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
     { title: t.milestones,     icon: '🧠', color: '#9C27B0', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
-    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
+    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: '#FF5722', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
   ];
@@ -81,9 +80,9 @@ export default function ChildDashboard({ route, navigation }: Props) {
             style={styles.menuItem}
             onPress={() => {
               if (item.screen === 'Nutrition') {
-                navigation.navigate('Nutrition' as any);
+                navigation.navigate('Nutrition', { child });
               } else {
-                navigation.navigate(item.screen, { child } as any);
+                navigation.navigate(item.screen, { child });
               }
             }}
           >

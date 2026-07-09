@@ -25,6 +25,7 @@ export interface GrowthRecord {
   notes?: string;
   recordedBy?: string;
   ageMonths?: number;
+  bsDate?: string;         // Nepali date (BS) for display
 }
 
 export interface VaccineRecord {

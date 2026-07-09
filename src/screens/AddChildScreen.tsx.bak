@@ -12,7 +12,6 @@ import { translations } from '../i18n/translations';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import NepaliDate from 'nepali-date-converter';
 
 type AddChildScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'AddChild'>;
@@ -202,16 +201,10 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 
       // Save birth record if weight/length provided
       if (birthWeight || birthLength) {
-        let bsDateStr = '';
-        try {
-          const bs = new NepaliDate(new Date(derivedDobAD));
-          bsDateStr = bs.format('YYYY-MM-DD');
-        } catch(e) {}
         await addDoc(collection(db, 'growth_records'), {
           childId: childRef.id,
           ownerId: user.uid,
           date: derivedDobAD,
-          bsDate: bsDateStr,
           weight: birthWeight ? parseFloat(birthWeight) : null,
           height: birthLength ? parseFloat(birthLength) : null,
           notes: isNe ? 'जन्मको नाप' : 'Birth measurement',
@@ -243,29 +236,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.form}>
-          <Text style={styles.label}>{isNe ? 'बच्चाको नाम (देवनागरीमा) *' : "Child's Name *"}</Text>
-          {isNe ? (
-            <>
-              <TextInput 
-                style={[styles.input, { fontSize: 18 }]} 
-                value={nameNepali} 
-                onChangeText={setNameNepali} 
-                placeholder={'जस्तै: आरव शर्मा'} 
-              />
-              <Text style={styles.hintText}>{isNe ? 'माथि देवनागरीमा बच्चाको नाम लेख्नुहोस्' : ''}</Text>
-            </>
-          ) : (
-            <TextInput 
-              style={styles.input} 
-              value={name} 
-              onChangeText={setName} 
-              placeholder={'e.g., Aarav Sharma'} 
-            />
-          )}
-          {isNe && nameNepali.trim() && (
-            <Text style={styles.hintText}>{isNe ? 'रोमनमा पनि नाम (वैकल्पिक):' : 'Name in Roman (optional):'}</Text>
-          )}
-          {isNe && <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={'e.g., Aarav Sharma'} />}
+          <Text style={styles.label}>{isNe ? 'बच्चाको नाम *' : "Child's Name *"}</Text>
+          <TextInput style={styles.input} value={isNe ? nameNepali : name} onChangeText={isNe ? setNameNepali : setName} placeholder={isNe ? 'जस्तै: आरव शर्मा' : 'e.g., Aarav Sharma'} />
           
           <Text style={styles.label}>{t.sex}</Text>
           <View style={styles.sexContainer}>
@@ -369,5 +341,4 @@ const styles = StyleSheet.create({
   pickerCol: { flex: 1 },
   doneBtn: { backgroundColor: '#1a73e8', borderRadius: 8, padding: 14, marginTop: 20, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  hintText: { fontSize: 11, color: '#888', marginTop: 4, marginBottom: 4 },
 });

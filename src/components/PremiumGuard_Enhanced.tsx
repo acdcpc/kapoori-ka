@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
   content: { flex: 1 },
   paywall: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   previewContainer: { position: 'relative', opacity: 0.6 },
   previewContent: { flex: 1 },
   previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
