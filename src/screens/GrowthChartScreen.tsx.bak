@@ -322,7 +322,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const neDigits = (n: number) => String(n).toString().split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
 
   // BS year range
-  const BS_YEARS = Array.from({length: 44}, (_, i) => 2057 + i);
+  const BS_YEARS = Array.from({length: 15}, (_, i) => 2078 + i);
   const BS_MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
 
   // Helper to get days in a BS month
@@ -790,7 +790,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
                       <View style={styles.pickerCol}>
                         <Text style={styles.pickerLabel}>Year</Text>
                         <ScrollPicker2
-                          items={Array.from({length: 51}, (_, i) => 2000 + i).map(y => ({ label: String(y), value: y }))}
+                          items={Array.from({length: 10}, (_, i) => 2020 + i).map(y => ({ label: String(y), value: y }))}
                           selected={bsDate.getAD().year}
                           onSelect={(v) => {
                             const ad = bsDate.getAD();

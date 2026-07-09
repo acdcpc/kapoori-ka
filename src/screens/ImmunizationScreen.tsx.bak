@@ -13,7 +13,6 @@ import { translations } from '../i18n/translations';
 import { VaccineRecord } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import NepaliDate from 'nepali-date-converter';
 import { scheduleVaccineReminders } from '../utils/notifications';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Immunization'>;
@@ -94,15 +93,19 @@ const STATUS_ICON: Record<VaccineStatus, string> = { given: '✅', due: '⚠️'
 const STATUS_LABEL_EN: Record<VaccineStatus, string> = { given: 'Given', due: 'Due Now', upcoming: 'Upcoming', missed: 'Missed' };
 const STATUS_LABEL_NE: Record<VaccineStatus, string> = { given: 'दिइयो', due: 'दिनुपर्छ', upcoming: 'आउँदो', missed: 'छुट्यो' };
 
-const neMonths = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फागुन','चैत्र'];
-const neDigits = (n: number) => String(n).split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
-
 function formatDateNe(dateStr: string): string {
   try {
     const d = dayjs(dateStr, 'YYYY-MM-DD');
     if (!d.isValid()) return dateStr;
-    const bs = new NepaliDate(new Date(d.year(), d.month(), d.date()));
-    return `${neDigits(bs.getDate())} ${neMonths[bs.getMonth()]} ${neDigits(bs.getYear())}`;
+    const months = ['माघ','फाल्गुन','चैत','बैशाख','जेठ','असार','श्रावण','भदौ','असोज','कार्तिक','मंसिर','पुष'];
+    const ne = (n: number) => {
+      if (isNaN(n)) return '';
+      return n.toString().split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
+    };
+    const day = ne(d.date());
+    const month = months[d.month()];
+    const year = ne(d.year());
+    return `${day} ${month} ${year}`;
   } catch (e) {
     return dateStr;
   }

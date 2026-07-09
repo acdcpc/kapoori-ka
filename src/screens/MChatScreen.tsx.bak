@@ -36,9 +36,9 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q1',
     questionEn: 'Does your child enjoy being swung, bounced on your knee, etc.?',
-    questionNe: 'के तपाईंको बच्चा झूलिएको, घुँडामा उछालिएको आदि पसन्द गर्छ?',
+    questionNe: 'के तपाईंको बच्चालाई हल्लाएर वा घुँडामा उफारेर खेलाउँदा रमाउँछ?',
     descriptionEn: 'Watch if the child laughs and shows enjoyment during physical play.',
-    descriptionNe: 'शारीरिक खेलकुदमा बच्चा हाँस्छ र आनन्द देखाउँछ कि भनेर हेर्नुहोस्।',
+    descriptionNe: 'बच्चाले शारीरिक खेल खेल्दा हाँस्छ र रमाउँछ कि भनेर हेर्नुहोस्।',
     scoring: 'no_concern',
   },
   {
@@ -62,7 +62,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
     questionEn: 'Does your child play peek-a-boo or hide-and-seek?',
     questionNe: 'के तपाईंको बच्चा पीक-अ-बू वा लुकाएको खेल खेल्छ?',
     descriptionEn: 'Watch for back-and-forth interaction and understanding of the game.',
-    descriptionNe: 'आगोपछाडिको अन्तरक्रिया र खेलको बुझाइ हेर्नुहोस्।',
+    descriptionNe: 'बच्चाले खेलमा तपाईंसँग अगाडि-पछाडि कुरा गर्छ कि भनेर हेर्नुहोस्।',
     scoring: 'no_concern',
   },
   {
@@ -76,7 +76,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q6',
     questionEn: 'Does your child ever use his/her index finger to point, to ask for something?',
-    questionNe: 'के तपाईंको बच्चा कहिले आफ्नो तर्जनी उँगली प्रयोग गरेर केहि माग्न संकेत गर्छ?',
+    questionNe: 'के तपाईंको बच्चाले औंला  प्रयोग गरेर केहि माग्न संकेत गर्छ?',
     descriptionEn: 'Observe if the child uses pointing to communicate needs or share interest.',
     descriptionNe: 'बच्चा आवश्यकता संचार गर्न वा रुचि साझा गर्न संकेत गर्छ कि भनेर हेर्नुहोस्।',
     scoring: 'no_concern',
@@ -84,15 +84,15 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q7',
     questionEn: 'Does your child ever use his/her index finger to point, to show you something interesting?',
-    questionNe: 'के तपाईंको बच्चा कहिले आफ्नो तर्जनी उँगली प्रयोग गरेर तपाईंलाई केहि रोचक देखाउन संकेत गर्छ?',
+    questionNe: 'के तपाईंको बच्चाले औंला देखाएर केही माग्छ?',
     descriptionEn: 'Look for joint attention and sharing of interest.',
-    descriptionNe: 'संयुक्त ध्यान र रुचि साझा गरिएको हेर्नुहोस्।',
+    descriptionNe: 'बच्चाले तपाईंसँग ध्यान दिन्छ र रुचि देखाउँछ कि हेर्नुहोस्।',
     scoring: 'no_concern',
   },
   {
     id: 'q8',
     questionEn: 'Is your child interested in playing with toys in a functional way (e.g., putting objects in a container, taking them out)?',
-    questionNe: 'के तपाईंको बच्चा खेलौनाहरूसँग कार्यात्मक तरिकामा खेल्न रुचि राख्छ (जस्तै, वस्तुहरू कन्टेनरमा राख्ने, निकाल्ने)?',
+    questionNe: 'के बच्चाले खेलौनालाई सही तरिकाले प्रयोग गर्छ? (जस्तै: चिज भाँडोमा हाल्ने र निकाल्ने)?',
     descriptionEn: 'Observe functional and purposeful play with objects.',
     descriptionNe: 'वस्तुहरूको साथ कार्यात्मक र उद्देश्यपूर्ण खेल हेर्नुहोस्।',
     scoring: 'no_concern',
@@ -116,7 +116,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q11',
     questionEn: 'Does your child seem oversensitive to noise (e.g., plugging ears)?',
-    questionNe: 'के तपाईंको बच्चा आवाजमा अत्यधिक संवेदनशील देखिन्छ (जस्तै, कान बन्द गर्ने)?',
+    questionNe: 'के तपाईंको बच्चा आवाजप्रति धेरै संवेदनशील हुन्छ? (जस्तै: कान थुन्नु)?',
     descriptionEn: 'Watch for unusual reactions to sounds.',
     descriptionNe: 'आवाजमा असामान्य प्रतिक्रिया हेर्नुहोस्।',
     scoring: 'yes_concern',
@@ -124,9 +124,9 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q12',
     questionEn: 'Does your child smile in response to your face or your smiling?',
-    questionNe: 'के तपाईंको बच्चा तपाईंको अनुहार वा तपाईंको मुस्कुरामा प्रतिक्रिया स्वरूप मुस्कुराउँछ?',
+    questionNe: 'के तपाईंको बच्चाले तपाईंको अनुहार वा मुस्कान देखेर मुस्कुराउँछ?',
     descriptionEn: 'Look for social reciprocity in smiling.',
-    descriptionNe: 'मुस्कुरामा सामाजिक पारस्परिकता हेर्नुहोस्।',
+    descriptionNe: 'मुस्कानमा सामाजिक reciprocity (आपसी प्रतिक्रिया) हेर्नुहोस्।',
     scoring: 'no_concern',
   },
   {
@@ -148,7 +148,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q15',
     questionEn: 'If you point at a toy across the room, does your child look at it?',
-    questionNe: 'यदि तपाई कोठाको अर्को पार खेलौनामा संकेत गर्नुहुन्छ, के तपाईंको बच्चा यसमा हेर्छ?',
+    questionNe: 'के तपाईंले कोठाको अर्को कुनामा रहेको खेलौनातिर औंल्याउँदा बच्चाले त्यो हेर्छ?',
     descriptionEn: 'Observe joint attention and following of pointing gestures.',
     descriptionNe: 'संयुक्त ध्यान र संकेत गर्ने इशारा अनुसरण हेर्नुहोस्।',
     scoring: 'no_concern',
@@ -172,9 +172,9 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q18',
     questionEn: 'Does your child make unusual finger movements near his/her face?',
-    questionNe: 'के तपाईंको बच्चा आफ्नो अनुहार नजिक असामान्य उँगली आन्दोलन गर्छ?',
+    questionNe: 'के तपाईंको बच्चाले आफ्नो अनुहार नजिक असामान्य औंला हल्लाउँछ?',
     descriptionEn: 'Watch for repetitive or stereotyped hand movements.',
-    descriptionNe: 'दोहोरिएको वा स्टेरिओटाइप हात आन्दोलन हेर्नुहोस्।',
+    descriptionNe: 'बच्चाले हात बारम्बार घुमाउने वा दोहोर्‍याउने गर्छ कि भनेर हेर्नुहोस्।',
     scoring: 'yes_concern',
   },
   {
@@ -182,7 +182,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
     questionEn: 'Does your child ever try to say any words or imitate any sounds?',
     questionNe: 'के तपाईंको बच्चा कहिले कुनै शब्द भन्ने वा कुनै आवाज नकल गर्ने प्रयास गर्छ?',
     descriptionEn: 'Observe language development and vocalization.',
-    descriptionNe: 'भाषा विकास र आवाज निकाल्ने हेर्नुहोस्।',
+    descriptionNe: 'बच्चाले बोल्छ कि र आवाज निकाल्छ कि हेर्नुहोस्।',
     scoring: 'no_concern',
   },
   {
@@ -190,7 +190,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
     questionEn: 'Does your child understand simple instructions? (e.g., "Get your shoes" or "Don\'t touch")',
     questionNe: 'के तपाईंको बच्चा सरल निर्देशनहरू बुझ्छ? (जस्तै, "आफ्नो जुत्ता ल्याउ" वा "नछुनु")',
     descriptionEn: 'Observe receptive language and comprehension.',
-    descriptionNe: 'ग्राहक भाषा र बुझाइ हेर्नुहोस्।',
+    descriptionNe: 'बच्चाको ग्रहणशील भाषा (कुरा बुझ्ने क्षमता) र समझ हेर्नुहोस्।',
     scoring: 'no_concern',
   },
 ];
@@ -247,7 +247,7 @@ export default function MChatScreen({ route, navigation }: Props) {
       return {
         title: isNe ? 'कम जोखिम' : 'Low Risk',
         message: isNe
-          ? 'आपके बच्चे को विकास सामान्य दिख रहा है। नियमित जांच जारी रखें।'
+          ? 'बच्चाको विकास ठीक छ। नियमित रूपमा स्वास्थ्य जाँच गराउनुहोस्।'
           : 'Your child\'s development appears typical. Continue regular check-ups.',
         color: '#4CAF50',
       };
@@ -255,7 +255,7 @@ export default function MChatScreen({ route, navigation }: Props) {
       return {
         title: isNe ? 'मध्यम जोखिम' : 'Medium Risk',
         message: isNe
-          ? 'आपके बच्चे को एक बाल रोग विशेषज्ञ द्वारा मूल्यांकन किया जाना चाहिए।'
+          ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञ वा विकास विशेषज्ञसँग द्वारा मूल्यांकन गर्नुपर्छ।'
           : 'Your child should be evaluated by a pediatrician.',
         color: '#FF9800',
       };
@@ -263,7 +263,7 @@ export default function MChatScreen({ route, navigation }: Props) {
       return {
         title: isNe ? 'उच्च जोखिम' : 'High Risk',
         message: isNe
-          ? 'कृपया तुरंत एक बाल रोग विशेषज्ञ या विकास विशेषज्ञ से परामर्श लें।'
+          ? 'कृपया तुरुन्त बाल डाक्टर वा विकास विशेषज्ञसँग सल्लाह लिनुहोस्।'
           : 'Please consult a pediatrician or developmental specialist immediately.',
         color: '#F44336',
       };
@@ -275,14 +275,14 @@ export default function MChatScreen({ route, navigation }: Props) {
       <View style={styles.container}>
         <View style={styles.warningBox}>
           <Ionicons name="alert-circle" size={48} color="#FF9800" />
-          <Text style={styles.warningTitle}>{isNe ? 'उपयुक्त आयु नहीं' : 'Not Appropriate Age'}</Text>
+          <Text style={styles.warningTitle}>{isNe ? 'यो उमेरका लागि उपयुक्त छैन' : 'Not Appropriate Age'}</Text>
           <Text style={styles.warningText}>
             {isNe
-              ? 'M-CHAT-R/F स्क्रीनिंग 16-30 महीने की आयु के लिए डिज़ाइन की गई है।'
+              ? 'M-CHAT-R/F जाँच १६ देखि ३० महिनाका बच्चाहरूका लागि डिजाइन गरिएको हो।'
               : 'M-CHAT-R/F screening is designed for ages 16-30 months.'}
           </Text>
           <Text style={styles.warningAge}>
-            {isNe ? `वर्तमान आयु: ${ageMonths} महिने` : `Current age: ${ageMonths} months`}
+            {isNe ? `वर्तमान आयु: ${ageMonths} महिना` : `Current age: ${ageMonths} months`}
           </Text>
         </View>
       </View>
@@ -346,7 +346,7 @@ export default function MChatScreen({ route, navigation }: Props) {
             onPress={handleSubmit}
             disabled={Object.keys(responses).length < MCHAT_QUESTIONS.length}
           >
-            <Text style={styles.submitBtnText}>{isNe ? 'परिणाम देखें' : 'See Results'}</Text>
+            <Text style={styles.submitBtnText}>{isNe ? 'नतिजा हेर्नुहोस्' : 'See Results'}</Text>
           </TouchableOpacity>
         </ScrollView>
 

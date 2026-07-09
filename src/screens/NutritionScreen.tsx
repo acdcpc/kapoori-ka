@@ -1,6 +1,6 @@
 // src/screens/NutritionScreen.tsx - Enhanced with Tabs
-import React, { useContext, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Dimensions } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,7 +14,7 @@ const AGE_GROUPS_EN = [
   {
     range: '0–6 Months',
     subtitle: 'Exclusive Breastfeeding Only',
-    icon: '',
+    icon: '🍼',
     color: '#E91E63',
     minMonths: 0,
     maxMonths: 6,
@@ -30,7 +30,7 @@ const AGE_GROUPS_EN = [
   {
     range: '6–9 Months',
     subtitle: 'Start Complementary Foods',
-    icon: '',
+    icon: '🥣',
     color: '#4CAF50',
     minMonths: 6,
     maxMonths: 9,
@@ -40,14 +40,14 @@ const AGE_GROUPS_EN = [
       'Frequency: 2–3 times per day + 1–2 breastfeeds.',
       'Amount: start with 2–3 tablespoons, increase gradually.',
       'Texture: very smooth, no lumps.',
-      'Include four star food groups in each meal (see below).',
+      'Include four star food groups in each meal.',
     ],
     malnutritionTip: 'If the child refuses food, has persistent diarrhea, or is not gaining weight — consult FCHV or health post.',
   },
   {
     range: '9–12 Months',
     subtitle: 'More Variety & Texture',
-    icon: '',
+    icon: '🥘',
     color: '#FF9800',
     minMonths: 9,
     maxMonths: 12,
@@ -64,7 +64,7 @@ const AGE_GROUPS_EN = [
   {
     range: '12–24 Months',
     subtitle: 'Family Pot Foods',
-    icon: '',
+    icon: '🍛',
     color: '#2196F3',
     minMonths: 12,
     maxMonths: 24,
@@ -81,7 +81,7 @@ const AGE_GROUPS_EN = [
   {
     range: '24–60 Months',
     subtitle: 'Balanced Family Diet',
-    icon: '',
+    icon: '🍽️',
     color: '#673AB7',
     minMonths: 24,
     maxMonths: 60,
@@ -102,7 +102,7 @@ const AGE_GROUPS_NE = [
   {
     range: '०–६ महिना',
     subtitle: 'केवल आमाको दूध',
-    icon: '',
+    icon: '🍼',
     color: '#E91E63',
     minMonths: 0,
     maxMonths: 6,
@@ -118,7 +118,7 @@ const AGE_GROUPS_NE = [
   {
     range: '६–९ महिना',
     subtitle: 'पूरक खाना सुरु गर्नुहोस्',
-    icon: '',
+    icon: '🥣',
     color: '#4CAF50',
     minMonths: 6,
     maxMonths: 9,
@@ -135,7 +135,7 @@ const AGE_GROUPS_NE = [
   {
     range: '९–१२ महिना',
     subtitle: 'अधिक विविधता र बनावट',
-    icon: '',
+    icon: '🥘',
     color: '#FF9800',
     minMonths: 9,
     maxMonths: 12,
@@ -152,13 +152,13 @@ const AGE_GROUPS_NE = [
   {
     range: '१२–२४ महिना',
     subtitle: 'पारिवारिक खाना',
-    icon: '',
+    icon: '🍛',
     color: '#2196F3',
     minMonths: 12,
     maxMonths: 24,
     points: [
       'आमाको दूध २ वर्ष र त्यसपछि पनि जारी राख्नुहोस्।',
-      'घरको खाना खुवाउनुहोस् — दाल-भात-तरकारीसँगै चारै किसिमका खानेकुरा (दाल, मासु/अण्डा, साग, फल)।',
+      'घरको खाना खुवाउनुहोस् — दाल-भात-तरकारीसँगै चारै किसिमका खानेकुरा।',
       'कति पटक खुवाउने? दिनमा ३–४ पटक मुख्य खाना + १–२ पटक खाजा।',
       'कति खुवाउने? एक पटकमा ३/४ देखि १ कप।',
       'बच्चालाई आफैं चम्चाले खान प्रोत्साहन गर्नुहोस्।',
@@ -169,7 +169,7 @@ const AGE_GROUPS_NE = [
   {
     range: '२४–६० महिना',
     subtitle: 'संतुलित पारिवारिक खाना',
-    icon: '',
+    icon: '🍽️',
     color: '#673AB7',
     minMonths: 24,
     maxMonths: 60,
@@ -178,7 +178,7 @@ const AGE_GROUPS_NE = [
       'परिवारसँगै घरको खाना खानुहोस्।',
       'कति पटक खुवाउने? दिनमा ३ पटक मुख्य खाना + १–२ पटक खाजा।',
       'कति खुवाउने? एक पटकमा १ देखि १.५ कप।',
-      'प्रत्येक खानामा चारै किसिमका खानेकुरा हाल्नुहोस् (दाल, मासु/अण्डा, साग, फल)।',
+      'प्रत्येक खानामा चारै किसिमका खानेकुरा हाल्नुहोस्।',
       'खाना खानुअघि हात धुन प्रोत्साहित गर्नुहोस्।',
       'टेबल शिष्टाचार र खाना सफा राख्ने तरिका सिकाउनुहोस्।',
     ],
@@ -262,8 +262,8 @@ const SARBOTTAM_PITHO_NE = {
       '१०० ग्राम मा १३.५ देखि २५ ग्राम प्रोटिन हुन्छ।',
       '१०० ग्राम मा ३४५–३७० क्यालोरी हुन्छ।',
       'क्याल्सियम, आइरन र विभिन्न भिटामिन प्रशस्त मात्रामा पाइन्छ।',
-      'स्तनपानसँगै खुवाउँदा बच्चाको प्रोटिन र शक्ति को धेरैजसो आवश्यकता पूरा हुन्छ।',
-      'WHO-सिफारिस गरिएको',
+      'स्तनपानसँगै खुवाउँदा यसले प्रोटिन र ऊर्जाको धेरै आवश्यकता पूरा गर्छ।',
+      'कुपोषित बच्चाहरूको लागि WHO ले सिफारिस गरेको छ।',
     ],
   },
 };
@@ -423,15 +423,19 @@ export default function NutritionScreen({ route, navigation }: Props) {
   const isNe = language === 'ne';
   const [activeTab, setActiveTab] = useState<'age' | 'sarbottam' | 'myths' | 'difficulties'>('age');
 
+  const child = route.params?.child;
+  const highlightAge = route.params?.highlightAge;
+
   const ageGroups = isNe ? AGE_GROUPS_NE : AGE_GROUPS_EN;
   const sarbottamData = isNe ? SARBOTTAM_PITHO_NE : SARBOTTAM_PITHO_EN;
   const mythsData = isNe ? MYTHS_NE : MYTHS_EN;
   const difficultiesData = isNe ? FEEDING_DIFFICULTIES_NE : FEEDING_DIFFICULTIES_EN;
 
+  const childAgeMonths = child ? dayjs().diff(dayjs(child.dateOfBirth), 'month') : highlightAge;
+
   return (
     <PremiumGuard>
       <View style={styles.container}>
-        {/* Tab Bar */}
         <View style={styles.tabBar}>
           {[
             { key: 'age', label: isNe ? 'उमेर अनुसार' : 'By Age' },
@@ -454,29 +458,39 @@ export default function NutritionScreen({ route, navigation }: Props) {
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
           {activeTab === 'age' && (
             <View>
-              {ageGroups.map((group, i) => (
-                <View key={i} style={styles.ageCard}>
-                  <View style={[styles.ageHeader, { backgroundColor: group.color }]}>
-                    <Text style={styles.ageIcon}>{group.icon}</Text>
-                    <View style={styles.ageHeaderText}>
-                      <Text style={styles.ageRange}>{group.range}</Text>
-                      <Text style={styles.ageSubtitle}>{group.subtitle}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.ageBody}>
-                    {group.points.map((point, j) => (
-                      <View key={j} style={styles.pointRow}>
-                        <Text style={styles.pointBullet}>•</Text>
-                        <Text style={styles.pointText}>{point}</Text>
+              {ageGroups.map((group, i) => {
+                const isCurrentAge = childAgeMonths !== undefined && childAgeMonths >= group.minMonths && childAgeMonths < group.maxMonths;
+                return (
+                  <View key={i} style={[styles.ageCard, isCurrentAge && { borderWidth: 2, borderColor: group.color }]}>
+                    <View style={[styles.ageHeader, { backgroundColor: group.color }]}>
+                      <Text style={styles.ageIcon}>{group.icon}</Text>
+                      <View style={styles.ageHeaderText}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.ageRange}>{group.range}</Text>
+                          {isCurrentAge && (
+                            <View style={{ backgroundColor: '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                              <Text style={{ color: group.color, fontSize: 10, fontWeight: '800' }}>{isNe ? 'तपाईंको बच्चा' : 'YOUR CHILD'}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.ageSubtitle}>{group.subtitle}</Text>
                       </View>
-                    ))}
-                    <View style={styles.tipBox}>
-                      <Ionicons name="warning" size={16} color="#FF9800" />
-                      <Text style={styles.tipText}>{group.malnutritionTip}</Text>
+                    </View>
+                    <View style={styles.ageBody}>
+                      {group.points.map((point, j) => (
+                        <View key={j} style={styles.pointRow}>
+                          <Text style={styles.pointBullet}>•</Text>
+                          <Text style={styles.pointText}>{point}</Text>
+                        </View>
+                      ))}
+                      <View style={styles.tipBox}>
+                        <Ionicons name="warning" size={16} color="#FF9800" />
+                        <Text style={styles.tipText}>{group.malnutritionTip}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
 

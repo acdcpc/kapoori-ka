@@ -6,10 +6,10 @@ import { LanguageContext } from '../context/LanguageContext';
 import { translations } from '../i18n/translations';
 import { useAuth } from '../context/AuthContext';
 
+import { WHATSAPP_NUMBER, ESEWA_QR_URL } from '../constants';
+
 const MONTHLY_PRICE_NPR = 299;
 const YEARLY_PRICE_NPR  = 1999;
-const WHATSAPP_NUMBER   = '9779840516603';
-const ESEWA_QR_URL = 'https://via.placeholder.com/300x400.png?text=eSewa+QR+Code'; 
 
 const FREE_FEATURES_EN = [
   { icon: '👶', text: '1 child profile' },
@@ -93,7 +93,7 @@ export default function SubscriptionScreen() {
         [
           { 
             text: 'WhatsApp Us', 
-            onPress: () => Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}?text=Hi, I just paid NPR ${amount} for Kapoori-ka Premium. My Transaction ID is ${txnId}`) 
+            onPress: () => Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER.replace('+', '')}?text=Hi, I just paid NPR ${amount} for Kapoori-ka Premium. My Transaction ID is ${txnId}`) 
           },
           { text: 'OK' }
         ]

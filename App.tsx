@@ -7,6 +7,7 @@ import { LanguageContext } from './src/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import AddChildScreen from './src/screens/AddChildScreen';
 import ChildDashboard from './src/screens/ChildDashboard';
@@ -73,14 +74,45 @@ function Navigation() {
 
 export default function App() {
   const [language, setLanguage] = useState<'en' | 'ne'>('ne');
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    registerForPushNotifications().catch(() => {});
+    const prepare = async () => {
+      try {
+        const savedLang = await AsyncStorage.getItem('user_language');
+        if (savedLang === 'en' || savedLang === 'ne') {
+          setLanguage(savedLang);
+        }
+        await registerForPushNotifications().catch(() => {});
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+      }
+    };
+    prepare();
   }, []);
+
+  const handleSetLanguage = async (lang: 'en' | 'ne') => {
+    setLanguage(lang);
+    try {
+      await AsyncStorage.setItem('user_language', lang);
+    } catch (e) {
+      console.error('Failed to save language', e);
+    }
+  };
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1a73e8" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      <LanguageContext.Provider value={{ language, setLanguage }}>
+      <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
         <AuthProvider>
           <Navigation />
         </AuthProvider>
