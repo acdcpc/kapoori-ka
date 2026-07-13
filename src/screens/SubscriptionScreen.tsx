@@ -8,8 +8,8 @@ import { useAuth } from '../context/AuthContext';
 
 import { WHATSAPP_NUMBER, ESEWA_QR_URL } from '../constants';
 
-const MONTHLY_PRICE_NPR = 299;
-const YEARLY_PRICE_NPR  = 1999;
+const MONTHLY_PRICE_NPR = 0;
+const YEARLY_PRICE_NPR  = 0;
 
 const FREE_FEATURES_EN = [
   { icon: '👶', text: '1 child profile' },
@@ -171,7 +171,7 @@ export default function SubscriptionScreen() {
         </View>
       ) : null}
 
-      <Text style={styles.sectionLabel}>{isNe ? 'के निःशुल्क, के प्रिमियम?' : "What's Free vs Premium?"}</Text>
+      <Text style={styles.sectionLabel}>{isNe ? ' निःशुल्क,  प्रिमियम?' : "What's Free vs Premium?"}</Text>
 
       <View style={styles.featuresRow}>
         <View style={styles.featureCard}>

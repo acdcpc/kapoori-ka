@@ -108,7 +108,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
   {
     id: 'q10',
     questionEn: 'Does your child respond when you call his or her name? (e.g., does he or she look up, talk or babble, or stop what he or she is doing when you call his or her name?)',
-    questionNe: 'के तपाईंले नाम काढेर बोलाउँदा तपाईंको बच्चाले प्रतिक्रिया दिन्छ? (जस्तै: माथि हेर्ने, बोल्ने वा कराउने, वा गरिरैको काम रोक्ने?)',
+    questionNe: 'के तपाईंले नाम काढेर बोलाउँदा तपाईंको बच्चाले प्रतिक्रिया दिन्छ? (जस्तै: माथि हेर्ने, बोल्ने वा कराउने, वा गरिरहेको काम रोक्ने?)',
     descriptionEn: 'Watch for name recognition and response.',
     descriptionNe: 'नाम पहिचान र प्रतिक्रिया हेर्नुहोस्।',
     scoring: 'no_concern',
@@ -157,7 +157,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
     id: 'q16',
     questionEn: 'If you turn your head to look at something, does your child look around to see what you are looking at?',
     questionNe: 'यदि तपाईंले केही कुरा हेर्नको लागि टाउको घुमाउनुभयो भने, के तपाईंको बच्चाले तपाईंले के हेरिरहनुभएको छ भनेर हेर्न टाउको घुमाउँछ?',
-    descriptionEn: 'Observe joint attention and gaze following.',
+    descriptionEn: 'Observe joint attention and gospel following.',
     descriptionNe: 'संयुक्त ध्यान र दृष्टि अनुसरण हेर्नुहोस्।',
     scoring: 'no_concern',
   },
@@ -198,52 +198,40 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
 export default function MChatScreen({ route, navigation }: Props) {
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
+  const t = translations[language];
   const isNe = language === 'ne';
 
   const [responses, setResponses] = useState<Record<string, boolean>>({});
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [isReviewMode, setIsReviewMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
-  const [concerns, setConcerns] = useState<string[]>([]);
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const isAppropriateAge = ageMonths >= 16 && ageMonths <= 30;
 
   const calculateScore = () => {
     let totalScore = 0;
-    const concernList: string[] = [];
     MCHAT_QUESTIONS.forEach(q => {
       const response = responses[q.id];
       if (response !== undefined) {
         if (q.scoring === 'yes_concern') {
-          if (response === true) {
-            totalScore += 1;
-            concernList.push(q.id);
-          }
+          if (response === true) totalScore += 1;
         } else {
-          if (response === false) {
-            totalScore += 1;
-            concernList.push(q.id);
-          }
+          if (response === false) totalScore += 1;
         }
       }
     });
-    return { totalScore, concernList };
+    return totalScore;
   };
 
   const handleSubmit = async () => {
     if (Object.keys(responses).length < MCHAT_QUESTIONS.length) {
-      Alert.alert(
-        isNe ? 'कृपया सबै प्रश्नहरूको उत्तर दिनुहोस्' : 'Please complete all questions',
-        isNe ? 'नतिजा प्राप्त गर्नका लागि कृपया सबै २० प्रश्नहरूको उत्तर दिनुहोस्।' : 'Please answer all 20 questions to get the result.'
-      );
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'कृपया सबै प्रश्नहरूको उत्तर दिनुहोस्।' : 'Please answer all questions.');
       return;
     }
-    const { totalScore, concernList } = calculateScore();
+    const totalScore = calculateScore();
     setScore(totalScore);
-    setConcerns(concernList);
-    setShowResultModal(true);
-    setIsReviewMode(true);
+    setShowResult(true);
 
     try {
       const user = auth.currentUser;
@@ -275,8 +263,8 @@ export default function MChatScreen({ route, navigation }: Props) {
       return {
         title: isNe ? 'मध्यम जोखिम' : 'Medium Risk',
         message: isNe
-          ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञ वा विकास विशेषज्ञद्वारा मूल्यांकन गराउनुपर्छ।'
-          : 'Your child should be evaluated by a pediatrician or developmental specialist.',
+          ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञ वा विकास विशेषज्ञसँग द्वारा मूल्यांकन गर्नुपर्छ।'
+          : 'Your child should be evaluated by a pediatrician.',
         color: '#FF9800',
       };
     } else {
@@ -302,94 +290,57 @@ export default function MChatScreen({ route, navigation }: Props) {
           <Text style={styles.headerTitle}>M-CHAT-R/F</Text>
         </View>
 
-        {!isAppropriateAge ? (
-          <View style={styles.centeredContent}>
-            <View style={styles.warningBoxLarge}>
-              <Ionicons name="warning" size={48} color="#E65100" />
-              <Text style={styles.warningTitle}>
-                {isNe ? 'उमेर उपयुक्त छैन' : 'Age Not Validated'}
-              </Text>
-              <Text style={styles.warningTextLarge}>
-                {isNe 
-                  ? `यो स्क्रिनिङ १६-३० महिनाका बच्चाहरूका लागि मात्र हो। तपाईंको बच्चा ${ageMonths} महिनाको छ।`
-                  : `This screening is validated for children aged 16–30 months. Your child is ${ageMonths} months old.`}
-              </Text>
-              <TouchableOpacity style={styles.goBackBtn} onPress={() => navigation.goBack()}>
-                <Text style={styles.goBackBtnText}>{isNe ? 'फिर्ता जानुहोस्' : 'Go Back'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.intro}>
+        {!isAppropriateAge && (
+          <View style={styles.warningBox}>
+            <Ionicons name="warning" size={20} color="#E65100" />
+            <Text style={styles.warningText}>
               {isNe 
-                ? 'कृपया आफ्नो बच्चाको व्यवहार बारे तलका प्रश्नहरूको उत्तर दिनुहोस्।'
-                : 'Please answer the following questions about your child\'s behavior.'}
+                ? `यो स्क्रिनिङ १६-३० महिनाका बच्चाहरूका लागि मात्र हो। तपाईंको बच्चा ${ageMonths} महिनाको छ।`
+                : `This screening is validated for children aged 16–30 months. Your child is ${ageMonths} months old.`}
             </Text>
-
-            {MCHAT_QUESTIONS.map((q, index) => {
-              const isConcern = concerns.includes(q.id);
-              const showHighlights = isReviewMode && isConcern;
-              
-              return (
-                <View key={q.id} style={[styles.questionCard, showHighlights && styles.concernCard]}>
-                  <View style={styles.questionHeader}>
-                    <Text style={styles.questionNum}>{isNe ? `प्रश्न ${index + 1}` : `Question ${index + 1}`}</Text>
-                    {showHighlights && (
-                      <View style={styles.concernBadge}>
-                        <Ionicons name="alert-circle" size={14} color="#F44336" />
-                        <Text style={styles.concernBadgeText}>{isNe ? 'चिन्ताको विषय' : 'Concern'}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.questionText}>{isNe ? q.questionNe : q.questionEn}</Text>
-                  <Text style={styles.questionDesc}>{isNe ? q.descriptionNe : q.descriptionEn}</Text>
-                  
-                  <View style={styles.optionsRow}>
-                    <TouchableOpacity 
-                      style={[
-                        styles.optionBtn, 
-                        responses[q.id] === true && styles.optionBtnActive,
-                        showHighlights && responses[q.id] === true && styles.optionBtnConcern
-                      ]}
-                      onPress={() => !isReviewMode && setResponses(prev => ({ ...prev, [q.id]: true }))}
-                      disabled={isReviewMode}
-                    >
-                      <Text style={[styles.optionText, responses[q.id] === true && styles.optionTextActive]}>
-                        {isNe ? 'हो' : 'Yes'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[
-                        styles.optionBtn, 
-                        responses[q.id] === false && styles.optionBtnActive,
-                        showHighlights && responses[q.id] === false && styles.optionBtnConcern
-                      ]}
-                      onPress={() => !isReviewMode && setResponses(prev => ({ ...prev, [q.id]: false }))}
-                      disabled={isReviewMode}
-                    >
-                      <Text style={[styles.optionText, responses[q.id] === false && styles.optionTextActive]}>
-                        {isNe ? 'होइन' : 'No'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-
-            {!isReviewMode ? (
-              <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-                <Text style={styles.submitBtnText}>{isNe ? 'नतिजा हेर्नुहोस्' : 'See Results'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#666' }]} onPress={() => navigation.goBack()}>
-                <Text style={styles.submitBtnText}>{isNe ? 'फिर्ता जानुहोस्' : 'Go Back'}</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
+          </View>
         )}
 
-        <Modal visible={showResultModal} transparent animationType="fade">
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.intro}>
+            {isNe 
+              ? 'कृपया आफ्नो बच्चाको व्यवहार बारे तलका प्रश्नहरूको उत्तर दिनुहोस्।'
+              : 'Please answer the following questions about your child\'s behavior.'}
+          </Text>
+
+          {MCHAT_QUESTIONS.map((q, index) => (
+            <View key={q.id} style={styles.questionCard}>
+              <Text style={styles.questionNum}>{isNe ? `प्रश्न ${index + 1}` : `Question ${index + 1}`}</Text>
+              <Text style={styles.questionText}>{isNe ? q.questionNe : q.questionEn}</Text>
+              <Text style={styles.questionDesc}>{isNe ? q.descriptionNe : q.descriptionEn}</Text>
+              
+              <View style={styles.optionsRow}>
+                <TouchableOpacity 
+                  style={[styles.optionBtn, responses[q.id] === true && styles.optionBtnActive]}
+                  onPress={() => setResponses(prev => ({ ...prev, [q.id]: true }))}
+                >
+                  <Text style={[styles.optionText, responses[q.id] === true && styles.optionTextActive]}>
+                    {isNe ? 'हो' : 'Yes'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.optionBtn, responses[q.id] === false && styles.optionBtnActive]}
+                  onPress={() => setResponses(prev => ({ ...prev, [q.id]: false }))}
+                >
+                  <Text style={[styles.optionText, responses[q.id] === false && styles.optionTextActive]}>
+                    {isNe ? 'होइन' : 'No'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+            <Text style={styles.submitBtnText}>{isNe ? 'नतिजा हेर्नुहोस्' : 'See Results'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <Modal visible={showResult} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={[styles.scoreBadge, { backgroundColor: result.color }]}>
@@ -399,19 +350,14 @@ export default function MChatScreen({ route, navigation }: Props) {
               <Text style={[styles.resultTitle, { color: result.color }]}>{result.title}</Text>
               <Text style={styles.resultMsg}>{result.message}</Text>
               
-              {score > 0 && (
-                <Text style={styles.reviewPrompt}>
-                  {isNe 
-                    ? 'चिन्ताका विषयहरू हेर्नको लागि तल स्क्रोल गर्नुहोस्।' 
-                    : 'Scroll down to review the areas of concern.'}
-                </Text>
-              )}
-
               <TouchableOpacity 
                 style={styles.closeBtn} 
-                onPress={() => setShowResultModal(false)}
+                onPress={() => {
+                  setShowResult(false);
+                  navigation.goBack();
+                }}
               >
-                <Text style={styles.closeBtnText}>{isNe ? 'समीक्षा गर्नुहोस्' : 'Review Answers'}</Text>
+                <Text style={styles.closeBtnText}>{isNe ? 'बन्द गर्नुहोस्' : 'Close'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -426,26 +372,17 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   backBtn: { padding: 4, marginRight: 16 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  warningBoxLarge: { backgroundColor: '#fff', padding: 30, borderRadius: 20, alignItems: 'center', elevation: 4, width: '100%' },
-  warningTitle: { fontSize: 22, fontWeight: 'bold', color: '#333', marginTop: 15, marginBottom: 10 },
-  warningTextLarge: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 24, marginBottom: 30 },
-  goBackBtn: { backgroundColor: '#1a73e8', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 10 },
-  goBackBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  warningBox: { flexDirection: 'row', backgroundColor: '#FFF3E0', padding: 12, margin: 16, borderRadius: 8, alignItems: 'center', gap: 10 },
+  warningText: { flex: 1, fontSize: 13, color: '#E65100', fontWeight: '500' },
   scrollContent: { padding: 16, paddingBottom: 40 },
   intro: { fontSize: 15, color: '#666', marginBottom: 20, lineHeight: 22 },
-  questionCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, elevation: 2, borderLeftWidth: 0 },
-  concernCard: { borderLeftWidth: 4, borderLeftColor: '#F44336' },
-  questionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  concernBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFEBEE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-  concernBadgeText: { fontSize: 10, fontWeight: 'bold', color: '#F44336' },
-  questionNum: { fontSize: 12, fontWeight: 'bold', color: '#1a73e8', textTransform: 'uppercase' },
+  questionCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, elevation: 2 },
+  questionNum: { fontSize: 12, fontWeight: 'bold', color: '#1a73e8', textTransform: 'uppercase', marginBottom: 4 },
   questionText: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 8, lineHeight: 22 },
   questionDesc: { fontSize: 13, color: '#888', marginBottom: 16, fontStyle: 'italic' },
   optionsRow: { flexDirection: 'row', gap: 12 },
   optionBtn: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center' },
   optionBtnActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  optionBtnConcern: { backgroundColor: '#F44336', borderColor: '#F44336' },
   optionText: { fontSize: 15, fontWeight: '600', color: '#666' },
   optionTextActive: { color: '#fff' },
   submitBtn: { backgroundColor: '#1a73e8', height: 55, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 10, elevation: 3 },
@@ -456,8 +393,7 @@ const styles = StyleSheet.create({
   scoreText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
   scoreLabel: { fontSize: 12, color: '#fff', fontWeight: 'bold' },
   resultTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  resultMsg: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
-  reviewPrompt: { fontSize: 14, color: '#888', marginBottom: 20, fontStyle: 'italic' },
+  resultMsg: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 24, marginBottom: 30 },
   closeBtn: { backgroundColor: '#f0f0f0', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 10 },
   closeBtnText: { color: '#333', fontSize: 16, fontWeight: '600' },
 });
