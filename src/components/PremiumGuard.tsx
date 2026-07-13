@@ -56,8 +56,8 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({
           </Text>
           <Text style={styles.paywallText}>
             {isNe
-              ? 'यह विस्तारित विश्लेषण के लिए प्रीमियम सदस्यता की आवश्यकता है।'
-              : 'This feature requires a premium subscription for detailed analysis.'}
+              ? 'यो सुविधा प्रयोग गर्न प्रिमियम सदस्यता आवश्यक छ।'
+              : 'This feature requires a premium subscription.'}
           </Text>
           <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
             <Text style={styles.upgradeBtnText}>
@@ -66,7 +66,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({
           </TouchableOpacity>
           <Text style={styles.paywallNote}>
             {isNe
-              ? 'प्रीमियम सदस्यता के साथ सभी सुविधाओं को अनलॉक करें'
+              ? 'प्रिमियम सदस्यता लिएर सबै सुविधाहरू प्रयोग गर्नुहोस्।'
               : 'Unlock all features with premium membership'}
           </Text>
         </View>
@@ -100,7 +100,7 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
           </Text>
           <Text style={styles.previewText}>
             {isNe
-              ? 'सभी मील के पत्थर को ट्रैक करने के लिए अपग्रेड करें'
+              ? 'सबै विकासका चरणहरू ट्र्याक गर्न प्रिमियम सदस्यता लिनुहोस्।'
               : 'Upgrade to track all milestones'}
           </Text>
         </View>

@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 20.5.1",
+    "version": ">=20.5.1",
     "appVersionSource": "remote"
   },
   "build": {
@@ -9,13 +9,17 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "prebuildCommand": "npx expo prebuild --clean --platform android",
+      "env": {
+        "EXPO_PUBLIC_ENV": "preview"
+      }
     },
     "production": {
       "autoIncrement": true
     }
-  },
-  "submit": {
-    "production": {}
   }
 }

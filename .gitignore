@@ -14,3 +14,5 @@ android/app/build/
 ios/build/
 google-services.json
 GoogleService-Info.plist
+android/
+ios/
