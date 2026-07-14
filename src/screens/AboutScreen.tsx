@@ -83,7 +83,7 @@ export default function AboutScreen({ navigation }: Props) {
 
               <TouchableOpacity 
                 style={styles.contactBtn}
-                onPress={() => Linking.openURL('https://wa.me/9779840516603')}
+                onPress={() => Linking.openURL('https://wa.me/9779704533141')}
               >
                 <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
                 <Text style={styles.contactBtnText}>WhatsApp</Text>
@@ -122,12 +122,12 @@ export default function AboutScreen({ navigation }: Props) {
 
         {/* Disclaimer */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{language === 'en' ? 'Important Disclaimer' : 'महत्त्वपूर्ण अस्वीकरण'}</Text>
+          <Text style={styles.sectionTitle}>{language === 'en' ? 'Important Disclaimer' : 'महत्त्वपूर्ण सूचना'}</Text>
           <View style={styles.disclaimerBox}>
             <Text style={styles.disclaimerText}>
               {language === 'en'
                 ? 'This application is designed for educational and informational purposes only. The content provided is based on WHO, CDC, and NIP guidelines and is not a substitute for professional medical advice, diagnosis, or treatment.'
-                : 'यो अनुप्रयोग केवल शैक्षिक र सूचनात्मक उद्देश्यहरूको लागि डिजाइन गरिएको हो। प्रदान गरिएको सामग्री WHO, CDC, र NIP दिशानिर्देशहरूमा आधारित छ र यो  चिकित्सा सल्लाह, निदान, वा उपचारको विकल्प होइन।'}
+                : 'यो एप्लिकेसन शैक्षिक र सूचनामूलक प्रयोजनका लागि मात्र तयार गरिएको हो। यहाँ राखिएका सामग्रीहरू विश्व स्वास्थ्य संगठन (WHO), CDC र नेपालको राष्ट्रिय खोप कार्यक्रम (NIP) को निर्देशिकामा आधारित छन्। कृपया ध्यान दिनुहोला, यो सामग्री डाक्टरको  सल्लाह, रोगको पहिचान वा उपचारको विकल्प होइन।यो कुनै अस्पताल वा डाक्टरको विकल्प नभएकाले स्वास्थ्य सम्बन्धी समस्या परेमा सधैँ विशेषज्ञ डाक्टरसँगै परामर्श लिनुहोला।'}
             </Text>
           </View>
         </View>

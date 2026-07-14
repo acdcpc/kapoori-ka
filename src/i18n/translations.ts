@@ -237,8 +237,8 @@ export const translations = {
     mchatLowRiskDesc: 'थप कारबाही आवश्यक छैन। २४ महिनामा फेरि जाँच गर्नुहोस्।',
     mchatMediumRiskDesc: 'फलो-अप सिफारिस गरिन्छ। कृपया बालरोग विशेषज्ञसँग छलफल गर्नुहोस्।',
     mchatHighRiskDesc: 'तुरुन्त रेफरल सिफारिस गरिन्छ। कृपया विकास बालरोग विशेषज्ञसँग परामर्श गर्नुहोस्।',
-    mchatNotApplicable: 'M-CHAT १८–३० महिनाका बच्चाहरूका लागि हो।',
-    mchatAgeRequired: 'बच्चाको उमेर १८ देखि ३० महिनाबीच हुनुपर्छ।',
+    mchatNotApplicable: 'M-CHAT १६–३० महिनाका बच्चाहरूका लागि हो।',
+    mchatAgeRequired: 'बच्चाको उमेर १६ देखि ३० महिनाबीच हुनुपर्छ।',
 
     // PDF Report
     pdfReport: 'वृद्धि रिपोर्ट',
