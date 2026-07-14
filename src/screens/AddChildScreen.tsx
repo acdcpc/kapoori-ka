@@ -241,7 +241,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.form}>
           <Text style={styles.label}>{isNe ? 'बच्चाको नाम (देवनागरीमा) *' : "Child's Name *"}</Text>
           {isNe ? (
@@ -250,7 +250,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
                 style={[styles.input, { fontSize: 18 }]} 
                 value={nameNepali} 
                 onChangeText={setNameNepali} 
-                placeholder={'जस्तै: आरव शर्मा'} 
+                placeholder={'जस्तै:एलिशा कार्की'} 
               />
               <Text style={styles.hintText}>{isNe ? 'माथि देवनागरीमा बच्चाको नाम लेख्नुहोस्' : ''}</Text>
             </>
@@ -259,13 +259,13 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
               style={styles.input} 
               value={name} 
               onChangeText={setName} 
-              placeholder={'e.g., Aarav Sharma'} 
+              placeholder={'e.g.,Alisha Karki'} 
             />
           )}
           {isNe && nameNepali.trim() && (
             <Text style={styles.hintText}>{isNe ? 'रोमनमा पनि नाम (वैकल्पिक):' : 'Name in Roman (optional):'}</Text>
           )}
-          {isNe && <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={'e.g., Aarav Sharma'} />}
+          {isNe && <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={'e.g., Alisha Karki'} />}
           
           <Text style={styles.label}>{t.sex}</Text>
           <View style={styles.sexContainer}>
@@ -296,6 +296,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
               <TextInput style={styles.input} keyboardType="decimal-pad" value={birthLength} onChangeText={setBirthLength} placeholder="e.g., 50" />
             </View>
           </View>
+
+          <Text style={styles.sectionLabel}>{isNe ? '— हालको नाप (यदि लागू भएमा) —' : '— Current Measurements (if applicable) —'}</Text>
 
           <View style={styles.row}>
             <View style={styles.col}>
@@ -349,8 +351,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   form: { padding: 20 },
-  label: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 8, marginTop: 12 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16 },
+  label: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 6, marginTop: 16 },
+  input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#ddd', borderRadius: 10, padding: 14, fontSize: 16, color: '#222' },
   row: { flexDirection: 'row', gap: 10 },
   col: { flex: 1 },
   sexContainer: { flexDirection: 'row', gap: 10, marginBottom: 10 },
@@ -360,7 +362,8 @@ const styles = StyleSheet.create({
   sexBtnTextActive: { color: '#fff' },
   dateBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12 },
   dateBtnText: { fontSize: 16, color: '#1a73e8', fontWeight: '600' },
-  saveBtn: { backgroundColor: '#1a73e8', borderRadius: 8, padding: 16, marginTop: 30, alignItems: 'center' },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#1a73e8', textAlign: 'center', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  saveBtn: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 18, marginTop: 36, alignItems: 'center', elevation: 3, shadowColor: '#1a73e8', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: '#fff', width: '90%', borderRadius: 16, padding: 20 },
