@@ -234,7 +234,7 @@ export default function PDFReportScreen({ route }: Props) {
   };
 
   return (
-    <PremiumGuard>
+    <PremiumGuard feature="growth_report" onUpgrade={() => navigation.navigate('Subscription')}>
       <View style={styles.container}>
         <Text style={styles.title}>
           {isNe ? 'PDF स्वास्थ्य रिपोर्ट' : 'Generate PDF Health Report'}

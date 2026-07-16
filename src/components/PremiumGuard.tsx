@@ -3,6 +3,7 @@ import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 export type FeatureType = 'immunization' | 'growth_report' | 'milestone_tracker' | 'nutrition' | 'autism_screening';
 
@@ -14,18 +15,15 @@ interface PremiumGuardProps {
 
 // Feature Access Matrix
 const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
-  immunization: 'free',           // Always free
+  immunization: 'free',           // Free base, tabs gated in-screen
   growth_report: 'premium',       // Paid feature
-  milestone_tracker: 'premium',   // Paid feature
+  milestone_tracker: 'premium',   // Premium to mark achieved, free to view
   nutrition: 'free',              // Always free
-  autism_screening: 'free',       // Always free
+  autism_screening: 'premium',    // Premium only
 };
 
 // Mock subscription check (replace with actual auth context)
-const isUserPremium = (): boolean => {
-  // TODO: Get from AuthContext
-  return false;
-};
+
 
 export const PremiumGuard: React.FC<PremiumGuardProps> = ({ 
   children, 
@@ -35,7 +33,9 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const isPremiumFeature = FEATURE_ACCESS[feature] === 'premium';
-  const userIsPremium = isUserPremium();
+  // Use auth context to check premium
+  const { subscription } = useAuth();
+  const userIsPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
   // If it's a free feature or user is premium, show content
   if (!isPremiumFeature || userIsPremium) {

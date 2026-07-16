@@ -16,11 +16,28 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const validateEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
   const handleEmailAction = async () => {
     if (!email || !password) {
       Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'कृपया इमेल र पासवर्ड दुवै भर्नुहोस्' : 'Please enter both email and password');
+      return;
+    }
+    if (!validateEmail(email)) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'कृपया वैध इमेल ठेगाना प्रविष्ट गर्नुहोस्' : 'Please enter a valid email address');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'पासवर्ड कम्तिमा ६ characters को हुनुपर्छ' : 'Password must be at least 6 characters');
+      return;
+    }
+    if (isRegistering && password !== confirmPassword) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'पासवर्ड मिलेन। कृपया पुन: प्रयास गर्नुहोस्' : 'Passwords do not match. Please try again.');
       return;
     }
     try {
@@ -65,7 +82,11 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Text style={styles.title}>कपूरी क</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleEmoji}></Text>
+            <Text style={styles.title}>कपूरी क</Text>
+            <Text style={styles.titleEnglish}>Kapoori Ka</Text>
+          </View>
           <Text style={styles.subtitle}>{isNe ? 'आफ्नो बच्चाको विकास ट्र्याक गर्नुहोस्' : 'Track your child\'s growth'}</Text>
         </View>
 
@@ -81,21 +102,44 @@ export default function LoginScreen() {
           />
 
           <Text style={styles.label}>{isNe ? 'पासवर्ड' : 'Password'}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="********"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={styles.pwContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              placeholder="********"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity style={styles.btn} onPress={handleEmailAction} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{isRegistering ? (isNe ? 'खाता सिर्जना गर्नुहोस्' : 'Create Account') : (isNe ? 'लगइन' : 'Login')}</Text>}
           </TouchableOpacity>
 
+          {isRegistering && (
+            <>
+              <Text style={styles.label}>{isNe ? 'पासवर्ड पुष्टि गर्नुहोस्' : 'Confirm Password'}</Text>
+              <View style={styles.pwContainer}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="********"
+                  secureTextEntry={!showConfirmPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
           <TouchableOpacity 
             style={styles.toggleBtn} 
-            onPress={() => setIsRegistering(!isRegistering)}
+            onPress={() => { setIsRegistering(!isRegistering); setConfirmPassword(''); }}
           >
             <Text style={styles.toggleText}>
               {isRegistering 
@@ -134,11 +178,15 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 30, justifyContent: 'center' },
   logoContainer: { alignItems: 'center', marginBottom: 50 },
   logoEmoji: { fontSize: 60, marginBottom: 10 },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#1a73e8' },
-  subtitle: { fontSize: 16, color: '#666', marginTop: 5 },
+  titleContainer: { alignItems: 'center', marginBottom: 8 },
+  titleEmoji: { fontSize: 48, marginBottom: 8 },
+  title: { fontSize: 36, fontWeight: '800', color: '#1a73e8', letterSpacing: 1 },
+  titleEnglish: { fontSize: 14, color: '#1a73e8', fontWeight: '500', opacity: 0.7, marginTop: 2 },
+  subtitle: { fontSize: 16, color: '#666', marginTop: 12 },
   form: { width: '100%' },
   label: { fontSize: 14, color: '#888', marginBottom: 8, fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 12, paddingHorizontal: 15, height: 55, fontSize: 18, color: '#333', marginBottom: 20 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 12, paddingHorizontal: 15, height: 55, fontSize: 18, color: '#333', marginBottom: 10 },
+  pwInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 12, paddingHorizontal: 45, height: 55, fontSize: 18, color: '#333', flex: 1 },
   btn: { backgroundColor: '#1a73e8', height: 55, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   btnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   orText: { textAlign: 'center', marginVertical: 20, fontSize: 16, color: '#888' },
@@ -154,4 +202,8 @@ const styles = StyleSheet.create({
   langBtnActive: { backgroundColor: '#1a73e8' },
   langBtnText: { color: '#444', fontWeight: '600', fontSize: 14 },
   langBtnTextActive: { color: '#fff' },
+  pwContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, position: 'relative' },
+  eyeBtn: { position: 'absolute', right: 10, top: 14 },
+  forgotBtn: { alignItems: 'center', padding: 8, marginBottom: 4 },
+  forgotText: { color: '#1a73e8', fontSize: 14, fontWeight: '500' },
 });

@@ -24,7 +24,7 @@ type HomeScreenProps = {
 };
 
 const HOW_TO_STEPS_EN = [
-  { icon: '➕', text: 'Tap the blue + button below to add your child' },
+  { icon: '🔵', text: 'Tap the blue ⊕ button at the bottom to add your child' },
   { icon: '📈', text: 'Track Growth — record weight & height' },
   { icon: '💉', text: 'Immunization — see & track vaccines' },
   { icon: '🧠', text: 'Milestones — check developmental progress' },
@@ -32,7 +32,7 @@ const HOW_TO_STEPS_EN = [
 ];
 
 const HOW_TO_STEPS_NE = [
-  { icon: '➕', text: 'आफ्नो बच्चाको विवरण थप्न तलको निलो + बटनमा थिच्नुहोस्।' },
+  { icon: '🔵', text: 'आफ्नो बच्चा थप्न तलको निलो ⊕ बटन थिच्नुहोस्।' },
   { icon: '📈', text: 'वृद्धि — तौल र उचाइ रेकर्ड गर्नुहोस्' },
   { icon: '💉', text: 'खोप — खोप तालिका हेर्नुहोस् र ट्र्याक गर्नुहोस्' },
   { icon: '🧠', text: 'विकास — बच्चाको शारीरिक र मानसिक विकास जाँच्नुहोस्।' },
@@ -267,8 +267,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <Text style={styles.emptyText}>{t.noChildren}</Text>
           <Text style={styles.hintText}>
             {isNe
-              ? 'तलको + बटन थिचेर आफ्नो बच्चाको प्रोफाइल बनाउनुहोस्।'
-              : 'Tap the blue + button below to create your child\'s profile.'}
+              ? 'तलको निलो ⊕ बटन थिचेर आफ्नो बच्चाको प्रोफाइल बनाउनुहोस्।'
+              : 'Tap the blue ⊕ button below to create your child\'s profile.'}
           </Text>
           {/* Feature quick-look for empty state */}
           <View style={styles.featurePreview}>
@@ -295,16 +295,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {/* WhatsApp Support Card */}
-      {/* WhatsApp Support Card */}
       {children.length > 0 && (
         <View style={styles.whatsappCard}>
-          <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp} activeOpacity={0.7}>
-            <Ionicons name="logo-whatsapp" size={28} color="#fff" />
-            <View style={styles.whatsappText}>
-              <Text style={styles.whatsappTitle}>{isNe ? 'व्हाट्सअप सहायता' : 'WhatsApp Support'}</Text>
-              <Text style={styles.whatsappSub}>{isNe ? 'प्रश्न वा समस्या? हामीलाई सम्पर्क गर्नुहोस्' : 'Questions or issues? Contact us'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="#fff" />
+          <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp} activeOpacity={0.8}>
+            <Ionicons name="logo-whatsapp" size={22} color="#fff" />
+            <Text style={styles.whatsappBtnTxt}>{isNe ? 'व्हाट्सअप सहायता' : 'WhatsApp Support'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -410,15 +405,12 @@ const styles = StyleSheet.create({
   headerIconWrap: { alignItems: 'center' },
   headerHint: { marginTop: 2 },
   headerHintText: { fontSize: 9, color: '#999', fontWeight: '500' },
-  whatsappCard: { paddingHorizontal: 16, paddingBottom: 100 },
+  whatsappCard: { paddingHorizontal: 16, paddingBottom: 100, paddingTop: 12 },
   whatsappBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#25D366', borderRadius: 16,
-    padding: 16, gap: 14, elevation: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#25D366', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24,
+    gap: 10, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15, shadowRadius: 6,
   },
-  whatsappText: { flex: 1 },
-  whatsappTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  whatsappSub: { fontSize: 13, color: '#e8ffe8', marginTop: 3 },
+  whatsappBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

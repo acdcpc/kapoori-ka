@@ -19,6 +19,7 @@ import { getMilestonesForAge, AGE_BANDS, MILESTONES } from '../data/milestones';
 import { getAgeInMonths } from '../utils/growthCalculations';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PremiumGuard } from '../components/PremiumGuard';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Milestone'>;
 
@@ -30,6 +31,8 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const { language } = useContext(LanguageContext);
   const t = translations[language];
   const isNe = language === 'ne';
+  const { subscription } = useAuth();
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());
@@ -65,6 +68,19 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   useEffect(() => { loadRecords(); }, [child.id]);
 
   const updateStatus = async (milestoneId: string, status: 'achieved' | 'denied') => {
+    if (!isPremium) {
+      Alert.alert(
+        isNe ? 'प्रिमियम सुविधा' : 'Premium Feature',
+        isNe
+          ? 'विकासका चरणहरू चिन्ह लगाउन प्रिमियम सदस्यता आवश्यक छ। तपाईं सबै चरणहरू हेर्न सक्नुहुन्छ तर चिन्ह लगाउन सक्नुहुन्न।'
+          : 'Marking milestones requires a premium subscription. You can view all milestones but cannot mark them.',
+        [
+          { text: isNe ? 'पछि' : 'Later' },
+          { text: isNe ? 'अपग्रेड गर्नुहोस्' : 'Upgrade', onPress: () => navigation.navigate('Subscription') }
+        ]
+      );
+      return;
+    }
     try {
       const docId = `${child.id}_${milestoneId}`;
       await setDoc(doc(db, 'milestones', docId), {
@@ -119,7 +135,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
                 onPress={() => updateStatus(item.id, 'achieved')}
               >
                 <Ionicons name={isAchieved ? "checkmark-circle" : "ellipse-outline"} size={20} color={isAchieved ? "#fff" : "#4CAF50"} />
-                <Text style={[styles.btnText, isAchieved && styles.btnTextActive]}>{isNe ? 'भयो' : 'Achieved'}</Text>
+                <Text style={[styles.btnText, isAchieved && styles.btnTextActive]}>{isNe ? (isPremium || isAchieved ? 'भयो' : '🔒 भयो') : (isPremium || isAchieved ? 'Achieved' : '🔒 Achieved')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -127,7 +143,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
                 onPress={() => updateStatus(item.id, 'denied')}
               >
                 <Ionicons name={isDenied ? "close-circle" : "ellipse-outline"} size={20} color={isDenied ? "#fff" : "#f44336"} />
-                <Text style={[styles.btnText, isDenied && styles.btnTextActive]}>{isNe ? 'भएको छैन' : 'Not Yet'}</Text>
+                <Text style={[styles.btnText, isDenied && styles.btnTextActive]}>{isNe ? (isPremium || isDenied ? 'भएको छैन' : '🔒 भएको छैन') : (isPremium || isDenied ? 'Not Yet' : '🔒 Not Yet')}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -157,7 +173,6 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   if (loading) return <ActivityIndicator size="large" color="#1a73e8" style={{ flex: 1 }} />;
 
   return (
-    <PremiumGuard>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
@@ -209,7 +224,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
           </SafeAreaView>
         </Modal>
       </SafeAreaView>
-    </PremiumGuard>
+
   );
 }
 

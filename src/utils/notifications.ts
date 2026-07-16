@@ -65,11 +65,31 @@ export const scheduleVaccineReminders = async (
   for (const vaccine of toSchedule.slice(0, 10)) {
     const dueDate = dayjs(vaccine.scheduledDate);
 
-    // REMINDER 1: 2 Days Before
+    // REMINDER 1: 7 Days Before (premium only)
+    const reminder7Days = dueDate.subtract(7, 'day').hour(9).minute(0).second(0);
+
+    // REMINDER 2: 2 Days Before
     const reminder2Days = dueDate.subtract(2, 'day').hour(9).minute(0).second(0);
 
-    // REMINDER 2: Day Of at 8:30am
+    // REMINDER 3: Day Of at 8:30am
     const reminderDayOf = dueDate.hour(8).minute(30).second(0);
+
+    // 7-DAY REMINDER
+    if (reminder7Days.isAfter(dayjs())) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `vaccine_7d_${childName}_${vaccine.id}`,
+        content: {
+          title: language === 'en'
+            ? `💉 Vaccine in 7 Days — ${childName}`
+            : `💉 ७ दिनमा खोप — ${childName}`,
+          body: language === 'en'
+            ? `${vaccine.name || vaccine.nameNe} is due on ${dueDate.format('YYYY-MM-DD')}. Mark your calendar!`
+            : `${vaccine.nameNe || vaccine.name} को मिति ${dueDate.format('YYYY-MM-DD')} छ। तयारी गर्नुहोस्!`,
+          data: { type: 'vaccine', vaccineId: vaccine.id, childName },
+        },
+        trigger: { date: reminder7Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
+      });
+    }
 
     if (reminder2Days.isAfter(dayjs())) {
       await Notifications.scheduleNotificationAsync({

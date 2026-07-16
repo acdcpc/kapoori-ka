@@ -4,6 +4,7 @@ export default {
   expo: {
     name: process.env.APP_NAME || "कपूरी क (Kapoori Ka)",
     slug: "kapoori-ka",
+    scheme: "com.kapoori.ka",
     version: process.env.APP_VERSION || "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -15,16 +16,33 @@ export default {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.kapoorika.app"
+      bundleIdentifier: "com.kapoori.ka"
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/android-icon-foreground.png",
         backgroundColor: "#E6F4FE"
       },
-      package: "com.kapoorika.app",
+      package: "com.kapoori.ka",
       permissions: [
         "android.permission.INTERNET"
+      ],
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "*.firebaseapp.com",
+              pathPrefix: "/__/auth/handler"
+            },
+            {
+              scheme: "com.kapoori.ka"
+            }
+          ],
+          category: ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     web: {
@@ -34,7 +52,8 @@ export default {
       "expo-font",
       "expo-splash-screen",
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications"
     ],
     extra: {
       eas: {

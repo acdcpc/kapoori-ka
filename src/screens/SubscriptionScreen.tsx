@@ -8,23 +8,23 @@ import { useAuth } from '../context/AuthContext';
 
 import { WHATSAPP_NUMBER, ESEWA_QR_URL } from '../constants';
 
-const MONTHLY_PRICE_NPR = 0;
-const YEARLY_PRICE_NPR  = 0;
+const MONTHLY_PRICE_NPR = 100;
+const YEARLY_PRICE_NPR  = 500;
 
 const FREE_FEATURES_EN = [
   { icon: '👶', text: '1 child profile' },
   { icon: '📈', text: 'Basic growth chart (weight & height)' },
-  { icon: '💉', text: 'Full immunization tracker & schedule' },
-  { icon: '🔔', text: 'Vaccine reminders (2 days before)' },
-  { icon: '🥦', text: 'Nutrition guide (all age groups)' },
+  { icon: '💉', text: 'Immunization tracker & schedule (All tab)' },
+  { icon: '🧠', text: 'View all milestone cards' },
+  { icon: '🥦', text: 'Full nutrition guide (all ages)' },
 ];
 
 const FREE_FEATURES_NE = [
   { icon: '👶', text: '१ बच्चाको प्रोफाइल' },
   { icon: '📈', text: 'आधारभूत वृद्धि चार्ट (तौल र उचाइ)' },
-  { icon: '💉', text: 'पूर्ण खोप ट्र्याकर र तालिका' },
-  { icon: '🔔', text: 'खोप रिमाइन्डर (२ दिन अगाडि)' },
-  { icon: '🥦', text: 'पोषण गाइड (सबै उमेर समूह)' },
+  { icon: '💉', text: 'खोप ट्र्याकर र तालिका (सबै ट्याब)' },
+  { icon: '🧠', text: 'सबै विकासका चरणहरू हेर्न पाइने' },
+  { icon: '🥦', text: 'पूर्ण पोषण गाइड (सबै उमेर)' },
 ];
 
 const PAID_FEATURES_EN = [
@@ -222,7 +222,7 @@ export default function SubscriptionScreen() {
             <View>
               <Text style={styles.planName}>{isNe ? 'वार्षिक' : 'Yearly'}</Text>
               <Text style={styles.planPrice}>NPR {YEARLY_PRICE_NPR} / {isNe ? 'वर्ष' : 'year'}</Text>
-              <Text style={styles.planSaving}>{isNe ? '४४% बचत!' : '44% saving!'}</Text>
+              <Text style={styles.planSaving}>{isNe ? '५८% बचत!' : '58% saving!'}</Text>
             </View>
             <View>
               <View style={[styles.planRadio, selectedPlan === 'yearly' && styles.planRadioActive]} />
