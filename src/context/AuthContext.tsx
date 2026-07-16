@@ -47,11 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Google Auth hooks
+  // Google Auth hooks - use webClientId for all platforms (most reliable)
   const [requestGoogle, responseGoogle, promptGoogle] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
+    selectAccount: true,
   });
   
   const [googleAuthMode, setGoogleAuthMode] = useState<'signin' | 'upgrade'>('signin');

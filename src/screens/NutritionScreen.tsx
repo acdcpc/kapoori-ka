@@ -2,11 +2,11 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
+import { PremiumGuard } from '../components/PremiumGuard';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import dayjs from 'dayjs';
-import { PremiumGuard } from '../components/PremiumGuard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Nutrition'>;
 
@@ -434,7 +434,7 @@ export default function NutritionScreen({ route, navigation }: Props) {
   const childAgeMonths = child ? dayjs().diff(dayjs(child.dateOfBirth), 'month') : highlightAge;
 
   return (
-    <PremiumGuard>
+    <PremiumGuard feature="nutrition" onUpgrade={() => navigation.navigate('Subscription')}>
       <View style={styles.container}>
         <View style={styles.tabBar}>
           {[

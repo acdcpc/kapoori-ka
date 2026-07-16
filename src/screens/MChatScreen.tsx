@@ -293,7 +293,7 @@ export default function MChatScreen({ route, navigation }: Props) {
   const result = getResultMessage();
 
   return (
-    <PremiumGuard>
+    <PremiumGuard feature="autism_screening" onUpgrade={() => navigation.navigate('Subscription')}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>

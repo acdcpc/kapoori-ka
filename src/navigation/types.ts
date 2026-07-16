@@ -11,6 +11,7 @@ export type RootStackParamList = {
   Milestone: { child: Child };
   MChat: { child: Child };
   PDFReport: { child: Child };
+  HeightMeasure: { child: Child } | undefined;
   Subscription: undefined;
   About: undefined;
   Nutrition: { child?: Child; highlightAge?: number } | undefined;

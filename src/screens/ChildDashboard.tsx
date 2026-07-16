@@ -5,6 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+
+import { doc, deleteDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { Alert } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
@@ -26,7 +30,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
     { title: t.growthChart,    icon: '📈', color: '#4CAF50', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
     { title: t.immunization,   icon: '💉', color: '#1a73e8', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
     { title: t.milestones,     icon: '🧠', color: '#9C27B0', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
-    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
+    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: false },
     { title: t.mchat,          icon: '🔍', color: '#FF5722', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
   ];
@@ -43,6 +47,42 @@ export default function ChildDashboard({ route, navigation }: Props) {
           <View style={styles.headerTop}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              Alert.alert(
+                isNe ? 'बच्चा हटाउने?' : 'Delete Child?',
+                isNe
+                  ? `के तपाईं ${child.name} लाई स्थायी रूपमा हटाउन चाहनुहुन्छ? यो कार्य पूर्ववत गर्न सकिने छैन।`
+                  : `Are you sure you want to permanently delete ${child.name}? This cannot be undone.`,
+                [
+                  { text: isNe ? 'रद्द गर्नुहोस्' : 'Cancel' },
+                  {
+                    text: isNe ? 'हटाउनुहोस्' : 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        // Delete child doc
+                        await deleteDoc(doc(db, 'children', child.id));
+                        // Delete related records
+                        const collections = ['growth_records', 'vaccinations', 'milestones', 'mchat_responses'];
+                        for (const col of collections) {
+                          const q = query(collection(db, col), where('childId', '==', child.id));
+                          const snap = await getDocs(q);
+                          const batch: Promise<void>[] = [];
+                          snap.forEach(d => batch.push(deleteDoc(doc(db, col, d.id))));
+                          await Promise.all(batch);
+                        }
+                        Alert.alert(isNe ? 'हटाइयो' : 'Deleted', `${child.name} ${isNe ? 'हटाइयो' : 'has been removed.'}`);
+                        navigation.goBack();
+                      } catch {
+                        Alert.alert('Error', isNe ? 'हटाउन सकिएन' : 'Could not delete child.');
+                      }
+                    }
+                  }
+                ]
+              );
+            }} style={styles.deleteBtn}>
+              <Ionicons name="trash-outline" size={22} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>
           </View>
           <Text style={styles.headerEmoji}>{child.sex === 'male' ? '👦' : '👧'}</Text>
@@ -120,8 +160,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   scrollContent: { paddingBottom: 40 },
   header: { paddingTop: 10, paddingBottom: 30, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 10 },
+  headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   backBtn: { padding: 8 },
+  deleteBtn: { padding: 8 },
   headerEmoji: { fontSize: 60, marginBottom: 10 },
   headerName: { fontSize: 26, fontWeight: '800', color: '#fff' },
   headerNameNepali: { fontSize: 18, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
