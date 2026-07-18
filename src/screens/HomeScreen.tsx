@@ -291,18 +291,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           renderItem={renderChild}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          ListFooterComponent={
+            <View style={styles.whatsappCard}>
+              <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp} activeOpacity={0.8}>
+                <Ionicons name="logo-whatsapp" size={22} color="#fff" />
+                <Text style={styles.whatsappBtnTxt}>{isNe ? 'व्हाट्सअप सहायता' : 'WhatsApp Support'}</Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
       )}
 
-      {/* WhatsApp Support Card */}
-      {children.length > 0 && (
-        <View style={styles.whatsappCard}>
-          <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp} activeOpacity={0.8}>
-            <Ionicons name="logo-whatsapp" size={22} color="#fff" />
-            <Text style={styles.whatsappBtnTxt}>{isNe ? 'व्हाट्सअप सहायता' : 'WhatsApp Support'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddChild')}>
         <Ionicons name="add" size={30} color="#fff" />
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   stepIcon: { fontSize: 18, marginRight: 10 },
   stepText: { fontSize: 13, color: '#444', flex: 1, lineHeight: 18 },
 
-  list: { paddingHorizontal: 12, paddingBottom: 160 },
+  list: { paddingHorizontal: 12, paddingBottom: 16 },
   childCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   headerIconWrap: { alignItems: 'center' },
   headerHint: { marginTop: 2 },
   headerHintText: { fontSize: 9, color: '#999', fontWeight: '500' },
-  whatsappCard: { paddingHorizontal: 16, paddingBottom: 100, paddingTop: 12 },
+  whatsappCard: { paddingHorizontal: 16, paddingBottom: 80, paddingTop: 12 },
   whatsappBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#25D366', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24,

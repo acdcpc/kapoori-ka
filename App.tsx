@@ -19,6 +19,7 @@ import PDFReportScreen from './src/screens/PDFReportScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
+import HeightMeasureScreen from './src/screens/HeightMeasureScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { registerForPushNotifications } from './src/utils/notifications';
@@ -63,6 +64,7 @@ function Navigation() {
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'सदस्यता | Subscription' }} />
             <Stack.Screen name="About" component={AboutScreen} options={{ title: 'हाम्रो बारेमा | About' }} />
             <Stack.Screen name="Nutrition" component={NutritionScreen} options={{ title: 'पोषण | Nutrition' }} />
+            <Stack.Screen name="HeightMeasure" component={HeightMeasureScreen} options={{ title: "उचाइ नाप | Height Measure" }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

@@ -18,7 +18,7 @@ const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
   immunization: 'free',           // Free base, tabs gated in-screen
   growth_report: 'premium',       // Paid feature
   milestone_tracker: 'premium',   // Premium to mark achieved, free to view
-  nutrition: 'free',              // Always free
+  nutrition: 'premium',           // Premium feature
   autism_screening: 'premium',    // Premium only
 };
 
@@ -61,7 +61,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({
           </Text>
           <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
             <Text style={styles.upgradeBtnText}>
-              {isNe ? 'अपग्रेड करें' : 'Upgrade Now'}
+              {isNe ? 'अपग्रेड गर्नुहोस्' : 'Upgrade Now'}
             </Text>
           </TouchableOpacity>
           <Text style={styles.paywallNote}>
