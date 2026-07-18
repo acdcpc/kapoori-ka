@@ -1,11 +1,13 @@
 // src/screens/HeightMeasureScreen.tsx
 // ─────────────────────────────────────────────────────────
-// Rebuilt — UI preserved, AI pipeline rewritten to match
-// the actual vision-camera-resize-plugin and react-native-fast-tflite APIs.
+// Two-stage BlazePose pipeline — matches Google's architecture.
 //
-// Pipeline:
-//   VisionCamera → Resize Plugin → 192×192 float32 tensor
-//   → Fast TFLite → 33 landmarks → heightEstimator → UI
+//   Stage 1: Detector (224×224 input → bounding boxes)
+//   Stage 2: Landmark (256×256 crop → 39 GHUM landmarks)
+//
+// Height estimated from landmarks with EMA smoothing,
+// multi-signal confidence (detector × visibility × completeness × tilt × jitter),
+// and camera distance estimation.
 // ─────────────────────────────────────────────────────────
 
 import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -16,467 +18,310 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  useCameraDevice,
-  useCameraPermission,
-  useFrameProcessor,
-  Camera,
-  runAtTargetFps,
+  useCameraDevice, useCameraPermission, useFrameProcessor,
+  Camera, runAtTargetFps,
 } from 'react-native-vision-camera';
-// declare global worklet function (injected by VisionCamera at runtime)
-declare function runOnJS<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => void;
 import { useTensorflowModel } from 'react-native-fast-tflite';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
 import { Accelerometer } from 'expo-sensors';
 import { LanguageContext } from '../context/LanguageContext';
 import type { PoseLandmark, TiltState, MeasureState } from '../ai/PoseTypes';
 import {
-  estimateHeight,
-  calculateTilt,
-  getTiltMessage,
-  getMeasureStatusMessage,
+  parseDetections, parseLandmarks, parseWorldLandmarks,
+} from '../ai/BlazePoseEngine';
+import {
+  estimateHeight, calculateTilt, getTiltMessage, getMeasureStatusMessage,
+  smoothHeight, resetSmoothing,
 } from '../ai/heightEstimator';
 
-// ── Layout constants ──
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BOX_HEIGHT_PX = SCREEN_HEIGHT * 0.7;
-const BOX_TOP_Y = (SCREEN_HEIGHT - BOX_HEIGHT_PX) / 2;
-const BOX_BOTTOM_Y = BOX_TOP_Y + BOX_HEIGHT_PX;
-const BOX_WIDTH_PX = SCREEN_WIDTH * 0.85;
-const BOX_LEFT_X = (SCREEN_WIDTH - BOX_WIDTH_PX) / 2;
+// declare runOnJS (injected by VisionCamera in worklet scope)
+declare function runOnJS<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => void;
 
-// ── Tilt Indicator ──
+// ── Layout ──
+const { width: SW, height: SH } = Dimensions.get('window');
+const BOX_H = SH * 0.7;
+const BOX_TOP = (SH - BOX_H) / 2;
+const BOX_BOT = BOX_TOP + BOX_H;
+const BOX_W = SW * 0.85;
+const BOX_L = (SW - BOX_W) / 2;
+
+// ── TiltIndicator ──
 function TiltIndicator({ tilt }: { tilt: TiltState }) {
   const { language } = useContext(LanguageContext);
-  const bubbleOffset = Math.max(-40, Math.min(40, tilt.rollDeg * 8));
-  const tiltColor = tilt.isUpright
-    ? '#4CAF50'
-    : Math.abs(tilt.pitchDeg) < 5
-      ? '#FF9800'
-      : '#F44336';
-  const msg = getTiltMessage(tilt, language as 'en' | 'ne');
-
+  const off = Math.max(-40, Math.min(40, tilt.rollDeg * 8));
+  const c = tilt.isUpright ? '#4CAF50' : Math.abs(tilt.pitchDeg) < 5 ? '#FF9800' : '#F44336';
   return (
-    <View style={styles.tiltContainer}>
-      <View style={styles.tiltBar}>
-        <View style={[styles.tiltBarBg, { borderColor: tiltColor }]}>
-          <View
-            style={[
-              styles.tiltBubble,
-              { backgroundColor: tiltColor, transform: [{ translateX: bubbleOffset }] },
-            ]}
-          />
+    <View style={S.tiltC}>
+      <View style={S.tiltBar}>
+        <View style={[S.tiltBg, { borderColor: c }]}>
+          <View style={[S.tiltBubble, { backgroundColor: c, transform: [{ translateX: off }] }]} />
         </View>
-        <View style={styles.tiltCenterLine} />
+        <View style={S.tiltCL} />
       </View>
-      <Text style={[styles.tiltText, { color: tiltColor }]}>{msg}</Text>
+      <Text style={[S.tiltT, { color: c }]}>{getTiltMessage(tilt, language as 'en' | 'ne')}</Text>
     </View>
   );
 }
 
-// ── Instruction Overlay ──
-function InstructionOverlay({ state }: { state: MeasureState }) {
+// ── Instructions ──
+function Instructions({ ms }: { ms: MeasureState }) {
   const { language } = useContext(LanguageContext);
-  const isNe = language === 'ne';
+  const n = language === 'ne';
   const steps = useMemo(() => {
-    const base = isNe
-      ? [
-          { key: 'angle', label: 'फोन सीधा', icon: '📱' },
-          { key: 'frame', label: 'बच्चा बाकस भित्र', icon: '👶' },
-          { key: 'still', label: 'स्थिर', icon: '⏸️' },
-        ]
-      : [
-          { key: 'angle', label: 'Phone straight', icon: '📱' },
-          { key: 'frame', label: 'Fit in box', icon: '👶' },
-          { key: 'still', label: 'Hold still', icon: '⏸️' },
-        ];
-    return base.map((s) => ({
-      ...s,
-      done:
-        s.key === 'angle'
-          ? state.tiltOk
-          : s.key === 'frame'
-            ? state.childInBox
-            : state.canMeasure,
-    }));
-  }, [state, isNe]);
+    const b = n
+      ? [{ k: 'angle', l: 'फोन सीधा', i: '📱' }, { k: 'frame', l: 'बच्चा भित्र', i: '👶' }, { k: 'still', l: 'स्थिर', i: '⏸️' }]
+      : [{ k: 'angle', l: 'Straight', i: '📱' }, { k: 'frame', l: 'In box', i: '👶' }, { k: 'still', l: 'Still', i: '⏸️' }];
+    return b.map(s => ({ ...s, done: s.k === 'angle' ? ms.tiltOk : s.k === 'frame' ? ms.childInBox : ms.canMeasure }));
+  }, [ms, n]);
 
   return (
-    <View style={styles.instructionOverlay}>
-      {steps.map((s) => (
-        <View key={s.key} style={[styles.stepItem, s.done && styles.stepItemDone]}>
-          <Text style={styles.stepIcon}>{s.done ? '✅' : s.icon}</Text>
-          <Text style={[styles.stepLabel, s.done && styles.stepLabelDone]}>{s.label}</Text>
+    <View style={S.instr}>
+      {steps.map(s => (
+        <View key={s.k} style={[S.step, s.done && S.stepDone]}>
+          <Text style={S.stepI}>{s.done ? '✅' : s.i}</Text>
+          <Text style={[S.stepL, s.done && S.stepLdone]}>{s.l}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-// ── Web Placeholder ──
-function WebPlaceholder() {
+// ── Web ──
+function WebOnly() {
   const { language } = useContext(LanguageContext);
-  const isNe = language === 'ne';
+  const n = language === 'ne';
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.permissionGate}>
+    <SafeAreaView style={S.ct}>
+      <View style={S.gate}>
         <Ionicons name="phone-portrait-outline" size={64} color="#4CAF50" />
-        <Text style={styles.permissionTitle}>
-          {isNe ? 'मोबाइल उपकरण आवश्यक' : 'Mobile Device Required'}
-        </Text>
-        <Text style={styles.permissionDesc}>
-          {isNe
-            ? 'उचाइ नाप्ने सुविधा Android र iOS मा मात्र उपलब्ध छ।'
-            : 'Height measurement is only available on Android and iOS.'}
-        </Text>
+        <Text style={S.gateTitle}>{n ? 'मोबाइलमा मात्र' : 'Mobile Only'}</Text>
+        <Text style={S.gateDesc}>{n ? 'उचाइ नाप्ने सुविधा Android र iOS मा मात्र उपलब्ध छ।' : 'Height measurement is only on Android & iOS.'}</Text>
       </View>
     </SafeAreaView>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// MAIN SCREEN
-// ─────────────────────────────────────────────────────────
 export default function HeightMeasureScreen() {
   const { language } = useContext(LanguageContext);
-  const isNe = language === 'ne';
-
-  // Web guard — render placeholder, skip VisionCamera hooks
-  if (Platform.OS === 'web') return <WebPlaceholder />;
+  const n = language === 'ne';
+  if (Platform.OS === 'web') return <WebOnly />;
 
   // ── Camera ──
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
 
-  // ── TFLite model ──
-  const modelHook = useTensorflowModel(
-    require('../../assets/models/blazepose_lite_int8.tflite'),
-    [],
-  );
-  const modelReady = modelHook.state === 'loaded';
-  const actualModel = modelReady ? modelHook.model : undefined;
+  // ── Models ──
+  const detectorM = useTensorflowModel(require('../../assets/models/blazepose_detector_fp16.tflite'), []);
+  const landmarkM = useTensorflowModel(require('../../assets/models/blazepose_landmark_lite_fp16.tflite'), []);
+  const modelsReady = detectorM.state === 'loaded' && landmarkM.state === 'loaded';
+  const detModel = detectorM.state === 'loaded' ? detectorM.model : undefined;
+  const lmModel = landmarkM.state === 'loaded' ? landmarkM.model : undefined;
 
   // ── Resize plugin ──
-  const resizePlugin = useResizePlugin();
+  const resize = useResizePlugin();
 
   // ── Tilt ──
-  const [tilt, setTilt] = useState<TiltState>({
-    pitchDeg: 0,
-    rollDeg: 0,
-    isUpright: true,
-  });
-
+  const [tilt, setTilt] = useState<TiltState>({ pitchDeg: 0, rollDeg: 0, isUpright: true });
   useEffect(() => {
     let sub: { remove: () => void } | null = null;
     Accelerometer.isAvailableAsync().then((ok: boolean) => {
       if (!ok) return;
       Accelerometer.setUpdateInterval(100);
-      sub = Accelerometer.addListener(
-        ({ x, y, z }: { x: number; y: number; z: number }) => {
-          setTilt(calculateTilt(x, y, z));
-        },
-      );
+      sub = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => setTilt(calculateTilt(x, y, z)));
     });
     return () => sub?.remove();
   }, []);
 
-  // ── Measure state ──
-  const [measure, setMeasure] = useState<MeasureState>({
-    canMeasure: false,
-    statusMessage: isNe ? 'क्यामेरा सुरु गर्दै...' : 'Starting camera...',
-    tiltOk: true,
-    landmarksVisible: false,
-    childInBox: false,
-    estimatedHeightCm: null,
-    confidence: 0,
+  // ── State ──
+  const [ms, setMs] = useState<MeasureState>({
+    canMeasure: false, statusMessage: n ? 'क्यामेरा सुरु गर्दै...' : 'Starting camera...',
+    tiltOk: true, landmarksVisible: false, childInBox: false, estimatedHeightCm: null, confidence: 0,
   });
-  const [capturedHeight, setCapturedHeight] = useState<number | null>(null);
+  const [capturedH, setCapturedH] = useState<number | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulse = useRef(new Animated.Value(1)).current;
 
-  // Store latest landmarks from worklet
+  // Store last detection score for confidence blend
+  const lastDetScore = useRef(0.8);
   const landmarksRef = useRef<PoseLandmark[]>([]);
 
-  // ── JS-side callback invoked by the worklet ──
-  const onDetection = useCallback(
-    (landmarks: PoseLandmark[]) => {
-      landmarksRef.current = landmarks;
-      const result = estimateHeight(landmarks, tilt, BOX_TOP_Y, BOX_BOTTOM_Y);
-      const childInBox = result.heightCm !== null;
-      const landmarksVisible = landmarks.some((l) => l.visibility >= 0.7);
-      const statusMsg = getMeasureStatusMessage(result, tilt, language as 'en' | 'ne');
+  // JS callback from worklet
+  const onResult = useCallback((landmarks: PoseLandmark[], detScore: number) => {
+    landmarksRef.current = landmarks;
+    lastDetScore.current = detScore;
+    const r = estimateHeight(landmarks, tilt, BOX_TOP, BOX_BOT, detScore, SH);
+    const inBox = r.heightCm !== null;
+    const vis = landmarks.some(l => l.visibility >= 0.7);
+    setMs({
+      canMeasure: inBox && tilt.isUpright && r.confidence >= 0.4,
+      statusMessage: getMeasureStatusMessage(r, tilt, language as 'en' | 'ne'),
+      tiltOk: tilt.isUpright, landmarksVisible: vis, childInBox: inBox,
+      estimatedHeightCm: r.heightCm, confidence: r.confidence,
+    });
+  }, [tilt, language]);
 
-      setMeasure({
-        canMeasure: childInBox && tilt.isUpright && result.confidence >= 0.4,
-        statusMessage: statusMsg,
-        tiltOk: tilt.isUpright,
-        landmarksVisible,
-        childInBox,
-        estimatedHeightCm: result.heightCm,
-        confidence: result.confidence,
-      });
-    },
-    [tilt, language],
-  );
-
-  // Merge tilt into measure state
+  // Merge tilt
   useEffect(() => {
-    setMeasure((prev) => {
+    setMs(p => {
       if (!tilt.isUpright) {
-        const msg = getTiltMessage(tilt, language as 'en' | 'ne');
-        return { ...prev, tiltOk: false, canMeasure: false, statusMessage: msg };
+        return { ...p, tiltOk: false, canMeasure: false, statusMessage: getTiltMessage(tilt, language as 'en' | 'ne') };
       }
-      return { ...prev, tiltOk: true };
+      return { ...p, tiltOk: true };
     });
   }, [tilt.isUpright]);
 
-  // Pulse animation
+  // Pulse
   useEffect(() => {
-    if (measure.canMeasure) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.1, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ]),
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [measure.canMeasure]);
+    if (ms.canMeasure) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.1, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])).start();
+    } else pulse.setValue(1);
+  }, [ms.canMeasure]);
 
-  // ── Frame processor ──
-  const frameProcessor = useFrameProcessor(
-    (frame) => {
-      'worklet';
-      if (!actualModel || !resizePlugin) return;
+  // ── TWO-STAGE FRAME PROCESSOR ──
+  const fp = useFrameProcessor((frame) => {
+    'worklet';
+    if (!detModel || !lmModel || !resize) return;
 
-      runAtTargetFps(5, () => {
-        try {
-          // 1. Resize → 192×192 float32 RGB tensor
-          const tensor = resizePlugin.resize(frame, {
-            scale: { width: 192, height: 192 },
-            pixelFormat: 'rgb',
-            dataType: 'float32',
-          });
+    runAtTargetFps(5, () => {
+      try {
+        // ── STAGE 1: Detector ──
+        const detInput = resize.resize(frame, {
+          scale: { width: 224, height: 224 },
+          pixelFormat: 'rgb', dataType: 'float32',
+        });
+        if (!detInput || detInput.length === 0) return;
 
-          if (!tensor || tensor.length === 0) return;
+        const detOut = detModel.runSync([detInput as any]);
+        if (!detOut || !detOut[0]) return;
+        const detRaw = new Float32Array(detOut[0] as unknown as ArrayBuffer);
 
-          // 2. Run BlazePose inference
-          const outputs = actualModel.runSync([tensor as any]);
-          if (!outputs || !outputs[0]) return;
+        const detections = parseDetections(detRaw);
+        if (detections.length === 0) return;
 
-          // 3. Parse raw output → PoseLandmark[]
-          const out0: any = outputs[0];
-          const raw = Array.isArray(out0)
-            ? new Float32Array(out0)
-            : new Float32Array(out0 as unknown as ArrayBuffer);
-          const landmarks: PoseLandmark[] = [];
-          for (let i = 0; i < 33; i++) {
-            const o = i * 4;
-            landmarks.push({
-              x: raw[o] * frame.width,
-              y: raw[o + 1] * frame.height,
-              z: raw[o + 2],
-              visibility: Math.max(0, Math.min(1, raw[o + 3])),
-            });
-          }
+        const best = detections[0];
+        const { bbox, score } = best;
 
-          // 4. Push to JS thread
-          runOnJS(onDetection)(landmarks);
-        } catch {
-          // Ignore per-frame errors to avoid crashing the feed
-        }
-      });
-    },
-    [actualModel, resizePlugin],
-  );
+        // ── Crop & expand ROI slightly ──
+        const margin = 0.15;
+        const cx = Math.max(0, bbox.x - bbox.w * margin) * frame.width;
+        const cy = Math.max(0, bbox.y - bbox.h * margin) * frame.height;
+        const cw = Math.min(frame.width - cx, bbox.w * (1 + margin * 2) * frame.width);
+        const ch = Math.min(frame.height - cy, bbox.h * (1 + margin * 2) * frame.height);
 
-  // ── Capture ──
-  const handleCapture = useCallback(() => {
-    if (!measure.canMeasure || !measure.estimatedHeightCm) return;
+        if (cw < 50 || ch < 50) return;
+
+        // ── STAGE 2: Landmark model ──
+        const lmInput = resize.resize(frame, {
+          crop: {
+            x: Math.round(cx), y: Math.round(cy),
+            width: Math.round(cw), height: Math.round(ch),
+          },
+          scale: { width: 256, height: 256 },
+          pixelFormat: 'rgb', dataType: 'float32',
+        });
+        if (!lmInput || lmInput.length === 0) return;
+
+        const lmOut = lmModel.runSync([lmInput as any]);
+        if (!lmOut || !lmOut[0]) return;
+
+        // Landmark output is the first output (Identity)
+        const lmRaw = new Float32Array(lmOut[0] as unknown as ArrayBuffer);
+        const landmarks = parseLandmarks(lmRaw, frame.width, frame.height, cx, cy, cw, ch);
+
+        runOnJS(onResult)(landmarks, score);
+      } catch {
+        // silent per-frame errors
+      }
+    });
+  }, [detModel, lmModel, resize]);
+
+  // ── Actions ──
+  const capture = useCallback(() => {
+    if (!ms.canMeasure || !ms.estimatedHeightCm) return;
     setCapturing(true);
     setTimeout(() => {
-      setCapturedHeight(measure.estimatedHeightCm);
+      setCapturedH(ms.estimatedHeightCm);
       setCapturing(false);
       setShowGuide(false);
+      resetSmoothing();
     }, 400);
-  }, [measure.canMeasure, measure.estimatedHeightCm]);
+  }, [ms.canMeasure, ms.estimatedHeightCm]);
 
-  const handleRetake = useCallback(() => {
-    setCapturedHeight(null);
+  const retake = useCallback(() => {
+    setCapturedH(null);
     setShowGuide(true);
+    resetSmoothing();
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!capturedHeight) return;
-    Alert.alert(
-      isNe ? 'सफल' : 'Success',
-      isNe
-        ? `${capturedHeight} सेमी रेकर्ड गरियो!`
-        : `${capturedHeight} cm recorded!`,
-      [{ text: 'OK' }],
-    );
-  }, [capturedHeight, isNe]);
+  const save = useCallback(async () => {
+    if (!capturedH) return;
+    Alert.alert(n ? 'सफल' : 'Success', n ? `${capturedH} सेमी रेकर्ड गरियो!` : `${capturedH} cm recorded!`, [{ text: 'OK' }]);
+  }, [capturedH, n]);
 
-  // ── Permission gate ──
-  if (!hasPermission) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionGate}>
-          <Ionicons name="camera-outline" size={64} color="#4CAF50" />
-          <Text style={styles.permissionTitle}>
-            {isNe ? 'क्यामेरा अनुमति आवश्यक' : 'Camera Permission Needed'}
-          </Text>
-          <Text style={styles.permissionDesc}>
-            {isNe
-              ? 'बच्चाको उचाइ नाप्न क्यामेरा आवश्यक छ।'
-              : 'Camera access is needed to measure height.'}
-          </Text>
-          <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
-            <Text style={styles.permissionBtnText}>
-              {isNe ? 'अनुमति दिनुहोस्' : 'Grant Permission'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // ── Gates ──
+  if (!hasPermission) return (
+    <SafeAreaView style={S.ct}><View style={S.gate}>
+      <Ionicons name="camera-outline" size={64} color="#4CAF50" />
+      <Text style={S.gateTitle}>{n ? 'क्यामेरा अनुमति चाहिन्छ' : 'Camera Permission Needed'}</Text>
+      <Text style={S.gateDesc}>{n ? 'बच्चाको उचाइ नाप्न क्यामेरा चाहिन्छ।' : 'Camera access is needed.'}</Text>
+      <TouchableOpacity style={S.gateBtn} onPress={requestPermission}><Text style={S.gateBtnT}>{n ? 'अनुमति दिनुहोस्' : 'Grant'}</Text></TouchableOpacity>
+    </View></SafeAreaView>
+  );
 
-  if (!device) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionGate}>
-          <Ionicons name="alert-circle-outline" size={64} color="#FF9800" />
-          <Text style={styles.permissionTitle}>
-            {isNe ? 'क्यामेरा उपलब्ध छैन' : 'No Camera Found'}
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!device) return (
+    <SafeAreaView style={S.ct}><View style={S.gate}>
+      <Ionicons name="alert-circle-outline" size={64} color="#FF9800" />
+      <Text style={S.gateTitle}>{n ? 'क्यामेरा भेटिएन' : 'No Camera'}</Text>
+    </View></SafeAreaView>
+  );
 
-  if (!modelReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.permissionGate}>
-          <ActivityIndicator size="large" color="#4CAF50" />
-          <Text style={styles.permissionTitle}>
-            {isNe ? 'AI मोडल लोड हुँदै...' : 'Loading AI model...'}
-          </Text>
-          <Text style={styles.permissionDesc}>
-            {isNe
-              ? 'पोज डिटेक्सन मोडल तयार हुँदैछ। कृपया पर्खनुहोस्।'
-              : 'Preparing pose detection model. Please wait.'}
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!modelsReady) return (
+    <SafeAreaView style={S.ct}><View style={S.gate}>
+      <ActivityIndicator size="large" color="#4CAF50" />
+      <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
+      <Text style={S.gateDesc}>{n ? 'पोज डिटेक्सन मोडल तयार हुँदैछ।' : 'Preparing pose detection models.'}</Text>
+    </View></SafeAreaView>
+  );
 
-  // ─────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={S.ct}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-
-      <View style={styles.cameraPreview}>
-        <Camera
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={true}
-          frameProcessor={frameProcessor}
-          fps={30}
-        />
-
-        {/* Bounding Box */}
-        <View
-          style={[
-            styles.boundingBox,
-            {
-              top: BOX_TOP_Y,
-              left: BOX_LEFT_X,
-              width: BOX_WIDTH_PX,
-              height: BOX_HEIGHT_PX,
-              borderColor:
-                measure.childInBox && measure.tiltOk ? '#4CAF50' : '#FF9800',
-            },
-          ]}
-        >
-          <View style={[styles.refLine, styles.refLineTop]}>
-            <Text style={styles.refLabel}>{isNe ? 'टाउको' : 'Head'}</Text>
-          </View>
-          <View style={[styles.refLine, styles.refLineBottom]}>
-            <Text style={styles.refLabel}>{isNe ? 'खुट्टा' : 'Feet'}</Text>
-          </View>
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
+      <View style={S.preview}>
+        <Camera style={StyleSheet.absoluteFill} device={device} isActive frameProcessor={fp} fps={30} />
+        <View style={[S.box, { top: BOX_TOP, left: BOX_L, width: BOX_W, height: BOX_H, borderColor: ms.childInBox && ms.tiltOk ? '#4CAF50' : '#FF9800' }]}>
+          <View style={[S.rl, S.rlT]}><Text style={S.rlL}>{n ? 'टाउको' : 'Head'}</Text></View>
+          <View style={[S.rl, S.rlB]}><Text style={S.rlL}>{n ? 'खुट्टा' : 'Feet'}</Text></View>
+          <View style={[S.cor, S.corTL]} /><View style={[S.cor, S.corTR]} /><View style={[S.cor, S.corBL]} /><View style={[S.cor, S.corBR]} />
         </View>
-
         <TiltIndicator tilt={tilt} />
-
-        {showGuide && !capturedHeight && <InstructionOverlay state={measure} />}
+        {showGuide && !capturedH && <Instructions ms={ms} />}
       </View>
 
-      {/* Bottom Controls */}
-      <View style={styles.bottomBar}>
-        {capturedHeight ? (
-          <View style={styles.resultContainer}>
-            <View style={styles.resultCard}>
-              <Text style={styles.resultLabel}>
-                {isNe ? 'नापिएको उचाइ' : 'Measured Height'}
-              </Text>
-              <Text style={styles.resultValue}>
-                {capturedHeight}
-                <Text style={styles.resultUnit}> cm / सेमी</Text>
-              </Text>
-              <Text style={styles.resultConfidence}>
-                {isNe ? 'विश्वसनीयता' : 'Confidence'}:{' '}
-                {Math.round(measure.confidence * 100)}%
-              </Text>
+      <View style={S.bb}>
+        {capturedH ? (
+          <View style={S.rc}>
+            <View style={S.rcard}>
+              <Text style={S.rlbl}>{n ? 'नापिएको उचाइ' : 'Measured Height'}</Text>
+              <Text style={S.rv}>{capturedH}<Text style={S.ru}> cm</Text></Text>
+              <Text style={S.rconf}>{n ? 'विश्वसनीयता' : 'Confidence'}: {Math.round(ms.confidence * 100)}%</Text>
             </View>
-            <View style={styles.resultActions}>
-              <TouchableOpacity style={styles.retakeBtn} onPress={handleRetake}>
-                <Ionicons name="refresh" size={20} color="#666" />
-                <Text style={styles.retakeBtnText}>
-                  {isNe ? 'फेरि नाप्नुहोस्' : 'Retake'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Ionicons name="checkmark" size={24} color="#fff" />
-                <Text style={styles.saveBtnText}>{isNe ? 'सेभ गर्नुहोस्' : 'Save'}</Text>
-              </TouchableOpacity>
+            <View style={S.ra}>
+              <TouchableOpacity style={S.rbtn} onPress={retake}><Ionicons name="refresh" size={20} color="#666" /><Text style={S.rbtnT}>{n ? 'फेरि' : 'Retake'}</Text></TouchableOpacity>
+              <TouchableOpacity style={S.sbtn} onPress={save}><Ionicons name="checkmark" size={24} color="#fff" /><Text style={S.sbtnT}>{n ? 'सेभ' : 'Save'}</Text></TouchableOpacity>
             </View>
           </View>
         ) : (
-          <View style={styles.captureArea}>
-            <Text style={styles.captureStatus}>{measure.statusMessage}</Text>
-            <Animated.View
-              style={[
-                styles.captureBtnOuter,
-                {
-                  transform: [{ scale: pulseAnim }],
-                  opacity: measure.canMeasure ? 1 : 0.4,
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={[styles.captureBtn, !measure.canMeasure && styles.captureBtnDisabled]}
-                onPress={handleCapture}
-                disabled={!measure.canMeasure}
-                activeOpacity={0.7}
-              >
-                {capturing ? (
-                  <ActivityIndicator color="#fff" size="large" />
-                ) : (
-                  <Ionicons
-                    name={measure.canMeasure ? 'camera' : 'lock-closed'}
-                    size={36}
-                    color={measure.canMeasure ? '#fff' : '#999'}
-                  />
-                )}
+          <View style={S.ca}>
+            <Text style={S.cs}>{ms.statusMessage}</Text>
+            <Animated.View style={[S.cbo, { transform: [{ scale: pulse }], opacity: ms.canMeasure ? 1 : 0.4 }]}>
+              <TouchableOpacity style={[S.cb, !ms.canMeasure && S.cbd]} onPress={capture} disabled={!ms.canMeasure}>
+                {capturing ? <ActivityIndicator color="#fff" size="large" /> : <Ionicons name={ms.canMeasure ? 'camera' : 'lock-closed'} size={36} color={ms.canMeasure ? '#fff' : '#999'} />}
               </TouchableOpacity>
             </Animated.View>
           </View>
@@ -486,125 +331,48 @@ export default function HeightMeasureScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  cameraPreview: { flex: 1, position: 'relative' },
-
-  permissionGate: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    padding: 32, backgroundColor: '#111',
-  },
-  permissionTitle: {
-    fontSize: 20, fontWeight: '700', color: '#fff',
-    marginTop: 16, textAlign: 'center',
-  },
-  permissionDesc: {
-    fontSize: 14, color: '#999', marginTop: 8,
-    textAlign: 'center', lineHeight: 20,
-  },
-  permissionBtn: {
-    marginTop: 24, backgroundColor: '#4CAF50',
-    paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10,
-  },
-  permissionBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-
-  boundingBox: { position: 'absolute', borderWidth: 2.5, borderRadius: 8 },
-  refLine: {
-    position: 'absolute', left: -60, right: -60, height: 2,
-    backgroundColor: '#FF9800', flexDirection: 'row', alignItems: 'center',
-  },
-  refLineTop: { top: 0 },
-  refLineBottom: { bottom: 0 },
-  refLabel: {
-    color: '#FF9800', fontSize: 10, fontWeight: '700',
-    backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6,
-    paddingVertical: 2, borderRadius: 4,
-  },
-  corner: {
-    position: 'absolute', width: 20, height: 20,
-    borderColor: 'rgba(255,255,255,0.8)', borderWidth: 2,
-  },
-  cornerTL: { top: -1, left: -1, borderBottomWidth: 0, borderRightWidth: 0 },
-  cornerTR: { top: -1, right: -1, borderBottomWidth: 0, borderLeftWidth: 0 },
-  cornerBL: { bottom: -1, left: -1, borderTopWidth: 0, borderRightWidth: 0 },
-  cornerBR: { bottom: -1, right: -1, borderTopWidth: 0, borderLeftWidth: 0 },
-
-  tiltContainer: {
-    position: 'absolute', top: 60, left: 20, right: 20, alignItems: 'center',
-  },
+// ── Styles (abbreviated keys for brevity) ──
+const S = StyleSheet.create({
+  ct: { flex: 1, backgroundColor: '#000' }, preview: { flex: 1, position: 'relative' },
+  gate: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#111' },
+  gateTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginTop: 16, textAlign: 'center' },
+  gateDesc: { fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center', lineHeight: 20 },
+  gateBtn: { marginTop: 24, backgroundColor: '#4CAF50', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 },
+  gateBtnT: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  box: { position: 'absolute', borderWidth: 2.5, borderRadius: 8 },
+  rl: { position: 'absolute', left: -60, right: -60, height: 2, backgroundColor: '#FF9800', flexDirection: 'row', alignItems: 'center' },
+  rlT: { top: 0 }, rlB: { bottom: 0 },
+  rlL: { color: '#FF9800', fontSize: 10, fontWeight: '700', backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  cor: { position: 'absolute', width: 20, height: 20, borderColor: 'rgba(255,255,255,0.8)', borderWidth: 2 },
+  corTL: { top: -1, left: -1, borderBottomWidth: 0, borderRightWidth: 0 },
+  corTR: { top: -1, right: -1, borderBottomWidth: 0, borderLeftWidth: 0 },
+  corBL: { bottom: -1, left: -1, borderTopWidth: 0, borderRightWidth: 0 },
+  corBR: { bottom: -1, right: -1, borderTopWidth: 0, borderLeftWidth: 0 },
+  tiltC: { position: 'absolute', top: 60, left: 20, right: 20, alignItems: 'center' },
   tiltBar: { width: 200, height: 30, justifyContent: 'center', alignItems: 'center' },
-  tiltBarBg: {
-    width: '100%', height: 8, borderRadius: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, justifyContent: 'center',
-  },
+  tiltBg: { width: '100%', height: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, justifyContent: 'center' },
   tiltBubble: { width: 16, height: 16, borderRadius: 8, position: 'absolute', top: -4 },
-  tiltCenterLine: {
-    position: 'absolute', top: 0, bottom: 0,
-    width: 1, backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  tiltText: {
-    fontSize: 13, fontWeight: '600', marginTop: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10,
-    paddingVertical: 3, borderRadius: 10,
-  },
-
-  instructionOverlay: {
-    position: 'absolute', bottom: 20, left: 20, right: 20,
-    flexDirection: 'row', justifyContent: 'space-around',
-  },
-  stepItem: {
-    alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-  },
-  stepItemDone: { backgroundColor: 'rgba(76,175,80,0.3)' },
-  stepIcon: { fontSize: 20 },
-  stepLabel: { fontSize: 11, color: '#ccc', marginTop: 2, fontWeight: '600' },
-  stepLabelDone: { color: '#4CAF50' },
-
-  bottomBar: {
-    backgroundColor: '#111', paddingTop: 16, paddingBottom: 32,
-    paddingHorizontal: 20, alignItems: 'center',
-  },
-  captureArea: { alignItems: 'center' },
-  captureStatus: {
-    color: '#ccc', fontSize: 14, fontWeight: '600',
-    marginBottom: 12, textAlign: 'center', paddingHorizontal: 20,
-  },
-  captureBtnOuter: {
-    width: 84, height: 84, borderRadius: 42, borderWidth: 3,
-    borderColor: '#4CAF50', justifyContent: 'center', alignItems: 'center',
-  },
-  captureBtn: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#4CAF50', justifyContent: 'center', alignItems: 'center',
-  },
-  captureBtnDisabled: { backgroundColor: '#333' },
-
-  resultContainer: { width: '100%', paddingHorizontal: 10 },
-  resultCard: {
-    backgroundColor: '#1a1a2e', borderRadius: 14, padding: 20,
-    alignItems: 'center', borderWidth: 1, borderColor: '#4CAF50',
-  },
-  resultLabel: {
-    fontSize: 13, color: '#888', fontWeight: '600', textTransform: 'uppercase',
-  },
-  resultValue: { fontSize: 48, fontWeight: '800', color: '#4CAF50', marginTop: 4 },
-  resultUnit: { fontSize: 18, color: '#666', fontWeight: '400' },
-  resultConfidence: { fontSize: 12, color: '#666', marginTop: 8 },
-  resultActions: { flexDirection: 'row', marginTop: 14, gap: 12 },
-  retakeBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', padding: 14, borderRadius: 10,
-    backgroundColor: '#222', gap: 8,
-  },
-  retakeBtnText: { color: '#ccc', fontWeight: '600' },
-  saveBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', padding: 14, borderRadius: 10,
-    backgroundColor: '#4CAF50', gap: 8,
-  },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  tiltCL: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
+  tiltT: { fontSize: 13, fontWeight: '600', marginTop: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  instr: { position: 'absolute', bottom: 20, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-around' },
+  step: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  stepDone: { backgroundColor: 'rgba(76,175,80,0.3)' }, stepI: { fontSize: 20 },
+  stepL: { fontSize: 11, color: '#ccc', marginTop: 2, fontWeight: '600' }, stepLdone: { color: '#4CAF50' },
+  bb: { backgroundColor: '#111', paddingTop: 16, paddingBottom: 32, paddingHorizontal: 20, alignItems: 'center' },
+  ca: { alignItems: 'center' },
+  cs: { color: '#ccc', fontSize: 14, fontWeight: '600', marginBottom: 12, textAlign: 'center', paddingHorizontal: 20 },
+  cbo: { width: 84, height: 84, borderRadius: 42, borderWidth: 3, borderColor: '#4CAF50', justifyContent: 'center', alignItems: 'center' },
+  cb: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#4CAF50', justifyContent: 'center', alignItems: 'center' },
+  cbd: { backgroundColor: '#333' },
+  rc: { width: '100%', paddingHorizontal: 10 },
+  rcard: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#4CAF50' },
+  rlbl: { fontSize: 13, color: '#888', fontWeight: '600', textTransform: 'uppercase' },
+  rv: { fontSize: 48, fontWeight: '800', color: '#4CAF50', marginTop: 4 },
+  ru: { fontSize: 18, color: '#666', fontWeight: '400' },
+  rconf: { fontSize: 12, color: '#666', marginTop: 8 },
+  ra: { flexDirection: 'row', marginTop: 14, gap: 12 },
+  rbtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 10, backgroundColor: '#222', gap: 8 },
+  rbtnT: { color: '#ccc', fontWeight: '600' },
+  sbtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 10, backgroundColor: '#4CAF50', gap: 8 },
+  sbtnT: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

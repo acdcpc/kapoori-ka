@@ -1,197 +1,98 @@
 // src/ai/BlazePoseEngine.ts
 // ─────────────────────────────────────────────────────────
-// Responsible for:
-//   - Loading the BlazePose Lite int8 TFLite model
-//   - Preprocessing camera frames → 192×192 RGB tensor
-//   - Running inference
-//   - Parsing raw output → PoseLandmark[]
+// Two-stage BlazePose pipeline (matches Google's architecture):
 //
-// ZERO UI code. Pure AI engine.
+//   Stage 1: Detector (blazepose_detector_fp16.tflite)
+//     Input:  camera frame 224×224
+//     Output: bounding boxes + scores
+//
+//   Stage 2: Landmark (blazepose_landmark_lite_fp16.tflite)
+//     Input:  cropped ROI 256×256
+//     Output: 39 GHUM landmarks, world_landmarks, poseflag, heatmap, seg
+//
+// Stay FP16 — no INT8 quantization to preserve landmark precision.
 // ─────────────────────────────────────────────────────────
 
-import { type PoseLandmark, type DetectionResult, LM, LANDMARK_COUNT, TENSOR_SIZE } from './PoseTypes';
+import { type PoseLandmark, type Detection, type LandmarkResult, type DetectionResult, LM, LANDMARK_COUNT } from './PoseTypes';
 
-// ── Types ──
-export type EngineStatus = 'idle' | 'loading' | 'loaded' | 'error';
+// ── Model input sizes ──
+const DETECTOR_SIZE = 224;
+const LANDMARK_SIZE = 256;
 
-export interface EngineState {
-  status: EngineStatus;
-  error?: string;
-}
+// ── Detection parsing ──
+// BlazePose detector outputs: [1, 2254, 12] where each anchor has
+// [ymin, xmin, ymax, xmax, score, kp0_x, kp0_y, kp1_x, kp1_y, kp2_x, kp2_y, kp3_x, kp4_y]
+const DETECTOR_SCORE_THRESHOLD = 0.5;
+const DETECTOR_TOP_K = 1; // we only need the best detection
 
-// ── Constants ──
-const MODEL_INPUT_SIZE = 192;         // BlazePose Lite expects 192×192
-const MIN_VISIBILITY = 0.7;           // discard landmarks below this
+/** Parse detector output tensor → sorted Detection[]. */
+export function parseDetections(output: Float32Array): Detection[] {
+  const results: Detection[] = [];
+  // output shape is [1, 2254, 12] flattened = 27048 floats
+  const numAnchors = output.length / 12;
+  if (numAnchors < 1) return results;
 
-// Dynamic imports to keep the module tree-clean on web
-let tfliteModule: any = null;
-let resizePlugin: any = null;
+  for (let i = 0; i < numAnchors; i++) {
+    const off = i * 12;
+    const score = output[off + 4]; // sigmoid score
+    if (score < DETECTOR_SCORE_THRESHOLD) continue;
 
-async function ensureTFLite() {
-  if (!tfliteModule) {
-    tfliteModule = require('react-native-fast-tflite');
-  }
-  return tfliteModule;
-}
+    const ymin = output[off];
+    const xmin = output[off + 1];
+    const ymax = output[off + 2];
+    const xmax = output[off + 3];
 
-async function ensureResize() {
-  if (!resizePlugin) {
-    resizePlugin = require('vision-camera-resize-plugin');
-  }
-  return resizePlugin;
-}
+    const w = Math.max(0, xmax - xmin);
+    const h = Math.max(0, ymax - ymin);
 
-/**
- * Singleton engine instance.
- * Load once; reuse across frames.
- */
-let _model: any = null;
-let _inputTensor: any = null;
+    if (w <= 0 || h <= 0) continue;
 
-/**
- * Load the int8 TFLite model.
- * Call once on mount.
- */
-export async function loadModel(): Promise<EngineState> {
-  try {
-    if (_model) return { status: 'loaded' };
-
-    const { useTensorflowModel } = await ensureTFLite();
-    const model = useTensorflowModel(
-      require('../../assets/models/blazepose_lite_int8.tflite'),
-    );
-
-    // Model hook is React-based — we need to handle the non-React case
-    if (typeof model === 'object' && 'state' in model) {
-      // This is inside a React hook context; poll for loaded
-      return new Promise((resolve) => {
-        const check = () => {
-          if (model.state === 'loaded') {
-            _model = model.model;
-            resolve({ status: 'loaded' });
-          } else if (model.state === 'error') {
-            resolve({ status: 'error', error: 'Model failed to load' });
-          } else {
-            setTimeout(check, 100);
-          }
-        };
-        check();
-      });
-    }
-
-    _model = model;
-    return { status: 'loaded' };
-  } catch (e: any) {
-    return { status: 'error', error: e?.message ?? 'Unknown model load error' };
-  }
-}
-
-/**
- * Preprocess a VisionCamera frame → 192×192 float32 tensor suitable for BlazePose.
- *
- * Pipeline:
- *   raw frame → resize to 192×192 → convert to RGB32 → float32 [1,192,192,3]
- */
-export function preprocessFrame(frame: any, resizePluginLib: any): any {
-  // Use vision-camera-resize-plugin to get a 192×192 RGB buffer
-  const resized = resizePluginLib.resize(frame, {
-    width: MODEL_INPUT_SIZE,
-    height: MODEL_INPUT_SIZE,
-    pixelFormat: 'rgb',
-    dataType: 'float32',
-  });
-
-  if (!resized || resized.length === 0) {
-    throw new Error('Resize plugin returned empty buffer');
+    results.push({ bbox: { x: xmin, y: ymin, w, h }, score: Math.min(1, score) });
   }
 
-  return resized;
+  // Sort by score desc, keep top-k
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, DETECTOR_TOP_K);
 }
 
-/**
- * Run BlazePose inference on a preprocessed frame.
- * Returns raw float32 output tensor (132 floats = 33 landmarks × 4).
- */
-export function runInference(model: any, inputTensor: any): Float32Array {
-  // Fast TFLite runSync — the model outputs a flat float32 array
-  const outputs = model.runSync([inputTensor]);
-  if (!outputs || outputs.length === 0) {
-    throw new Error('Model returned no outputs');
-  }
-  const raw = Array.isArray(outputs[0]) ? outputs[0] : outputs;
-  if (raw instanceof Float32Array) return raw;
-  // fallback: convert typed array
-  return new Float32Array(raw as ArrayLike<number>);
-}
-
-/**
- * Parse raw TFLite output into PoseLandmark[].
- *
- * BlazePose Lite output tensor: [33 landmarks × 4 values]
- * Each quad: [x_norm, y_norm, z, visibility]
- *   - x_norm, y_norm are normalized 0..1 (relative to 192×192 input)
- *   - z is a relative depth proxy
- *   - visibility is a sigmoid score 0..1
- *
- * We denormalize to pixel space (frameWidth × frameHeight).
- */
+// ── Landmark output parsing ──
+// Output tensor shape: [1, 39, 4] flattened = 156 floats
+// The landmark model has multiple outputs; we need Identity (landmarks),
+// Identity_1 (poseflag), Identity_4 (world_landmarks)
 export function parseLandmarks(
-  rawTensor: Float32Array,
-  frameWidth: number,
-  frameHeight: number,
+  rawLandmarks: Float32Array,
+  frameW: number,
+  frameH: number,
+  cropX: number,
+  cropY: number,
+  cropW: number,
+  cropH: number,
 ): PoseLandmark[] {
   const landmarks: PoseLandmark[] = [];
 
   for (let i = 0; i < LANDMARK_COUNT; i++) {
-    const off = i * 4;
-    const vis = rawTensor[off + 3];
-
+    const o = i * 4;
+    // Denormalise from crop space → frame pixel space
+    const xNorm = rawLandmarks[o];
+    const yNorm = rawLandmarks[o + 1];
     landmarks.push({
-      x: rawTensor[off] * frameWidth,
-      y: rawTensor[off + 1] * frameHeight,
-      z: rawTensor[off + 2],
-      visibility: Math.max(0, Math.min(1, vis)),
+      x: cropX + xNorm * cropW,
+      y: cropY + yNorm * cropH,
+      z: rawLandmarks[o + 2],
+      visibility: Math.max(0, Math.min(1, rawLandmarks[o + 3])),
     });
   }
 
   return landmarks;
 }
 
-/**
- * Full end-to-end detection on a single frame.
- * Called from the worklet frame processor.
- *
- * `preloadedResize` and `preloadedModel` must be passed from React scope
- * via useFrameProcessor dependencies.
- */
-export function detectPose(
-  frame: any,
-  preloadedModel: any,
-  preloadedResize: any,
-  frameWidth: number,
-  frameHeight: number,
-): DetectionResult {
-  const t0 = Date.now();
-
-  try {
-    // 1. Preprocess
-    const tensor = preprocessFrame(frame, preloadedResize);
-
-    // 2. Inference
-    const raw = runInference(preloadedModel, tensor);
-
-    // 3. Parse
-    const landmarks = parseLandmarks(raw, frameWidth, frameHeight);
-
-    // 4. Validate — at least one landmark must have decent visibility
-    const found = landmarks.some(l => l.visibility >= MIN_VISIBILITY);
-
-    return {
-      landmarks: found ? landmarks : [],
-      inferenceMs: Date.now() - t0,
-      found,
-    };
-  } catch (e) {
-    return { landmarks: [], inferenceMs: Date.now() - t0, found: false };
+/** Parse world landmarks output (Identity_4). Shape: [1, 39, 3]. */
+export function parseWorldLandmarks(raw: Float32Array): PoseLandmark[] | null {
+  if (!raw || raw.length < LANDMARK_COUNT * 3) return null;
+  const wl: PoseLandmark[] = [];
+  for (let i = 0; i < LANDMARK_COUNT; i++) {
+    const o = i * 3;
+    wl.push({ x: raw[o], y: raw[o + 1], z: raw[o + 2], visibility: 1 });
   }
+  return wl;
 }
