@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "391729474242-tdog29ue1m8p06606mhnn9l7gjre8gf0.apps.googleusercontent.com",
+          "client_id": "391729474242-gjfr7roo4v3oreurkqcgupi72gru1cnk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kapoori.ka",
+            "certificate_hash": "9be782d9467b93fd780f5bcaae2fbf39b3e6113f"
+          }
+        },
+        {
+          "client_id": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,8 +35,15 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "391729474242-tdog29ue1m8p06606mhnn9l7gjre8gf0.apps.googleusercontent.com",
+              "client_id": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "391729474242-jdn2770jngjplqvd8kmak5m3ha4he2ej.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kapoori.ka"
+              }
             }
           ]
         }
