@@ -106,7 +106,7 @@ export default function HeightMeasureScreen() {
   // ── TFLite model ──
   // Uses the float16 .task file — drop blazepose_lite_int8.tflite when available
   const model = useTensorflowModel(
-    require('../../assets/models/blazepose_lite_fp16.task'),
+    require('../../assets/models/blazepose_lite_int8.tflite'),
   );
   const actualModel = model.state === 'loaded' ? model.model : undefined;
 
