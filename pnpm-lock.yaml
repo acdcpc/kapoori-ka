@@ -113,6 +113,9 @@ importers:
       victory-native:
         specifier: ^36.9.1
         version: 36.9.2(react@19.2.3)
+      vision-camera-resize-plugin:
+        specifier: ^3.2.0
+        version: 3.2.0(react-native-vision-camera@4.7.3(react-native-worklets-core@1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-worklets-core@1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@types/react':
         specifier: ~19.2.14
@@ -2917,6 +2920,15 @@ packages:
     resolution: {integrity: sha512-kgVgiSno4KpD0HxmUo5GzqWI4P/eILLOM6AmJfAlagCnOzrtYGsAw+N1YxOcYvTiKsh/zmWawxHlpw3TMenFDQ==}
     peerDependencies:
       react: '>=16.6.0'
+
+  vision-camera-resize-plugin@3.2.0:
+    resolution: {integrity: sha512-OR/rU6cwnSoFs3zN8EtAiomwtoXBzQsGnQxfUY5wfQ9WcssLY+Hrcdp/pr2qY3fsHokKtYZHeF43eXNaMyBi6g==}
+    engines: {node: '>= 18.0.0'}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-vision-camera: '>=4.0.1'
+      react-native-worklets-core: '>=1.2.0'
 
   vlq@1.0.1:
     resolution: {integrity: sha512-gQpnTgkubC6hQgdIcRdYGDSDc+SaujOdyesZQMv6JlfQee/9Mp0Qhnys6WxDWvQnL5WZdT7o2Ul187aSt0Rq+w==}
@@ -6483,6 +6495,13 @@ snapshots:
       victory-voronoi: 36.9.2(react@19.2.3)
       victory-voronoi-container: 36.9.2(react@19.2.3)
       victory-zoom-container: 36.9.2(react@19.2.3)
+
+  vision-camera-resize-plugin@3.2.0(react-native-vision-camera@4.7.3(react-native-worklets-core@1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-worklets-core@1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-native: 0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3)
+      react-native-vision-camera: 4.7.3(react-native-worklets-core@1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
+      react-native-worklets-core: 1.6.3(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
 
   vlq@1.0.1: {}
 

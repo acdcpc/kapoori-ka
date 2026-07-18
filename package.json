@@ -37,7 +37,8 @@
     "react-native-web": "^0.21.2",
     "react-native-webview": "13.16.1",
     "react-native-worklets-core": "^1.6.3",
-    "victory-native": "^36.9.1"
+    "victory-native": "^36.9.1",
+    "vision-camera-resize-plugin": "^3.2.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.14",
