@@ -51,23 +51,18 @@ export function getTiltMessage(tilt: TiltState, lang: 'en' | 'ne' = 'en'): strin
 
 /**
  * Estimate camera-to-subject distance from bounding box.
- * Assumes average adult height ~170cm; child height ~70cm average.
  * Uses pinhole camera model.
  */
 export function estimateDistance(
   bboxPixelHeight: number,
   frameHeight: number,
-  realSubjectHeightCm: number = 100, // child ~100cm
+  realSubjectHeightCm: number = 100,
 ): number {
   const angularHeight = (bboxPixelHeight / frameHeight) * CAMERA_VFOV_RAD;
-  if (angularHeight < 0.01) return 300; // too small → assume far away
-  // distance = realHeight / (2 * tan(angularHeight/2))
+  if (angularHeight < 0.01) return 300;
   return realSubjectHeightCm / (2 * Math.tan(angularHeight / 2));
 }
 
-/**
- * Calculate body completeness: ratio of visible ≥ threshold vs total.
- */
 export function bodyCompleteness(landmarks: PoseLandmark[]): number {
   if (landmarks.length === 0) return 0;
   const visible = landmarks.filter(l => l.visibility >= MIN_VISIBILITY).length;
@@ -75,9 +70,8 @@ export function bodyCompleteness(landmarks: PoseLandmark[]): number {
 }
 
 // ── Temporal stability buffer ──
-// Collect N frames → remove outliers → median → EMA → final height
-const BUFFER_MAX = 16;           // ~2 seconds at 8 FPS
-const OUTLIER_STD_MULT = 2.0;   // remove values beyond 2σ from rolling median
+const BUFFER_MAX = 16;
+const OUTLIER_STD_MULT = 2.0;
 let heightBuffer: number[] = [];
 let emaHeight: number | null = null;
 let emaJitter: number = 0;
@@ -96,33 +90,19 @@ function stdDev(arr: number[], mean: number): number {
   return Math.sqrt(variance);
 }
 
-/**
- * Accept a raw height sample. Once enough frames accumulated,
- * apply outlier removal → median → EMA for a stable reading.
- */
 export function smoothHeight(rawCm: number): { smoothed: number; jitter: number } {
-  // Add to buffer
   heightBuffer.push(rawCm);
   if (heightBuffer.length > BUFFER_MAX) heightBuffer.shift();
-
   if (heightBuffer.length < 4) {
-    // Not enough samples yet — use raw value
     return { smoothed: Math.round(rawCm * 10) / 10, jitter: 0 };
   }
-
-  // 1. Remove outliers
   const med = median(heightBuffer);
   const sd = stdDev(heightBuffer, med);
   const filtered = heightBuffer.filter(v => Math.abs(v - med) <= OUTLIER_STD_MULT * Math.max(sd, 0.5));
-
   if (filtered.length === 0) {
     return { smoothed: Math.round(rawCm * 10) / 10, jitter: 0 };
   }
-
-  // 2. Median of filtered samples
   const stableValue = median(filtered);
-
-  // 3. EMA on the median
   if (emaHeight === null) {
     emaHeight = stableValue;
     emaJitter = 0;
@@ -131,7 +111,6 @@ export function smoothHeight(rawCm: number): { smoothed: number; jitter: number 
     emaHeight = EMA_ALPHA * stableValue + (1 - EMA_ALPHA) * prevEma;
     emaJitter = 0.8 * emaJitter + 0.2 * Math.abs(stableValue - prevEma);
   }
-
   return { smoothed: Math.round(emaHeight * 10) / 10, jitter: emaJitter };
 }
 
@@ -139,6 +118,50 @@ export function resetSmoothing(): void {
   heightBuffer = [];
   emaHeight = null;
   emaJitter = 0;
+}
+
+// ── Measurement lock ──
+let lockStableCount = 0;
+const LOCK_FRAMES = 16;       // ~2s at 8 FPS
+const LOCK_MIN_CONF = 0.95;
+const LOCK_MAX_VAR_CM = 0.5;
+let lockLastHt: number | null = null;
+let _locked: { heightCm: number; confidence: number } | null = null;
+
+export function updateLock(heightCm: number, confidence: number): {
+  locked: boolean;
+  measurement: { heightCm: number; confidence: number } | null;
+} {
+  if (_locked) return { locked: true, measurement: _locked };
+  if (confidence < LOCK_MIN_CONF) {
+    lockStableCount = 0; lockLastHt = null;
+    return { locked: false, measurement: null };
+  }
+  if (lockLastHt === null) {
+    lockLastHt = heightCm; lockStableCount = 1;
+    return { locked: false, measurement: null };
+  }
+  const v = Math.abs(heightCm - lockLastHt);
+  lockLastHt = heightCm;
+  if (v <= LOCK_MAX_VAR_CM) {
+    lockStableCount++;
+    if (lockStableCount >= LOCK_FRAMES) {
+      _locked = { heightCm, confidence };
+      return { locked: true, measurement: _locked };
+    }
+  } else {
+    lockStableCount = 1;
+  }
+  return { locked: false, measurement: null };
+}
+
+export function unlockMeasurement(): void {
+  _locked = null; lockStableCount = 0; lockLastHt = null;
+}
+
+export function resetAll(): void {
+  resetSmoothing();
+  unlockMeasurement();
 }
 
 // ── Core height estimation ──
@@ -151,63 +174,44 @@ export function estimateHeight(
   frameHeight: number = 1080,
 ): HeightResult {
   const warnings: string[] = [];
-
-  // ── 1. Tilt check ──
   if (!tilt.isUpright) {
     warnings.push('Phone is tilted – measurement may be inaccurate');
   }
-
-  // ── 2. Landmark presence ──
   const nose = landmarks[LM.NOSE];
   const lAnkle = landmarks[LM.LEFT_ANKLE];
   const rAnkle = landmarks[LM.RIGHT_ANKLE];
-
   if (!nose || nose.visibility < MIN_VISIBILITY) {
     return { heightCm: null, rawCm: null, confidence: 0, warnings: ['Cannot detect head'] };
   }
-
   const lVis = lAnkle?.visibility ?? 0;
   const rVis = rAnkle?.visibility ?? 0;
-
   if (lVis < MIN_VISIBILITY && rVis < MIN_VISIBILITY) {
     return { heightCm: null, rawCm: null, confidence: 0, warnings: ['Cannot detect feet'] };
   }
-
-  // ── 3. Pixel height ──
   const ankleY = Math.max(lAnkle?.y ?? 0, rAnkle?.y ?? 0);
   const headY = nose.y;
   const pixelH = ankleY - headY;
-
   if (pixelH <= 0) {
     return { heightCm: null, rawCm: null, confidence: 0, warnings: ['Invalid pose'] };
   }
-
   const boxPX = boxBottomY - boxTopY;
   if (boxPX <= 0) {
     return { heightCm: null, rawCm: null, confidence: 0, warnings: ['Invalid box'] };
   }
-
-  // ── 4. Scale & raw height ──
   const scale = BOX_REAL_HEIGHT_CM / boxPX;
   const rawCm = pixelH * scale;
-
   if (rawCm < MIN_CHILD_CM || rawCm > MAX_CHILD_CM) {
     return {
       heightCm: null, rawCm: null, confidence: 0,
       warnings: [`Measurement (${rawCm.toFixed(1)} cm) out of range`],
     };
   }
-
-  // ── 5. EMA smoothing ──
   const { smoothed, jitter } = smoothHeight(rawCm);
   const heightCm = smoothed;
-
-  // ── 6. Multi-signal confidence ──
   const visScore = (nose.visibility + Math.max(lVis, rVis)) / 2;
   const completeness = bodyCompleteness(landmarks);
   const tiltScore = tilt.isUpright ? 1 : Math.max(0, 1 - tilt.pitchDeg / 10);
   const jitterScore = jitter < 2 ? 1 : Math.max(0, 1 - (jitter - 2) / 10);
-
   const confidence = Math.round((
     detectorScore * 0.25 +
     visScore * 0.25 +
@@ -216,7 +220,6 @@ export function estimateHeight(
     jitterScore * 0.15
   ) * 100) / 100;
 
-  // ── 7. Warnings ──
   const fillRatio = pixelH / boxPX;
   if (fillRatio < 0.15) warnings.push('Too far – move closer');
   if (fillRatio > 1.05) warnings.push('Too close – step back');
@@ -227,7 +230,6 @@ export function estimateHeight(
 
   return { heightCm, rawCm, confidence, warnings };
 }
-
 
 /** Tier label + emoji for a confidence value (0–1). */
 export function qualityTier(confidence: number, lang: 'en' | 'ne' = 'en'): string {

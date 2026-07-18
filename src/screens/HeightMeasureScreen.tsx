@@ -31,7 +31,7 @@ import {
 } from '../ai/BlazePoseEngine';
 import {
   estimateHeight, calculateTilt, getTiltMessage, getMeasureStatusMessage,
-  smoothHeight, resetSmoothing, qualityTier,
+  smoothHeight, resetAll, qualityTier, updateLock, unlockMeasurement,
 } from '../ai/heightEstimator';
 // TODO: Future calibration — allow user to input known reference height
 // e.g., measure against a doorframe, credit card, or A4 paper
@@ -142,6 +142,8 @@ export default function HeightMeasureScreen() {
     tiltOk: true, landmarksVisible: false, childInBox: false, estimatedHeightCm: null, confidence: 0,
   });
   const [capturedH, setCapturedH] = useState<number | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [lockedHt, setLockedHt] = useState<number | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
   const pulse = useRef(new Animated.Value(1)).current;
@@ -157,6 +159,18 @@ export default function HeightMeasureScreen() {
     const r = estimateHeight(landmarks, tilt, BOX_TOP, BOX_BOT, detScore, SH);
     const inBox = r.heightCm !== null;
     const vis = landmarks.some(l => l.visibility >= 0.7);
+
+    // Check measurement lock
+    if (r.heightCm !== null) {
+      const lockState = updateLock(r.heightCm, r.confidence);
+      if (lockState.locked && lockState.measurement && !locked) {
+        setLocked(true);
+        setLockedHt(lockState.measurement.heightCm);
+        setCapturedH(lockState.measurement.heightCm);
+        setShowGuide(false);
+      }
+    }
+
     setMs({
       canMeasure: inBox && tilt.isUpright && r.confidence >= 0.4,
       statusMessage: getMeasureStatusMessage(r, tilt, language as 'en' | 'ne'),
@@ -258,14 +272,17 @@ export default function HeightMeasureScreen() {
       setCapturedH(ms.estimatedHeightCm);
       setCapturing(false);
       setShowGuide(false);
-      resetSmoothing();
+      resetAll();
+      unlockMeasurement();
     }, 400);
   }, [ms.canMeasure, ms.estimatedHeightCm]);
 
   const retake = useCallback(() => {
     setCapturedH(null);
+    setLocked(false);
+    setLockedHt(null);
     setShowGuide(true);
-    resetSmoothing();
+    resetAll();
   }, []);
 
   const save = useCallback(async () => {
@@ -316,9 +333,10 @@ export default function HeightMeasureScreen() {
       <View style={S.bb}>
         {capturedH ? (
           <View style={S.rc}>
-            <View style={S.rcard}>
+            <View style={[S.rcard, locked && { borderColor: '#4CAF50', borderWidth: 2 }]}>
+              {locked && <Text style={S.lockedBanner}>{n ? '🔒 मापन पूरा' : '🔒 Measurement Complete'}</Text>}
               <Text style={S.rlbl}>{n ? 'नापिएको उचाइ' : 'Measured Height'}</Text>
-              <Text style={S.rv}>{capturedH}<Text style={S.ru}> cm</Text></Text>
+              <Text style={S.rv}>{lockedHt ?? capturedH}<Text style={S.ru}> cm</Text></Text>
               <Text style={S.rconf}>{n ? 'विश्वसनीयता' : 'Confidence'}: {Math.round(ms.confidence * 100)}%</Text>
               <Text style={S.rtier}>{qualityTier(ms.confidence, language as 'en' | 'ne')}</Text>
             </View>
@@ -387,4 +405,5 @@ const S = StyleSheet.create({
   sbtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 10, backgroundColor: '#4CAF50', gap: 8 },
   sbtnT: { color: '#fff', fontWeight: '700', fontSize: 16 },
   rtier: { fontSize: 14, fontWeight: '700', marginTop: 8, letterSpacing: 0.5 },
+  lockedBanner: { fontSize: 13, fontWeight: '800', color: '#4CAF50', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
 });
