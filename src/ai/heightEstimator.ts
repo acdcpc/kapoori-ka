@@ -22,7 +22,7 @@ const TILT_TOLERANCE_DEG = 2.5;
 const BOX_REAL_HEIGHT_CM = 120;  // overlay physical height
 const MIN_CHILD_CM = 30;
 const MAX_CHILD_CM = 150;
-const MIN_VISIBILITY = 0.7;
+const MIN_VISIBILITY = 0.6;
 
 // Camera: assume ~70° vertical FOV (typical smartphone)
 const CAMERA_VFOV_RAD = (70 * Math.PI) / 180;

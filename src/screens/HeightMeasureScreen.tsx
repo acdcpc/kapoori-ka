@@ -33,6 +33,9 @@ import {
   estimateHeight, calculateTilt, getTiltMessage, getMeasureStatusMessage,
   smoothHeight, resetSmoothing,
 } from '../ai/heightEstimator';
+// TODO: Future calibration — allow user to input known reference height
+// e.g., measure against a doorframe, credit card, or A4 paper
+// to derive a per-device BOX_REAL_HEIGHT_CM correction factor
 
 // declare runOnJS (injected by VisionCamera in worklet scope)
 declare function runOnJS<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => void;
@@ -187,7 +190,7 @@ export default function HeightMeasureScreen() {
     'worklet';
     if (!detModel || !lmModel || !resize) return;
 
-    runAtTargetFps(5, () => {
+    runAtTargetFps(8, () => {
       try {
         // ── STAGE 1: Detector ──
         const detInput = resize.resize(frame, {
@@ -216,6 +219,12 @@ export default function HeightMeasureScreen() {
         if (cw < 50 || ch < 50) return;
 
         // ── STAGE 2: Landmark model ──
+        // Apply frame orientation via rotation (VisionCamera may rotate frames)
+        const rotation = (frame as any).orientation === 'portrait' ? '0deg'
+          : (frame as any).orientation === 'landscape-left' ? '90deg'
+          : (frame as any).orientation === 'landscape-right' ? '270deg'
+          : '0deg';
+
         const lmInput = resize.resize(frame, {
           crop: {
             x: Math.round(cx), y: Math.round(cy),
@@ -223,6 +232,7 @@ export default function HeightMeasureScreen() {
           },
           scale: { width: 256, height: 256 },
           pixelFormat: 'rgb', dataType: 'float32',
+          rotation,
         });
         if (!lmInput || lmInput.length === 0) return;
 
