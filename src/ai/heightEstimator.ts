@@ -74,25 +74,69 @@ export function bodyCompleteness(landmarks: PoseLandmark[]): number {
   return visible / LANDMARK_COUNT;
 }
 
-// ── EMA smoothed height for temporal stability ──
+// ── Temporal stability buffer ──
+// Collect N frames → remove outliers → median → EMA → final height
+const BUFFER_MAX = 16;           // ~2 seconds at 8 FPS
+const OUTLIER_STD_MULT = 2.0;   // remove values beyond 2σ from rolling median
+let heightBuffer: number[] = [];
 let emaHeight: number | null = null;
-let emaJitter: number = 0; // running std-dev proxy
+let emaJitter: number = 0;
 
+function median(arr: number[]): number {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+function stdDev(arr: number[], mean: number): number {
+  if (arr.length < 2) return 0;
+  const variance = arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (arr.length - 1);
+  return Math.sqrt(variance);
+}
+
+/**
+ * Accept a raw height sample. Once enough frames accumulated,
+ * apply outlier removal → median → EMA for a stable reading.
+ */
 export function smoothHeight(rawCm: number): { smoothed: number; jitter: number } {
+  // Add to buffer
+  heightBuffer.push(rawCm);
+  if (heightBuffer.length > BUFFER_MAX) heightBuffer.shift();
+
+  if (heightBuffer.length < 4) {
+    // Not enough samples yet — use raw value
+    return { smoothed: Math.round(rawCm * 10) / 10, jitter: 0 };
+  }
+
+  // 1. Remove outliers
+  const med = median(heightBuffer);
+  const sd = stdDev(heightBuffer, med);
+  const filtered = heightBuffer.filter(v => Math.abs(v - med) <= OUTLIER_STD_MULT * Math.max(sd, 0.5));
+
+  if (filtered.length === 0) {
+    return { smoothed: Math.round(rawCm * 10) / 10, jitter: 0 };
+  }
+
+  // 2. Median of filtered samples
+  const stableValue = median(filtered);
+
+  // 3. EMA on the median
   if (emaHeight === null) {
-    emaHeight = rawCm;
+    emaHeight = stableValue;
     emaJitter = 0;
   } else {
-    // Update EMA
     const prevEma = emaHeight;
-    emaHeight = EMA_ALPHA * rawCm + (1 - EMA_ALPHA) * prevEma;
-    // Track jitter as abs delta
-    emaJitter = 0.8 * emaJitter + 0.2 * Math.abs(rawCm - prevEma);
+    emaHeight = EMA_ALPHA * stableValue + (1 - EMA_ALPHA) * prevEma;
+    emaJitter = 0.8 * emaJitter + 0.2 * Math.abs(stableValue - prevEma);
   }
+
   return { smoothed: Math.round(emaHeight * 10) / 10, jitter: emaJitter };
 }
 
 export function resetSmoothing(): void {
+  heightBuffer = [];
   emaHeight = null;
   emaJitter = 0;
 }
@@ -182,6 +226,15 @@ export function estimateHeight(
   if (jitter > 5) warnings.push('Too much movement – hold still');
 
   return { heightCm, rawCm, confidence, warnings };
+}
+
+
+/** Tier label + emoji for a confidence value (0–1). */
+export function qualityTier(confidence: number, lang: 'en' | 'ne' = 'en'): string {
+  if (confidence >= 0.95) return lang === 'en' ? '🟢 Excellent' : '🟢 उत्कृष्ट';
+  if (confidence >= 0.80) return lang === 'en' ? '🟡 Good' : '🟡 राम्रो';
+  if (confidence >= 0.60) return lang === 'en' ? '🟠 Fair' : '🟠 ठीक';
+  return lang === 'en' ? '🔴 Poor' : '🔴 कमजोर';
 }
 
 export function getMeasureStatusMessage(

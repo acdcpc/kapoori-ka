@@ -31,7 +31,7 @@ import {
 } from '../ai/BlazePoseEngine';
 import {
   estimateHeight, calculateTilt, getTiltMessage, getMeasureStatusMessage,
-  smoothHeight, resetSmoothing,
+  smoothHeight, resetSmoothing, qualityTier,
 } from '../ai/heightEstimator';
 // TODO: Future calibration — allow user to input known reference height
 // e.g., measure against a doorframe, credit card, or A4 paper
@@ -320,6 +320,7 @@ export default function HeightMeasureScreen() {
               <Text style={S.rlbl}>{n ? 'नापिएको उचाइ' : 'Measured Height'}</Text>
               <Text style={S.rv}>{capturedH}<Text style={S.ru}> cm</Text></Text>
               <Text style={S.rconf}>{n ? 'विश्वसनीयता' : 'Confidence'}: {Math.round(ms.confidence * 100)}%</Text>
+              <Text style={S.rtier}>{qualityTier(ms.confidence, language as 'en' | 'ne')}</Text>
             </View>
             <View style={S.ra}>
               <TouchableOpacity style={S.rbtn} onPress={retake}><Ionicons name="refresh" size={20} color="#666" /><Text style={S.rbtnT}>{n ? 'फेरि' : 'Retake'}</Text></TouchableOpacity>
@@ -385,4 +386,5 @@ const S = StyleSheet.create({
   rbtnT: { color: '#ccc', fontWeight: '600' },
   sbtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 10, backgroundColor: '#4CAF50', gap: 8 },
   sbtnT: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  rtier: { fontSize: 14, fontWeight: '700', marginTop: 8, letterSpacing: 0.5 },
 });
