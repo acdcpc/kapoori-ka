@@ -201,23 +201,49 @@ export default function HeightMeasureScreen() {
         console.log('[HEIGHT] ✅ Landmark loaded');
         console.log('[HEIGHT] Landmark model:', lmModel);
 
-        // Phase 3: Dummy inference to verify native runtime
+        // Phase 3: Dummy inference + full metadata inspection
         setModelPhase('verifying');
-        console.log('[HEIGHT] Phase 3: Running dummy inference...');
+        console.log('[HEIGHT] Phase 3: Verifying native runtime...');
 
-        // Detector dummy: 224x224x3 float32 input → output
+        // ── Log model metadata ──
+        const detInputs = (detModel as any).inputs;
+        const detOutputs = (detModel as any).outputs;
+        console.log('[HEIGHT] Detector inputs:', JSON.stringify(detInputs));
+        console.log('[HEIGHT] Detector outputs:', JSON.stringify(detOutputs));
+
+        const lmInputs = (lmModel as any).inputs;
+        const lmOutputs = (lmModel as any).outputs;
+        console.log('[HEIGHT] Landmark inputs:', JSON.stringify(lmInputs));
+        console.log('[HEIGHT] Landmark outputs:', JSON.stringify(lmOutputs));
+
+        // ── Detector dummy inference ──
         const dup224 = 224 * 224 * 3;
         const dummyDetInput = new Float32Array(dup224);
+        // Fill with 0.5 (mid-range float, valid for [0,1] or [0,255] models)
+        dummyDetInput.fill(0.5);
         const detOutput = await detModel.run([dummyDetInput]);
-        console.log('[HEIGHT] ✅ Detector dummy inference OK. Outputs:', detOutput.length,
-          detOutput.map((o: any) => `[${(o as Float32Array).length}]`).join(', '));
+        console.log('[HEIGHT] Detector output count:', detOutput.length);
+        detOutput.forEach((o: any, i: number) => {
+          const arr = new Float32Array(o as ArrayBuffer);
+          const min = arr.length > 0 ? Math.min(...arr) : NaN;
+          const max = arr.length > 0 ? Math.max(...arr) : NaN;
+          console.log(`[HEIGHT]   det_out[${i}]: length=${arr.length}, min=${min?.toFixed(4)}, max=${max?.toFixed(4)}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
+        });
+        console.log('[HEIGHT] ✅ Detector dummy inference OK');
 
-        // Landmark dummy: 256x256x3 float32 input → output
+        // ── Landmark dummy inference ──
         const dup256 = 256 * 256 * 3;
         const dummyLmInput = new Float32Array(dup256);
+        dummyLmInput.fill(0.5);
         const lmOutput = await lmModel.run([dummyLmInput]);
-        console.log('[HEIGHT] ✅ Landmark dummy inference OK. Outputs:', lmOutput.length,
-          lmOutput.map((o: any) => `[${(o as Float32Array).length}]`).join(', '));
+        console.log('[HEIGHT] Landmark output count:', lmOutput.length);
+        lmOutput.forEach((o: any, i: number) => {
+          const arr = new Float32Array(o as ArrayBuffer);
+          const min = arr.length > 0 ? Math.min(...arr) : NaN;
+          const max = arr.length > 0 ? Math.max(...arr) : NaN;
+          console.log(`[HEIGHT]   lm_out[${i}]: length=${arr.length}, min=${min?.toFixed(4)}, max=${max?.toFixed(4)}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
+        });
+        console.log('[HEIGHT] ✅ Landmark dummy inference OK');
 
         setModelPhase('ready');
         console.log('[HEIGHT] 🎉 All phases complete — models ready for frame processing');
