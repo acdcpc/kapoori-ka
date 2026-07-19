@@ -22,6 +22,7 @@ import {
   Camera, runAtTargetFps,
 } from 'react-native-vision-camera';
 import { useTensorflowModel } from 'react-native-fast-tflite';
+import { Asset } from 'expo-asset';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
 import { Accelerometer } from 'expo-sensors';
 import { LanguageContext } from '../context/LanguageContext';
@@ -120,9 +121,34 @@ export default function HeightMeasureScreen() {
   const device = useCameraDevice('back');
 
   // ── Models ──
-  const detectorM = useTensorflowModel(require('../../assets/models/blazepose_detector_fp16.tflite'), []);
-  const landmarkM = useTensorflowModel(require('../../assets/models/blazepose_landmark_lite_fp16.tflite'), []);
-  const modelsReady = detectorM.state === 'loaded' && landmarkM.state === 'loaded';
+  // Use expo-asset to resolve to a file:// URI that HybridAssetLoader can handle.
+  // require() alone returns an Android resource identifier (e.g. 'assets_models_...')
+  // which is not a valid URL — HybridAssetLoader.kt uses URL(path).readBytes().
+  const [detUrl, setDetUrl] = useState<string | null>(null);
+  const [lmUrl, setLmUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [detAsset, lmAsset] = await Promise.all([
+          Asset.fromModule(require('../../assets/models/blazepose_detector_fp16.tflite')).downloadAsync(),
+          Asset.fromModule(require('../../assets/models/blazepose_landmark_lite_fp16.tflite')).downloadAsync(),
+        ]);
+        console.log('[HEIGHT] Detector URI:', detAsset.localUri || detAsset.uri);
+        console.log('[HEIGHT] Landmark URI:', lmAsset.localUri || lmAsset.uri);
+        setDetUrl(detAsset.localUri || detAsset.uri);
+        setLmUrl(lmAsset.localUri || lmAsset.uri);
+      } catch (e) {
+        console.error('[HEIGHT] Asset resolution failed:', e);
+      }
+    })();
+  }, []);
+
+  // Start loading models once we have resolved file:// URIs
+  const detectorM = useTensorflowModel(detUrl ? { url: detUrl } : null as any, []);
+  const landmarkM = useTensorflowModel(lmUrl ? { url: lmUrl } : null as any, []);
+  const modelsLoading = !detUrl || !lmUrl;
+  const modelsReady = !modelsLoading && detectorM.state === 'loaded' && landmarkM.state === 'loaded';
   const detModel = detectorM.state === 'loaded' ? detectorM.model : undefined;
   const lmModel = landmarkM.state === 'loaded' ? landmarkM.model : undefined;
 
@@ -365,7 +391,8 @@ export default function HeightMeasureScreen() {
     return () => clearInterval(t);
   }, [detectorM.state, landmarkM.state]);
 
-  if (!modelsReady) return (
+  if (modelsLoading) return (
+
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />
       <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
