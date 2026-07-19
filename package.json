@@ -10,7 +10,7 @@
     "dayjs": "^1.11.10",
     "dotenv": "^16.4.5",
     "expo": "~56.0.16",
-    "expo-asset": "^57.0.6",
+    "expo-asset": "^56.0.20",
     "expo-auth-session": "^56.0.14",
     "expo-dev-client": "~56.0.23",
     "expo-device": "~56.0.4",
