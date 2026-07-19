@@ -307,6 +307,14 @@ export default function HeightMeasureScreen() {
     </View></SafeAreaView>
   );
 
+  if (detectorM.state === 'error' || landmarkM.state === 'error') return (
+    <SafeAreaView style={S.ct}><View style={S.gate}>
+      <Ionicons name="warning-outline" size={64} color="#FF5252" />
+      <Text style={S.gateTitle}>{n ? 'मोडल लोड त्रुटि' : 'Model Load Error'}</Text>
+      <Text style={S.gateDesc}>{n ? 'AI मोडल लोड गर्न सकिएन। एप पुनः सुरु गर्नुहोस्।' : 'Failed to load AI models. Please restart the app.'}</Text>
+      <Text style={{color: '#666', fontSize: 11, marginTop: 8}}>{String((detectorM as any).error || (landmarkM as any).error || '')}</Text>
+    </View></SafeAreaView>
+  );
   if (!modelsReady) return (
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />

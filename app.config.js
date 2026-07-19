@@ -66,7 +66,7 @@ export default {
     ],
     extra: {
       eas: {
-        projectId: "01d906cd-047c-4e63-b718-19b4658cb8de"
+        projectId: "9eb1daa1-b2b9-481e-8d5a-c22249654ebc"
       },
       firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
       firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
