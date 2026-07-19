@@ -21,7 +21,7 @@ import {
   useCameraDevice, useCameraPermission, useFrameProcessor,
   Camera, runAtTargetFps,
 } from 'react-native-vision-camera';
-import { useTensorflowModel } from 'react-native-fast-tflite';
+
 import { Asset } from 'expo-asset';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
 import { Accelerometer } from 'expo-sensors';
@@ -164,13 +164,45 @@ export default function HeightMeasureScreen() {
     })();
   }, []);
 
-  // Start loading models once we have resolved file:// URIs
-  const detectorM = useTensorflowModel(detUrl ? { url: detUrl } : null as any, []);
-  const landmarkM = useTensorflowModel(lmUrl ? { url: lmUrl } : null as any, []);
-  const modelsLoading = !detUrl || !lmUrl;
-  const modelsReady = !modelsLoading && detectorM.state === 'loaded' && landmarkM.state === 'loaded';
-  const detModel = detectorM.state === 'loaded' ? detectorM.model : undefined;
-  const lmModel = landmarkM.state === 'loaded' ? landmarkM.model : undefined;
+  // ── Model loading state (driven manually, not by useTensorflowModel hook) ──
+  // We avoid useTensorflowModel() because it would fire with null before URIs resolve.
+  // Instead we call loadTensorflowModel directly after Asset.downloadAsync() completes.
+  const [modelState, setModelState] = useState<'idle'|'loading'|'loaded'|'error'>('idle');
+  const detModelRef = useRef<any>(null);
+  const lmModelRef = useRef<any>(null);
+  const [modelError, setModelError] = useState<string | null>(null);
+
+  // Load models once URIs are resolved
+  useEffect(() => {
+    if (!detUrl || !lmUrl) return;
+    if (modelState !== 'idle') return; // already started
+
+    const { loadTensorflowModel: loadTF } = require('react-native-fast-tflite');
+    setModelState('loading');
+    console.log('[HEIGHT] Starting TFLite model load...');
+
+    (async () => {
+      try {
+        const [detModel, lmModel] = await Promise.all([
+          loadTF({ url: detUrl }, []),
+          loadTF({ url: lmUrl }, []),
+        ]);
+        detModelRef.current = detModel;
+        lmModelRef.current = lmModel;
+        setModelState('loaded');
+        console.log('[HEIGHT] ✅ Both TFLite models loaded successfully');
+      } catch (e: any) {
+        console.error('[HEIGHT] ❌ Model load failed:', e?.message || e);
+        setModelState('error');
+        setModelError(e?.message || String(e));
+      }
+    })();
+  }, [detUrl, lmUrl, modelState]);
+
+  const modelsLoading = !detUrl || !lmUrl || modelState === 'idle' || modelState === 'loading';
+  const modelsReady = modelState === 'loaded';
+  const detModel = modelState === 'loaded' ? detModelRef.current : undefined;
+  const lmModel = modelState === 'loaded' ? lmModelRef.current : undefined;
 
   // ── Resize plugin ──
   const resize = useResizePlugin();
@@ -392,31 +424,27 @@ export default function HeightMeasureScreen() {
     </View></SafeAreaView>
   );
 
-  if (detectorM.state === 'error' || landmarkM.state === 'error') return (
+  if (modelState === 'error') return (
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <Ionicons name="warning-outline" size={64} color="#FF5252" />
       <Text style={S.gateTitle}>{n ? 'मोडल लोड त्रुटि' : 'Model Load Error'}</Text>
       <Text style={S.gateDesc}>{n ? 'AI मोडल लोड गर्न सकिएन। एप पुनः सुरु गर्नुहोस्।' : 'Failed to load AI models. Please restart the app.'}</Text>
-      <Text style={{color: '#666', fontSize: 11, marginTop: 8}}>{String((detectorM as any).error || (landmarkM as any).error || '')}</Text>
+      <Text style={{color: '#666', fontSize: 11, marginTop: 8}}>{modelError || ''}</Text>
     </View></SafeAreaView>
   );
-  // Diagnostic: log model states every 3s while loading
+  // Diagnostic: log model state while loading
   useEffect(() => {
-    const t = setInterval(() => {
-      console.log('[HEIGHT] Detector:', detectorM.state);
-      console.log('[HEIGHT] Landmark:', landmarkM.state);
-      if ((detectorM as any).state === 'error') console.error('[HEIGHT] Detector error:', (detectorM as any).error);
-      if ((landmarkM as any).state === 'error') console.error('[HEIGHT] Landmark error:', (landmarkM as any).error);
-    }, 3000);
-    return () => clearInterval(t);
-  }, [detectorM.state, landmarkM.state]);
+    if (modelsLoading) {
+      console.log('[HEIGHT] Model state:', modelState, 'detUrl:', !!detUrl, 'lmUrl:', !!lmUrl);
+    }
+  }, [modelsLoading, modelState, detUrl, lmUrl]);
 
   if (modelsLoading) return (
 
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />
       <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
-      <Text style={S.gateDesc}>Det: {detectorM.state} | LM: {landmarkM.state}</Text>
+      <Text style={S.gateDesc}>{`Model state: ${modelState}`}</Text>
     </View></SafeAreaView>
   );
 
