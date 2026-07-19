@@ -110,6 +110,9 @@ let _frameCnt = 0;
 let _detCnt = 0;
 let _lmLogged = false;
 
+// ── Model loading phases ──
+type ModelPhase = 'idle' | 'downloading_assets' | 'loading_detector' | 'loading_landmark' | 'verifying' | 'ready' | 'error';
+
 // ─────────────────────────────────────────────────────────
 export default function HeightMeasureScreen() {
   const { language } = useContext(LanguageContext);
@@ -156,6 +159,7 @@ export default function HeightMeasureScreen() {
           console.error('[HEIGHT] FileInfo check failed:', e);
         }
 
+        setModelPhase('downloading_assets');
         setDetUrl(detUri);
         setLmUrl(lmUri);
       } catch (e) {
@@ -167,42 +171,68 @@ export default function HeightMeasureScreen() {
   // ── Model loading state (driven manually, not by useTensorflowModel hook) ──
   // We avoid useTensorflowModel() because it would fire with null before URIs resolve.
   // Instead we call loadTensorflowModel directly after Asset.downloadAsync() completes.
-  const [modelState, setModelState] = useState<'idle'|'loading'|'loaded'|'error'>('idle');
+  const [modelPhase, setModelPhase] = useState<ModelPhase>('idle');
   const detModelRef = useRef<any>(null);
   const lmModelRef = useRef<any>(null);
   const [modelError, setModelError] = useState<string | null>(null);
 
-  // Load models once URIs are resolved
+  // ── Sequential model loading with dummy-inference verification ──
   useEffect(() => {
     if (!detUrl || !lmUrl) return;
-    if (modelState !== 'idle') return; // already started
+    if (modelPhase !== 'idle') return;
 
     const { loadTensorflowModel: loadTF } = require('react-native-fast-tflite');
-    setModelState('loading');
-    console.log('[HEIGHT] Starting TFLite model load...');
 
     (async () => {
       try {
-        const [detModel, lmModel] = await Promise.all([
-          loadTF({ url: detUrl }, []),
-          loadTF({ url: lmUrl }, []),
-        ]);
+        // Phase 1: Load detector
+        setModelPhase('loading_detector');
+        console.log('[HEIGHT] Phase 1: Loading detector...');
+        const detModel = await loadTF({ url: detUrl }, []);
         detModelRef.current = detModel;
+        console.log('[HEIGHT] ✅ Detector loaded');
+        console.log('[HEIGHT] Detector model:', detModel);
+
+        // Phase 2: Load landmark
+        setModelPhase('loading_landmark');
+        console.log('[HEIGHT] Phase 2: Loading landmark...');
+        const lmModel = await loadTF({ url: lmUrl }, []);
         lmModelRef.current = lmModel;
-        setModelState('loaded');
-        console.log('[HEIGHT] ✅ Both TFLite models loaded successfully');
+        console.log('[HEIGHT] ✅ Landmark loaded');
+        console.log('[HEIGHT] Landmark model:', lmModel);
+
+        // Phase 3: Dummy inference to verify native runtime
+        setModelPhase('verifying');
+        console.log('[HEIGHT] Phase 3: Running dummy inference...');
+
+        // Detector dummy: 224x224x3 float32 input → output
+        const dup224 = 224 * 224 * 3;
+        const dummyDetInput = new Float32Array(dup224);
+        const detOutput = await detModel.run([dummyDetInput]);
+        console.log('[HEIGHT] ✅ Detector dummy inference OK. Outputs:', detOutput.length,
+          detOutput.map((o: any) => `[${(o as Float32Array).length}]`).join(', '));
+
+        // Landmark dummy: 256x256x3 float32 input → output
+        const dup256 = 256 * 256 * 3;
+        const dummyLmInput = new Float32Array(dup256);
+        const lmOutput = await lmModel.run([dummyLmInput]);
+        console.log('[HEIGHT] ✅ Landmark dummy inference OK. Outputs:', lmOutput.length,
+          lmOutput.map((o: any) => `[${(o as Float32Array).length}]`).join(', '));
+
+        setModelPhase('ready');
+        console.log('[HEIGHT] 🎉 All phases complete — models ready for frame processing');
       } catch (e: any) {
-        console.error('[HEIGHT] ❌ Model load failed:', e?.message || e);
-        setModelState('error');
-        setModelError(e?.message || String(e));
+        console.error('[HEIGHT] ❌ Failed at phase:', modelPhase, e?.message || e);
+        setModelPhase('error');
+        setModelError(`${modelPhase}: ${e?.message || e}`);
       }
     })();
-  }, [detUrl, lmUrl, modelState]);
+  }, [detUrl, lmUrl, modelPhase]);
 
-  const modelsLoading = !detUrl || !lmUrl || modelState === 'idle' || modelState === 'loading';
-  const modelsReady = modelState === 'loaded';
-  const detModel = modelState === 'loaded' ? detModelRef.current : undefined;
-  const lmModel = modelState === 'loaded' ? lmModelRef.current : undefined;
+  const modelsLoading = !detUrl || !lmUrl || modelPhase !== 'ready';
+  const modelsReady = modelPhase === 'ready';
+  const detModel = modelPhase === 'ready' ? detModelRef.current : undefined;
+  const lmModel = modelPhase === 'ready' ? lmModelRef.current : undefined;
 
   // ── Resize plugin ──
   const resize = useResizePlugin();
@@ -424,7 +454,7 @@ export default function HeightMeasureScreen() {
     </View></SafeAreaView>
   );
 
-  if (modelState === 'error') return (
+  if (modelPhase === 'error') return (
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <Ionicons name="warning-outline" size={64} color="#FF5252" />
       <Text style={S.gateTitle}>{n ? 'मोडल लोड त्रुटि' : 'Model Load Error'}</Text>
@@ -435,16 +465,16 @@ export default function HeightMeasureScreen() {
   // Diagnostic: log model state while loading
   useEffect(() => {
     if (modelsLoading) {
-      console.log('[HEIGHT] Model state:', modelState, 'detUrl:', !!detUrl, 'lmUrl:', !!lmUrl);
+      console.log('[HEIGHT] Model phase:', modelPhase, 'detUrl:', !!detUrl, 'lmUrl:', !!lmUrl);
     }
-  }, [modelsLoading, modelState, detUrl, lmUrl]);
+  }, [modelsLoading, modelPhase, detUrl, lmUrl]);
 
   if (modelsLoading) return (
 
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />
       <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
-      <Text style={S.gateDesc}>{`Model state: ${modelState}`}</Text>
+      <Text style={S.gateDesc}>{`Phase: ${modelPhase}`}</Text>
     </View></SafeAreaView>
   );
 
