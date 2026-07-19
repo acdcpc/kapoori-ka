@@ -104,6 +104,11 @@ function WebOnly() {
   );
 }
 
+// ── Worklet-compatible module-level counters (captured by closure) ──
+let _frameCnt = 0;
+let _detCnt = 0;
+let _lmLogged = false;
+
 // ─────────────────────────────────────────────────────────
 export default function HeightMeasureScreen() {
   const { language } = useContext(LanguageContext);
@@ -141,6 +146,7 @@ export default function HeightMeasureScreen() {
     canMeasure: false, statusMessage: n ? 'क्यामेरा सुरु गर्दै...' : 'Starting camera...',
     tiltOk: true, landmarksVisible: false, childInBox: false, estimatedHeightCm: null, confidence: 0,
   });
+  const [diag, setDiag] = useState<string>('init');
   const [capturedH, setCapturedH] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [lockedHt, setLockedHt] = useState<number | null>(null);
@@ -153,7 +159,15 @@ export default function HeightMeasureScreen() {
   const landmarksRef = useRef<PoseLandmark[]>([]);
 
   // JS callback from worklet
+  const firstResultLogged = useRef(false);
+
+  // JS callback from worklet
   const onResult = useCallback((landmarks: PoseLandmark[], detScore: number) => {
+    if (!firstResultLogged.current) {
+      firstResultLogged.current = true;
+      console.log('[HEIGHT] ✅ First result reached JS! Landmarks:', landmarks.length, 'Score:', detScore);
+      setDiag('result_ok');
+    }
     landmarksRef.current = landmarks;
     lastDetScore.current = detScore;
     const r = estimateHeight(landmarks, tilt, BOX_TOP, BOX_BOT, detScore, SH);
@@ -199,10 +213,23 @@ export default function HeightMeasureScreen() {
     } else pulse.setValue(1);
   }, [ms.canMeasure]);
 
+  // ── DIAGNOSTIC: log when pipeline is live ──
+  useEffect(() => {
+    if (modelsReady && device && hasPermission) {
+      console.log('[HEIGHT] ✅ Pipeline ready — camera + models OK, starting frame processor');
+      setDiag('pipeline_started');
+    }
+  }, [modelsReady, device, hasPermission]);
+
   // ── TWO-STAGE FRAME PROCESSOR ──
   const fp = useFrameProcessor((frame) => {
     'worklet';
     if (!detModel || !lmModel || !resize) return;
+
+    // Count frames (log first few via runOnJS)
+    _frameCnt += 1;
+    if (_frameCnt === 1) runOnJS(setDiag)('frame_1');
+    if (_frameCnt === 30) runOnJS(setDiag)('frame_30');
 
     runAtTargetFps(8, () => {
       try {
@@ -219,6 +246,12 @@ export default function HeightMeasureScreen() {
 
         const detections = parseDetections(detRaw);
         if (detections.length === 0) return;
+
+        // Log first detection
+        if (_detCnt === 0) {
+          _detCnt += 1;
+          runOnJS(setDiag)('det_ok');
+        }
 
         const best = detections[0];
         const { bbox, score } = best;
@@ -252,6 +285,12 @@ export default function HeightMeasureScreen() {
 
         const lmOut = lmModel.runSync([lmInput as any]);
         if (!lmOut || !lmOut[0]) return;
+
+        // Log landmark success
+        if (!_lmLogged) {
+          _lmLogged = true;
+          runOnJS(setDiag)('lm_ok');
+        }
 
         // Landmark output is the first output (Identity)
         const lmRaw = new Float32Array(lmOut[0] as unknown as ArrayBuffer);
@@ -315,11 +354,22 @@ export default function HeightMeasureScreen() {
       <Text style={{color: '#666', fontSize: 11, marginTop: 8}}>{String((detectorM as any).error || (landmarkM as any).error || '')}</Text>
     </View></SafeAreaView>
   );
+  // Diagnostic: log model states every 3s while loading
+  useEffect(() => {
+    const t = setInterval(() => {
+      console.log('[HEIGHT] Detector:', detectorM.state);
+      console.log('[HEIGHT] Landmark:', landmarkM.state);
+      if ((detectorM as any).state === 'error') console.error('[HEIGHT] Detector error:', (detectorM as any).error);
+      if ((landmarkM as any).state === 'error') console.error('[HEIGHT] Landmark error:', (landmarkM as any).error);
+    }, 3000);
+    return () => clearInterval(t);
+  }, [detectorM.state, landmarkM.state]);
+
   if (!modelsReady) return (
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />
       <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
-      <Text style={S.gateDesc}>{n ? 'पोज डिटेक्सन मोडल तयार हुँदैछ।' : 'Preparing pose detection models.'}</Text>
+      <Text style={S.gateDesc}>Det: {detectorM.state} | LM: {landmarkM.state}</Text>
     </View></SafeAreaView>
   );
 
@@ -336,6 +386,7 @@ export default function HeightMeasureScreen() {
         </View>
         <TiltIndicator tilt={tilt} />
         {showGuide && !capturedH && <Instructions ms={ms} />}
+        <Text style={S.diagT}>{diag}</Text>
       </View>
 
       <View style={S.bb}>
@@ -413,5 +464,6 @@ const S = StyleSheet.create({
   sbtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 10, backgroundColor: '#4CAF50', gap: 8 },
   sbtnT: { color: '#fff', fontWeight: '700', fontSize: 16 },
   rtier: { fontSize: 14, fontWeight: '700', marginTop: 8, letterSpacing: 0.5 },
+  diagT: { position: 'absolute', top: 4, left: 8, color: '#0f0', fontSize: 9, fontFamily: 'monospace', backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   lockedBanner: { fontSize: 13, fontWeight: '800', color: '#4CAF50', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
 });
