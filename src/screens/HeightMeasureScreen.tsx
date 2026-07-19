@@ -134,10 +134,30 @@ export default function HeightMeasureScreen() {
           Asset.fromModule(require('../../assets/models/blazepose_detector_fp16.tflite')).downloadAsync(),
           Asset.fromModule(require('../../assets/models/blazepose_landmark_lite_fp16.tflite')).downloadAsync(),
         ]);
-        console.log('[HEIGHT] Detector URI:', detAsset.localUri || detAsset.uri);
-        console.log('[HEIGHT] Landmark URI:', lmAsset.localUri || lmAsset.uri);
-        setDetUrl(detAsset.localUri || detAsset.uri);
-        setLmUrl(lmAsset.localUri || lmAsset.uri);
+        const detUri = detAsset.localUri || detAsset.uri;
+        const lmUri = lmAsset.localUri || lmAsset.uri;
+        console.log('[HEIGHT] Detector URI:', detUri);
+        console.log('[HEIGHT] Landmark URI:', lmUri);
+
+        // Verify files actually exist and have correct size
+        try {
+          const FileSystem = require('expo-file-system');
+          const [detInfo, lmInfo] = await Promise.all([
+            FileSystem.getInfoAsync(detUri),
+            FileSystem.getInfoAsync(lmUri),
+          ]);
+          console.log('[HEIGHT] Detector file info:', JSON.stringify(detInfo));
+          console.log('[HEIGHT] Landmark file info:', JSON.stringify(lmInfo));
+          if (!detInfo.exists) console.error('[HEIGHT] ❌ Detector file does not exist!');
+          if (!lmInfo.exists) console.error('[HEIGHT] ❌ Landmark file does not exist!');
+          if (detInfo.exists && detInfo.size !== 2959078) console.error('[HEIGHT] ⚠️ Detector size mismatch:', detInfo.size, '(expected 2959078)');
+          if (lmInfo.exists && lmInfo.size !== 2818390) console.error('[HEIGHT] ⚠️ Landmark size mismatch:', lmInfo.size, '(expected 2818390)');
+        } catch (e) {
+          console.error('[HEIGHT] FileInfo check failed:', e);
+        }
+
+        setDetUrl(detUri);
+        setLmUrl(lmUri);
       } catch (e) {
         console.error('[HEIGHT] Asset resolution failed:', e);
       }
