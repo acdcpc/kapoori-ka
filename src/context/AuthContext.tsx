@@ -16,6 +16,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { auth, db } from '../../firebase';
 import { UserProfile, Subscription, FIRESTORE_COLLECTIONS } from '../types/firestore';
@@ -29,13 +30,15 @@ export interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInAsGuest: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<any>;
+  signUpWithEmail: (email: string, password: string) => Promise<any>;
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   upgradeToGoogle: () => Promise<void>;
   upgradeToPremium: (paymentData: any) => Promise<void>;
   refreshUserData: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,11 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Google Auth hooks - use webClientId for all platforms (most reliable)
+  // Google Auth — redirect URI computed explicitly for reliable native→web handoff
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'com.kapoori.ka',
+    path: undefined,
+  });
+
   const [requestGoogle, responseGoogle, promptGoogle] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID,
+    redirectUri,
     selectAccount: true,
   });
   
@@ -127,7 +136,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       setLoading(true);
       const result = await signInWithEmailAndPassword(auth, email, password);
+      // Check email verification — gate-keeping is done in LoginScreen,
+      // but we report the status so the UI can act
+      if (!result.user.emailVerified) {
+        // Still allow login — LoginScreen will show a verification reminder banner
+      }
       await initializeUserProfile(result.user);
+      return result.user;
     } catch (err: any) {
       console.error('Email sign-in error:', err);
       setError(err.message || 'Failed to sign in with email');
@@ -144,9 +159,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const { createUserWithEmailAndPassword, sendEmailVerification } = await import('firebase/auth');
       const result = await createUserWithEmailAndPassword(auth, email, password);
+      // Send verification email immediately
+      await sendEmailVerification(result.user);
       await initializeUserProfile(result.user);
+      // Return the user for the caller to show verification prompt
+      return result.user;
     } catch (err: any) {
       console.error('Email sign-up error:', err);
       setError(err.message || 'Failed to sign up with email');
@@ -182,10 +201,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       setGoogleAuthMode('signin');
       await promptGoogle();
+      // DO NOT setLoading(false) here — the browser flow is async;
+      // the responseGoogle effect below handles completion.
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       setError(err.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
     }
   }, [promptGoogle]);
@@ -200,10 +220,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) throw new Error('No user logged in');
       setGoogleAuthMode('upgrade');
       await promptGoogle();
+      // DO NOT setLoading(false) here — browser flow handled by responseGoogle effect
     } catch (err: any) {
       console.error('Upgrade to Google error:', err);
       setError(err.message || 'Failed to upgrade account');
-    } finally {
       setLoading(false);
     }
   }, [user, promptGoogle]);
@@ -211,27 +231,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (responseGoogle?.type === 'success') {
       const { authentication } = responseGoogle;
-      const credential = GoogleAuthProvider.credential(authentication?.idToken);
+      if (!authentication?.idToken) {
+        setError('Google sign-in failed: no ID token received');
+        setLoading(false);
+        return;
+      }
+      const credential = GoogleAuthProvider.credential(authentication.idToken);
       
       if (googleAuthMode === 'signin') {
         signInWithCredential(auth, credential)
-          .then((result) => initializeUserProfile(result.user))
+          .then((result) => {
+            setLoading(false);
+            return initializeUserProfile(result.user);
+          })
           .catch((err) => {
             console.error('Google sign-in error:', err);
             setError(err.message || 'Failed to sign in with Google');
+            setLoading(false);
           });
       } else if (googleAuthMode === 'upgrade') {
-        if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
         // @ts-ignore - linkWithCredential exists on Firebase User
         user.linkWithCredential(credential)
-          .then(() => initializeUserProfile(user))
+          .then(() => {
+            setLoading(false);
+            return initializeUserProfile(user);
+          })
           .catch((err: any) => {
             console.error('Upgrade to Google error:', err);
             setError(err.message || 'Failed to upgrade account');
+            setLoading(false);
           });
+      }
+    } else if (responseGoogle?.type === 'error' || responseGoogle?.type === 'cancel') {
+      // User cancelled or auth error — reset loading
+      setLoading(false);
+      if (responseGoogle?.type === 'error' && responseGoogle?.error) {
+        setError(responseGoogle.error?.message || 'Google sign-in failed');
       }
     }
   }, [responseGoogle, user, initializeUserProfile, googleAuthMode]);
+
+  /**
+   * Send password reset email
+   */
+  const sendPasswordReset = useCallback(async (email: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      await sendPasswordResetEmail(auth, email);
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      setError(err.message || 'Failed to send reset email');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Resend verification email
+   */
+  const resendVerificationEmail = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      if (!user) throw new Error('No user logged in');
+      const { sendEmailVerification } = await import('firebase/auth');
+      await sendEmailVerification(user);
+    } catch (err: any) {
+      console.error('Resend verification error:', err);
+      setError(err.message || 'Failed to resend verification');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   /**
    * Upgrade to premium subscription
@@ -341,6 +420,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     upgradeToGoogle,
     upgradeToPremium,
     refreshUserData,
+    sendPasswordReset,
+    resendVerificationEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

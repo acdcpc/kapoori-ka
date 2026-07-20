@@ -60,6 +60,9 @@
           "react-native-fast-tflite"
         ]
       }
-    }
+    },
+    "assetBundlePatterns": [
+      "assets/models/*.tflite"
+    ]
   }
 }
