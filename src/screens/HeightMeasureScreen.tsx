@@ -111,7 +111,7 @@ let _detCnt = 0;
 let _lmLogged = false;
 
 // ── Model loading phases ──
-type ModelPhase = 'idle' | 'downloading_assets' | 'loading_detector' | 'loading_landmark' | 'verifying' | 'ready' | 'error';
+type ModelPhase = 'idle' | 'resolving_assets' | 'downloading_assets' | 'loading_detector' | 'loading_landmark' | 'verifying' | 'ready' | 'error';
 
 // ─────────────────────────────────────────────────────────
 export default function HeightMeasureScreen() {
@@ -130,40 +130,114 @@ export default function HeightMeasureScreen() {
   const [detUrl, setDetUrl] = useState<string | null>(null);
   const [lmUrl, setLmUrl] = useState<string | null>(null);
 
+  // ── STEP 1: Resolve assets via expo-asset (with timeout + full logging) ──
   useEffect(() => {
     (async () => {
       try {
-        const [detAsset, lmAsset] = await Promise.all([
-          Asset.fromModule(require('../../assets/models/blazepose_detector_fp16.tflite')).downloadAsync(),
-          Asset.fromModule(require('../../assets/models/blazepose_landmark_lite_fp16.tflite')).downloadAsync(),
-        ]);
-        const detUri = detAsset.localUri || detAsset.uri;
-        const lmUri = lmAsset.localUri || lmAsset.uri;
-        console.log('[HEIGHT] Detector URI:', detUri);
-        console.log('[HEIGHT] Landmark URI:', lmUri);
+        console.log('[HEIGHT] ═══ STEP 1: Asset resolution starting ═══');
+        setModelPhase('resolving_assets');
 
-        // Verify files actually exist and have correct size
+        const detModule = require('../../assets/models/blazepose_detector_fp16.tflite');
+        const lmModule  = require('../../assets/models/blazepose_landmark_lite_fp16.tflite');
+
+        console.log('[HEIGHT] require() results:');
+        console.log('[HEIGHT]   detModule:', typeof detModule, '=', detModule);
+        console.log('[HEIGHT]   lmModule:', typeof lmModule, '=', lmModule);
+
+        const detAsset = Asset.fromModule(detModule);
+        const lmAsset  = Asset.fromModule(lmModule);
+
+        console.log('[HEIGHT] Asset.fromModule() BEFORE downloadAsync:');
+        console.log('[HEIGHT]   detAsset:', JSON.stringify({
+          name: detAsset.name, type: detAsset.type, hash: detAsset.hash,
+          uri: detAsset.uri, localUri: detAsset.localUri,
+          width: detAsset.width, height: detAsset.height, downloaded: detAsset.downloaded,
+        }));
+        console.log('[HEIGHT]   lmAsset:', JSON.stringify({
+          name: lmAsset.name, type: lmAsset.type, hash: lmAsset.hash,
+          uri: lmAsset.uri, localUri: lmAsset.localUri,
+          width: lmAsset.width, height: lmAsset.height, downloaded: lmAsset.downloaded,
+        }));
+
+        // If localUri exists, skip downloadAsync entirely
+        if (detAsset.localUri && lmAsset.localUri) {
+          console.log('[HEIGHT] ✅ Both assets already have localUri — skipping downloadAsync');
+          console.log('[HEIGHT]   det localUri:', detAsset.localUri);
+          console.log('[HEIGHT]   lm localUri:', lmAsset.localUri);
+          setDetUrl(detAsset.localUri);
+          setLmUrl(lmAsset.localUri);
+          setModelPhase('downloading_assets');
+          return;
+        }
+
+        // Otherwise, run downloadAsync with 5-second timeout
+        setModelPhase('downloading_assets');
+        console.log('[HEIGHT] ── Calling downloadAsync() ──');
+
+        const downloadWithTimeout = (asset: Asset, label: string): Promise<Asset> => {
+          console.log(`[HEIGHT] downloadAsync(${label}) START`);
+          return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+              console.error(`[HEIGHT] ❌ downloadAsync(${label}) TIMEOUT after 5s`);
+              reject(new Error(`downloadAsync(${label}) timed out after 5 seconds`));
+            }, 5000);
+
+            asset.downloadAsync()
+              .then((result: Asset) => {
+                clearTimeout(timer);
+                console.log(`[HEIGHT] downloadAsync(${label}) COMPLETED`);
+                console.log(`[HEIGHT]   byteLength: ${(result as any).byteLength || 'N/A'}`);
+                console.log(`[HEIGHT]   localUri: ${result.localUri}`);
+                console.log(`[HEIGHT]   uri: ${result.uri}`);
+                console.log(`[HEIGHT]   downloaded: ${result.downloaded}`);
+                resolve(result);
+              })
+              .catch((err: Error) => {
+                clearTimeout(timer);
+                console.error(`[HEIGHT] ❌ downloadAsync(${label}) FAILED:`, err?.message || err, err?.stack);
+                reject(err);
+              });
+          });
+        };
+
+        const [detResult, lmResult] = await Promise.all([
+          downloadWithTimeout(detAsset, 'detector'),
+          downloadWithTimeout(lmAsset, 'landmark'),
+        ]);
+
+        const detUri = detResult.localUri || detResult.uri;
+        const lmUri = lmResult.localUri || lmResult.uri;
+
+        console.log('[HEIGHT] Final URIs for TFLite loader:');
+        console.log('[HEIGHT]   detUri:', detUri);
+        console.log('[HEIGHT]   lmUri:', lmUri);
+
+        // Verify file existence + size using expo-file-system
         try {
           const FileSystem = require('expo-file-system');
           const [detInfo, lmInfo] = await Promise.all([
-            FileSystem.getInfoAsync(detUri),
-            FileSystem.getInfoAsync(lmUri),
+            FileSystem.getInfoAsync(detUri, { size: true }),
+            FileSystem.getInfoAsync(lmUri, { size: true }),
           ]);
-          console.log('[HEIGHT] Detector file info:', JSON.stringify(detInfo));
-          console.log('[HEIGHT] Landmark file info:', JSON.stringify(lmInfo));
-          if (!detInfo.exists) console.error('[HEIGHT] ❌ Detector file does not exist!');
-          if (!lmInfo.exists) console.error('[HEIGHT] ❌ Landmark file does not exist!');
-          if (detInfo.exists && detInfo.size !== 2959078) console.error('[HEIGHT] ⚠️ Detector size mismatch:', detInfo.size, '(expected 2959078)');
-          if (lmInfo.exists && lmInfo.size !== 2818390) console.error('[HEIGHT] ⚠️ Landmark size mismatch:', lmInfo.size, '(expected 2818390)');
-        } catch (e) {
-          console.error('[HEIGHT] FileInfo check failed:', e);
+          console.log('[HEIGHT] FileSystem.getInfoAsync:');
+          console.log('[HEIGHT]   detector:', JSON.stringify(detInfo));
+          console.log('[HEIGHT]   landmark:', JSON.stringify(lmInfo));
+          if (!detInfo.exists) console.error('[HEIGHT] ❌ Detector file does NOT exist at:', detUri);
+          if (!lmInfo.exists) console.error('[HEIGHT] ❌ Landmark file does NOT exist at:', lmUri);
+          if (detInfo.size !== 2959078) console.error('[HEIGHT] ⚠️ Detector size MISMATCH:', detInfo.size, 'expected 2959078');
+          if (lmInfo.size !== 2818390) console.error('[HEIGHT] ⚠️ Landmark size MISMATCH:', lmInfo.size, 'expected 2818390');
+        } catch (fsErr) {
+          console.error('[HEIGHT] ❌ FileSystem.getInfoAsync failed:', fsErr);
         }
 
-        setModelPhase('downloading_assets');
         setDetUrl(detUri);
         setLmUrl(lmUri);
-      } catch (e) {
-        console.error('[HEIGHT] Asset resolution failed:', e);
+
+        console.log('[HEIGHT] ═══ STEP 1 COMPLETE: Assets resolved ═══');
+      } catch (e: any) {
+        console.error('[HEIGHT] ❌ STEP 1 FAILED:', e?.message || e, e?.stack);
+        setModelPhase('error');
+        setModelError(`Asset resolution: ${e?.message || e}`);
       }
     })();
   }, []);
@@ -176,10 +250,20 @@ export default function HeightMeasureScreen() {
   const lmModelRef = useRef<any>(null);
   const [modelError, setModelError] = useState<string | null>(null);
 
-  // ── Sequential model loading with dummy-inference verification ──
+  // ── STEP 2: Sequential model loading (driven purely by detUrl/lmUrl, no deadlock guard) ──
   useEffect(() => {
-    if (!detUrl || !lmUrl) return;
-    if (modelPhase !== 'idle') return;
+    if (!detUrl || !lmUrl) {
+      console.log('[HEIGHT] STEP 2: Waiting for asset URIs (detUrl=', !!detUrl, 'lmUrl=', !!lmUrl, ')');
+      return;
+    }
+    if (modelPhase === 'ready' || modelPhase === 'error') {
+      console.log('[HEIGHT] STEP 2: Already', modelPhase, '— skipping');
+      return;
+    }
+    if (modelPhase === 'loading_detector' || modelPhase === 'loading_landmark' || modelPhase === 'verifying') {
+      console.log('[HEIGHT] STEP 2: Already in progress (', modelPhase, ') — skipping');
+      return;
+    }
 
     const { loadTensorflowModel: loadTF } = require('react-native-fast-tflite');
 
@@ -187,68 +271,56 @@ export default function HeightMeasureScreen() {
       try {
         // Phase 1: Load detector
         setModelPhase('loading_detector');
-        console.log('[HEIGHT] Phase 1: Loading detector...');
+        console.log('[HEIGHT] ═══ STEP 2a: Loading detector from:', detUrl, '═══');
         const detModel = await loadTF({ url: detUrl }, []);
         detModelRef.current = detModel;
         console.log('[HEIGHT] ✅ Detector loaded');
-        console.log('[HEIGHT] Detector model:', detModel);
+        console.log('[HEIGHT] Detector metadata:', JSON.stringify({
+          inputs: (detModel as any).inputs,
+          outputs: (detModel as any).outputs,
+        }));
 
         // Phase 2: Load landmark
         setModelPhase('loading_landmark');
-        console.log('[HEIGHT] Phase 2: Loading landmark...');
+        console.log('[HEIGHT] ═══ STEP 2b: Loading landmark from:', lmUrl, '═══');
         const lmModel = await loadTF({ url: lmUrl }, []);
         lmModelRef.current = lmModel;
         console.log('[HEIGHT] ✅ Landmark loaded');
-        console.log('[HEIGHT] Landmark model:', lmModel);
+        console.log('[HEIGHT] Landmark metadata:', JSON.stringify({
+          inputs: (lmModel as any).inputs,
+          outputs: (lmModel as any).outputs,
+        }));
 
-        // Phase 3: Dummy inference + full metadata inspection
+        // Phase 3: Verify with dummy inference
         setModelPhase('verifying');
-        console.log('[HEIGHT] Phase 3: Verifying native runtime...');
-
-        // ── Log model metadata ──
-        const detInputs = (detModel as any).inputs;
-        const detOutputs = (detModel as any).outputs;
-        console.log('[HEIGHT] Detector inputs:', JSON.stringify(detInputs));
-        console.log('[HEIGHT] Detector outputs:', JSON.stringify(detOutputs));
-
-        const lmInputs = (lmModel as any).inputs;
-        const lmOutputs = (lmModel as any).outputs;
-        console.log('[HEIGHT] Landmark inputs:', JSON.stringify(lmInputs));
-        console.log('[HEIGHT] Landmark outputs:', JSON.stringify(lmOutputs));
+        console.log('[HEIGHT] ═══ STEP 3: Dummy inference verification ═══');
 
         // ── Detector dummy inference ──
         const dup224 = 224 * 224 * 3;
         const dummyDetInput = new Float32Array(dup224);
-        // Fill with 0.5 (mid-range float, valid for [0,1] or [0,255] models)
         dummyDetInput.fill(0.5);
         const detOutput = await detModel.run([dummyDetInput]);
-        console.log('[HEIGHT] Detector output count:', detOutput.length);
+        console.log('[HEIGHT] Detector dummy run OK:', detOutput.length, 'outputs');
         detOutput.forEach((o: any, i: number) => {
           const arr = new Float32Array(o as ArrayBuffer);
-          const min = arr.length > 0 ? Math.min(...arr) : NaN;
-          const max = arr.length > 0 ? Math.max(...arr) : NaN;
-          console.log(`[HEIGHT]   det_out[${i}]: length=${arr.length}, min=${min?.toFixed(4)}, max=${max?.toFixed(4)}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
+          console.log(`[HEIGHT]   det_out[${i}]: len=${arr.length}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
         });
-        console.log('[HEIGHT] ✅ Detector dummy inference OK');
 
         // ── Landmark dummy inference ──
         const dup256 = 256 * 256 * 3;
         const dummyLmInput = new Float32Array(dup256);
         dummyLmInput.fill(0.5);
         const lmOutput = await lmModel.run([dummyLmInput]);
-        console.log('[HEIGHT] Landmark output count:', lmOutput.length);
+        console.log('[HEIGHT] Landmark dummy run OK:', lmOutput.length, 'outputs');
         lmOutput.forEach((o: any, i: number) => {
           const arr = new Float32Array(o as ArrayBuffer);
-          const min = arr.length > 0 ? Math.min(...arr) : NaN;
-          const max = arr.length > 0 ? Math.max(...arr) : NaN;
-          console.log(`[HEIGHT]   lm_out[${i}]: length=${arr.length}, min=${min?.toFixed(4)}, max=${max?.toFixed(4)}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
+          console.log(`[HEIGHT]   lm_out[${i}]: len=${arr.length}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
         });
-        console.log('[HEIGHT] ✅ Landmark dummy inference OK');
 
         setModelPhase('ready');
-        console.log('[HEIGHT] 🎉 All phases complete — models ready for frame processing');
+        console.log('[HEIGHT] 🎉 ALL PHASES COMPLETE — models ready');
       } catch (e: any) {
-        console.error('[HEIGHT] ❌ Failed at phase:', modelPhase, e?.message || e);
+        console.error('[HEIGHT] ❌ Model loading failed at phase:', modelPhase, e?.message || e);
         setModelPhase('error');
         setModelError(`${modelPhase}: ${e?.message || e}`);
       }
