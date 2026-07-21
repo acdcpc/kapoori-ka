@@ -50,17 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Google Auth — redirect URI computed explicitly for reliable native→web handoff
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'com.kapoori.ka',
-    path: undefined,
-  });
-
+  // Google Auth — explicit HTTPS Expo proxy redirect URI
+  //
+  // When `redirectUri` is NOT set, the Google provider calls makeRedirectUri() which
+  // returns a custom scheme (com.kapoori.ka:/oauthredirect) on standalone APK builds.
+  // Google Cloud Console rejects custom schemes for Web OAuth clients — only http/https
+  // are accepted. The Web client ID is used for the OAuth request, so the redirect URI
+  // must be an HTTPS URL that's registered for that Web client.
+  //
+  // Fix: use Expo's auth proxy (https://auth.expo.io/...) as the explicit redirect URI.
+  // Google redirects to this HTTPS URL → Expo proxy forwards to the native app.
   const [requestGoogle, responseGoogle, promptGoogle] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID,
-    redirectUri,
+    redirectUri: 'https://auth.expo.io/@thisisprakash/kapoori-ka',
     selectAccount: true,
   });
   
