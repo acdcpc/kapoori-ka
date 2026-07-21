@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "391729474242-gjfr7roo4v3oreurkqcgupi72gru1cnk.apps.googleusercontent.com",
+          "client_id": "391729474242-rcr0cf1fa01hd6nnab4d8i9g9m9fekvn.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.kapoori.ka",
-            "certificate_hash": "9be782d9467b93fd780f5bcaae2fbf39b3e6113f"
+            "certificate_hash": "2a0ef959563fa9c753c7229962a0fa879c0366ee"
           }
         },
         {
