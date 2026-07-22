@@ -52,7 +52,7 @@ export default function ConsultationScreen({ navigation }: any) {
           </Text>
           <TouchableOpacity
             style={styles.upgradeBtn}
-            onPress={() => navigation.navigate('Payment')}
+            onPress={() => navigation.navigate('Subscription')}
           >
             <Text style={styles.upgradeBtnText}>{isNe ? 'अपग्रेड' : 'Upgrade'}</Text>
           </TouchableOpacity>

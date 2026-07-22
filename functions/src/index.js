@@ -1,6 +1,10 @@
 /**
  * Kapoori Ka — Firebase Cloud Functions
- * Server-side payment verification for eSewa transactions.
+ *
+ * Web-based payment flow (no eSewa API needed):
+ * 1. Admin creates activation codes in Firestore (manually, via console)
+ * 2. User enters code in the app
+ * 3. This function validates & activates the subscription
  */
 
 const functions = require('firebase-functions');
@@ -10,59 +14,88 @@ admin.initializeApp();
 const db = admin.firestore();
 
 /**
- * verifyPayment — called by client after eSewa payment.
- * Validates transaction, activates subscription, records payment.
+ * redeemActivationCode — called by the app when a user enters their
+ * activation code received from the admin via WhatsApp.
+ *
+ * Input: { code: string }
+ *
+ * Flow:
+ * 1. Look up code in activation_codes/{code}
+ * 2. Validate it exists and is unused
+ * 3. Activate the user's subscription with the plan/amount from the code
+ * 4. Mark code as used
  */
-exports.verifyPayment = functions.https.onCall(async (data, context) => {
-  const { transactionId, plan, amount, productCode } = data;
-
+exports.redeemActivationCode = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in to redeem a code.');
   }
-  if (!transactionId || !plan) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing transactionId or plan.');
+
+  const code = (data.code || '').toString().trim().toUpperCase();
+  if (!code) {
+    throw new functions.https.HttpsError('invalid-argument', 'Please provide an activation code.');
   }
-  if (!['premium', 'yearly'].includes(plan)) {
-    throw new functions.https.HttpsError('invalid-argument', `Invalid plan: ${plan}`);
+
+  const codeRef = db.collection('activation_codes').doc(code);
+  const codeSnap = await codeRef.get();
+
+  if (!codeSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Invalid activation code.');
+  }
+
+  const codeData = codeSnap.data();
+  if (codeData.status !== 'valid') {
+    throw new functions.https.HttpsError('already-claimed', 'This code has already been used.');
   }
 
   const uid = context.auth.uid;
-  const priceNpr = plan === 'yearly' ? 500 : 100;
-  if (amount && amount < priceNpr) {
-    throw new functions.https.HttpsError('invalid-argument', `Amount too low for ${plan}.`);
-  }
-
-  const verified = await verifyEsewaTransaction(transactionId, amount || priceNpr, productCode);
-  if (!verified) {
-    throw new functions.https.HttpsError('failed-precondition', 'eSewa verification failed.');
-  }
+  const plan = codeData.plan || 'premium';
+  const durationDays = plan === 'yearly' ? 365 : 30;
 
   const now = admin.firestore.Timestamp.now();
-  const endMs = Date.now() + (plan === 'yearly' ? 365 : 30) * 86400000;
-  const endDate = admin.firestore.Timestamp.fromMillis(endMs);
+  const endDate = admin.firestore.Timestamp.fromMillis(
+    Date.now() + durationDays * 24 * 60 * 60 * 1000
+  );
 
+  // Activate subscription
   await db.collection('subscriptions').doc(uid).set({
-    status: 'active', plan, startDate: now, endDate,
-    autoRenew: plan === 'yearly', paymentMethod: 'esewa',
-    transactionId, price: amount || priceNpr,
+    status: 'active',
+    plan,
+    startDate: now,
+    endDate,
+    autoRenew: false, // manual renewal via new codes
+    price: codeData.amount || 0,
+    paymentMethod: 'web_activation_code',
+    transactionId: codeData.originalTransactionId || null,
     consultationsRemaining: plan === 'yearly' ? 100 : 5,
-    upgradedAt: now,
+    redeemedCode: code,
+    redeemedAt: now,
   }, { merge: true });
 
-  await db.collection('payments').doc(`PAY_${Date.now()}_${uid}`).set({
-    userId: uid, transactionId, amount: amount || priceNpr,
-    method: 'esewa', plan, status: 'verified',
-    createdAt: now, verifiedAt: now,
+  // Mark code as used
+  await codeRef.update({
+    status: 'used',
+    usedBy: uid,
+    usedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { success: true, plan, status: 'active', endDate: endDate.toDate().toISOString() };
+  functions.logger.info(`Code ${code} redeemed by ${uid}, plan: ${plan}`);
+
+  return {
+    success: true,
+    plan,
+    status: 'active',
+    endDate: endDate.toDate().toISOString(),
+  };
 });
 
 /**
- * checkSubscription — validate subscription is still active.
+ * checkSubscription — validate subscription status for a user.
  */
 exports.checkSubscription = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  }
+
   const uid = data.userId || context.auth.uid;
   if (uid !== context.auth.uid) {
     const userDoc = await db.collection('users').doc(context.auth.uid).get();
@@ -70,18 +103,18 @@ exports.checkSubscription = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('permission-denied', 'Cannot check others subscription.');
     }
   }
+
   const snap = await db.collection('subscriptions').doc(uid).get();
   if (!snap.exists) return { status: 'none' };
+
   const sub = snap.data();
   if (sub.endDate && sub.endDate.toDate() < new Date()) {
     return { ...sub, status: 'expired' };
   }
-  return { ...sub, endDate: sub.endDate?.toDate?.().toISOString?.() || null };
-});
 
-// ── eSewa verification stub ──
-async function verifyEsewaTransaction(txId, amount, productCode) {
-  functions.logger.warn(`STUB: verify ${txId} NPR ${amount}`);
-  // TODO: Replace with real eSewa API call before production
-  return true;
-}
+  return {
+    ...sub,
+    endDate: sub.endDate?.toDate?.().toISOString?.() || null,
+    startDate: sub.startDate?.toDate?.().toISOString?.() || null,
+  };
+});
