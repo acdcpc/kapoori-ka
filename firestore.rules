@@ -17,6 +17,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    // Validates that the written document's owner field matches the authenticated user
+    function ownedBySelf() {
+      return request.resource.data.ownerId == request.auth.uid;
+    }
+
+    // Validates that the existing document's owner matches the authenticated user
+    function isSelfOwned() {
+      return resource.data.ownerId == request.auth.uid;
+    }
+
+    // Validates the child belongs to the authenticated user
+    function isSelfChild(childId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/children/$(childId)).data.ownerId == request.auth.uid;
+    }
+
     // ===========================
     // USERS
     // ===========================
@@ -32,76 +48,56 @@ service cloud.firestore {
     // CHILDREN
     // ===========================
     match /children/{childId} {
-      allow get: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      // Allow list: returns only children owned by the current user
+      allow get: if signedIn() && (isSelfOwned() || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
-      allow delete: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownedBySelf();
+      allow update: if signedIn() && isSelfOwned();
+      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
     }
 
     // ===========================
     // GROWTH RECORDS
     // ===========================
     match /growth_records/{recordId} {
-      allow get: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow get: if signedIn() && (isSelfOwned() || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
-      allow delete: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownedBySelf();
+      allow update: if signedIn() && isSelfOwned();
+      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
     }
 
     // ===========================
     // VACCINE RECORDS
     // ===========================
     match /vaccinations/{recordId} {
-      allow get: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow get: if signedIn() && (isSelfOwned() || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
-      allow delete: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownedBySelf();
+      allow update: if signedIn() && isSelfOwned();
+      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
     }
 
     // ===========================
-    // MILESTONE RECORDS — list allowed for any signed-in user
-    // since the app filters by childId client-side
+    // MILESTONE RECORDS
     // ===========================
     match /milestones/{recordId} {
-      allow get: if signedIn()
-        && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid;
+      allow get: if signedIn() && isSelfChild(resource.data.childId);
       allow list: if signedIn();
-      allow create: if signedIn()
-        && get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.ownerId == request.auth.uid;
-      allow update: if signedIn()
-        && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid;
-      allow delete: if signedIn()
-        && get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid;
+      allow create: if signedIn() && isSelfChild(request.resource.data.childId);
+      allow update: if signedIn() && isSelfChild(resource.data.childId);
+      allow delete: if signedIn() && isSelfChild(resource.data.childId);
     }
 
     // ===========================
     // MCHAT
     // ===========================
     match /mchat_responses/{responseId} {
-      allow get: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow get: if signedIn() && (isSelfOwned() || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.ownerId == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.ownerId == request.auth.uid;
-      allow delete: if signedIn()
-        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if signedIn() && ownedBySelf();
+      allow update: if signedIn() && isSelfOwned();
+      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
     }
 
     // ===========================
@@ -119,11 +115,9 @@ service cloud.firestore {
     // PAYMENTS
     // ===========================
     match /payments/{paymentId} {
-      allow get: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
