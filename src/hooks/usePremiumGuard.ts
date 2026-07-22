@@ -1,8 +1,7 @@
 /**
- * Premium Feature Guard Hook
- *
- * Provides utilities to check if user has access to premium features
- * and handle upgrade prompts
+ * Premium Feature Guard Hook — Production Audit Fix
+ * ISSUE 5 FIX: Removed hardcoded `return true` bypass.
+ * Now properly checks subscription status from AuthContext.
  */
 
 import { Alert } from 'react-native';
@@ -15,44 +14,22 @@ export interface PremiumFeature {
 }
 
 export const PREMIUM_FEATURES = {
-  ADVANCED_CHARTS: {
-    name: 'Advanced Growth Charts',
-    requiresPremium: true,
-  },
-  NUTRITION_TRACKING: {
-    name: 'Nutrition Tracking',
-    requiresPremium: true,
-  },
-  MCHAT_SCREENING: {
-    name: 'M-CHAT Screening',
-    requiresPremium: true,
-  },
-  PDF_REPORTS: {
-    name: 'PDF Report Export',
-    requiresPremium: true,
-  },
-  PUSH_NOTIFICATIONS: {
-    name: 'Push Notifications',
-    requiresPremium: true,
-  },
-  ONLINE_CONSULTATION: {
-    name: 'Online Consultation',
-    requiresPremium: true,
-    consultationsRequired: 1,
-  },
+  ADVANCED_CHARTS:    { name: 'Advanced Growth Charts', requiresPremium: true },
+  NUTRITION_TRACKING:  { name: 'Nutrition Tracking', requiresPremium: true },
+  MCHAT_SCREENING:    { name: 'M-CHAT Screening', requiresPremium: true },
+  PDF_REPORTS:        { name: 'PDF Report Export', requiresPremium: true },
+  PUSH_NOTIFICATIONS: { name: 'Push Notifications', requiresPremium: true },
+  ONLINE_CONSULTATION:{ name: 'Online Consultation', requiresPremium: true, consultationsRequired: 1 },
 } as const;
 
 export const usePremiumGuard = () => {
   const { subscription, user } = useAuth();
 
-  /**
-   * Check if user can access a premium feature
-   */
   const canAccessFeature = (feature: PremiumFeature): boolean => {
     if (!user) return false;
     if (!feature.requiresPremium) return true;
-    if (subscription?.plan === 'premium') {
-      // Check consultations if needed
+    // ISSUE 5 FIX: Check both status and plan
+    if (subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly') {
       if (feature.consultationsRequired) {
         return (subscription.consultationsRemaining ?? 0) >= (feature.consultationsRequired ?? 1);
       }
@@ -61,83 +38,39 @@ export const usePremiumGuard = () => {
     return false;
   };
 
-  /**
-   * Check if user is premium
-   */
   const isPremium = (): boolean => {
-    //return subscription?.plan === 'premium' && subscription?.status === 'active';
-    return true; // __DEV__ bypass
+    // ISSUE 5 FIX: Real check — no bypass
+    return (subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly');
   };
 
-  /**
-   * Check if subscription is active
-   */
   const isSubscriptionActive = (): boolean => {
     return subscription?.status === 'active';
   };
 
-  /**
-   * Get remaining consultations
-   */
   const getRemainingConsultations = (): number => {
     return subscription?.consultationsRemaining ?? 0;
   };
 
-  /**
-   * Guard a feature and show upgrade prompt if needed
-   */
   const guardFeature = (feature: PremiumFeature, onUpgrade?: () => void): boolean => {
-    if (canAccessFeature(feature)) {
-      return true;
-    }
-
-    // Show upgrade prompt
+    if (canAccessFeature(feature)) return true;
     Alert.alert(
       'Premium Feature',
-      `${feature.name} is only available for premium users. Upgrade now for Rs 850/year.`,
-      [
-        {
-          text: 'Cancel',
-          onPress: () => {},
-          style: 'cancel',
-        },
-        {
-          text: 'Upgrade',
-          onPress: onUpgrade,
-        },
-      ]
+      `${feature.name} is only available for premium users.`,
+      [{ text: 'Cancel', style: 'cancel' }, { text: 'Upgrade', onPress: onUpgrade }]
     );
-
     return false;
   };
 
-  /**
-   * Check consultation limit
-   */
   const checkConsultationLimit = (): boolean => {
     if (!isPremium()) return false;
     return getRemainingConsultations() > 0;
   };
 
-  /**
-   * Decrement consultation count
-   */
   const useConsultation = (): void => {
     if (subscription) {
-      subscription.consultationsRemaining = Math.max(
-        0,
-        (subscription.consultationsRemaining ?? 0) - 1
-      );
+      subscription.consultationsRemaining = Math.max(0, (subscription.consultationsRemaining ?? 0) - 1);
     }
   };
 
-  return {
-    canAccessFeature,
-    isPremium,
-    isSubscriptionActive,
-    getRemainingConsultations,
-    guardFeature,
-    checkConsultationLimit,
-    useConsultation,
-  };
+  return { canAccessFeature, isPremium, isSubscriptionActive, getRemainingConsultations, guardFeature, checkConsultationLimit, useConsultation };
 };
