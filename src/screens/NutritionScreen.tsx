@@ -101,7 +101,7 @@ export default function NutritionScreen({ route, navigation }: Props) {
   const childAgeMonths = child ? dayjs().diff(dayjs(child.dateOfBirth), 'month') : highlightAge;
 
   return (
-    <PremiumGuard feature="nutrition" onUpgrade={() => navigation.navigate('Subscription')}>
+    <PremiumGuard feature="nutrition" >
       <View style={styles.container}>
         {/* Pill Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent}>

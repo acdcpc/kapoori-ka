@@ -142,7 +142,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const { subscription } = useAuth();
   const t = translations[language] || translations['en'];
   const isNe = language === 'ne';
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   const [records, setRecords] = useState<GrowthRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -377,10 +377,10 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
               <Text style={styles.addBtnText}>{isNe ? 'नयाँ मापन थप्नुहोस्' : 'Add New Measurement'}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.addBtnLocked} onPress={() => navigation.navigate('Subscription' as any)}>
-              <Ionicons name="lock-closed" size={20} color="#fff" />
-              <Text style={styles.addBtnText}>{isNe ? 'प्रिमियम अपग्रेड गर्नुहोस्' : 'Upgrade to Premium'}</Text>
-            </TouchableOpacity>
+            <View style={styles.addBtnLocked}>
+              <Ionicons name="lock-closed" size={20} color="#E8602C" />
+              <Text style={styles.addBtnLockedText}>{isNe ? 'प्रिमियम सुविधा — बृद्धि निदान र WHO प्रतिशत चार्टहरू' : 'Premium Feature — Growth diagnostics & WHO percentile charts'}</Text>
+            </View>
           )}
 
           {/* Add Modal */}
@@ -421,7 +421,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
         </>
       ) : (
         /* Height Predictor */
-        <PremiumGuard>
+        <PremiumGuard feature="growth_report">
           <View style={styles.predictorContainer}>
             <View style={styles.predictorCard}>
               <Ionicons name="trending-up" size={40} color="#E8602C" style={{ alignSelf: 'center', marginBottom: 12 }} />
@@ -504,8 +504,9 @@ const styles = StyleSheet.create({
   legendText: { fontSize: 11, color: '#7A6E65' },
 
   addBtn: { backgroundColor: '#E8602C', marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 3, marginBottom: 12 },
-  addBtnLocked: { backgroundColor: '#F5A623', marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 3, marginBottom: 12 },
+  addBtnLocked: { backgroundColor: '#FFF5F0', marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E8602C', marginBottom: 12 },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
+  addBtnLockedText: { color: '#E8602C', fontSize: 13, fontWeight: '600', marginLeft: 8, flex: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 20 },

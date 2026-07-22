@@ -64,12 +64,11 @@ export const usePremiumGuard = () => {
     return subscription?.consultationsRemaining ?? 0;
   };
 
-  const guardFeature = (feature: PremiumFeature, onUpgrade?: () => void): boolean => {
+  const guardFeature = (feature: PremiumFeature): boolean => {
     if (canAccessFeature(feature)) return true;
     Alert.alert(
       'Premium Feature',
-      `${feature.name} is only available for premium users.`,
-      [{ text: 'Cancel', style: 'cancel' }, { text: 'Upgrade', onPress: onUpgrade }]
+      `${feature.name} is only available for premium users.`
     );
     return false;
   };

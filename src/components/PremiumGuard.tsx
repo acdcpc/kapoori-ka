@@ -1,10 +1,12 @@
-// src/components/PremiumGuard.tsx — v2
-// Checks BOTH active status AND expiry date.
-// Uses Firestore as source of truth; local cache drives optimistic UI only.
-
-import React, { useContext, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+// src/components/PremiumGuard.tsx — v3
+// Four-state rendering per addendum: Free / Locked / Pending / Active
+// NO buttons, NO links, NO "Upgrade"/"Unlock"/"Learn More" anywhere.
+// Locked state sells the benefit, not the purchase process.
+import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,7 +15,6 @@ export type FeatureType = 'immunization' | 'growth_report' | 'milestone_tracker'
 interface PremiumGuardProps {
   children: React.ReactNode;
   feature?: FeatureType;
-  onUpgrade?: () => void;
 }
 
 const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
@@ -24,56 +25,141 @@ const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
   autism_screening: 'premium',
 };
 
-export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 'immunization', onUpgrade }) => {
+const FEATURE_BENEFITS: Record<FeatureType, { en: string; ne: string; icon: string }> = {
+  immunization: {
+    en: 'Track upcoming & missed vaccines with smart reminders',
+    ne: 'स्मार्ट रिमाइन्डरको साथ आउने र छुटेका खोपहरू ट्र्याक गर्नुहोस्',
+    icon: '💉',
+  },
+  growth_report: {
+    en: 'WHO percentile charts with stunting/wasting/obesity diagnostics',
+    ne: 'स्टन्टिङ्ग/वेस्टिङ्ग/ओबेसिटी निदान सहित WHO प्रतिशत चार्टहरू',
+    icon: '📊',
+  },
+  milestone_tracker: {
+    en: 'Track 100+ developmental milestones across 5 domains (WHO standards)',
+    ne: '५ क्षेत्रका १००+ विकास चरणहरू ट्र्याक गर्नुहोस् (WHO मापदण्ड)',
+    icon: '🧠',
+  },
+  nutrition: {
+    en: 'Age-specific meal plans, traditional weaning foods, and myth-busting guides',
+    ne: 'उमेर अनुसारको खाना योजना, परम्परागत सर्बोत्तम पिठो, र गलत-धारणा गाइडहरू',
+    icon: '🥦',
+  },
+  autism_screening: {
+    en: 'M-CHAT-R/F screening tool for early autism detection (16–30 months)',
+    ne: 'प्रारम्भिक अटिजम पहिचानको लागि M-CHAT-R/F स्क्रिनिङ (१६–३० महिना)',
+    icon: '🔍',
+  },
+};
+
+export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 'immunization' }) => {
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const isPremiumFeature = FEATURE_ACCESS[feature] === 'premium';
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
 
-  // Check active AND not expired
-  const userIsPremium = useMemo(() => {
-    if (!subscription) return false;
-    const hasActiveStatus = subscription.status === 'active'
-      || subscription.plan === 'premium'
-      || subscription.plan === 'yearly'
-      || subscription.plan === 'monthly';
-    if (!hasActiveStatus) return false;
+  // Pending payment check
+  const [hasPendingPayment, setHasPendingPayment] = useState(false);
 
-    // Also check expiry
-    if (subscription.endDate) {
-      const endMs = subscription.endDate instanceof Date
-        ? subscription.endDate.getTime()
-        : (subscription.endDate as any).seconds
-          ? (subscription.endDate as any).seconds * 1000
-          : (subscription.endDate as any).toMillis?.()
-            ?? new Date(subscription.endDate as any).getTime();
-      if (!isNaN(endMs) && Date.now() > endMs) return false;
+  const checkPending = useCallback(async () => {
+    if (!user || !isPremiumFeature) return;
+    try {
+      const q = query(
+        collection(db, 'payments'),
+        where('userId', '==', user.uid),
+        where('status', '==', 'pending'),
+        limit(1),
+      );
+      const snap = await getDocs(q);
+      setHasPendingPayment(!snap.empty);
+    } catch {
+      setHasPendingPayment(false);
+    }
+  }, [user, isPremiumFeature]);
+
+  useEffect(() => { checkPending(); }, [checkPending]);
+
+  // Revalidate on app foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkPending();
+    });
+    return () => sub.remove();
+  }, [checkPending]);
+
+  // Premium state resolution
+  const premiumState = useMemo<'free' | 'locked' | 'pending' | 'active'>(() => {
+    if (!isPremiumFeature) return 'free';
+
+    if (subscription) {
+      const hasActive = subscription.status === 'active'
+        || subscription.plan === 'premium'
+        || subscription.plan === 'yearly'
+        || subscription.plan === 'monthly';
+      if (hasActive) {
+        let expired = false;
+        if (subscription.endDate) {
+          const endMs = subscription.endDate instanceof Date
+            ? subscription.endDate.getTime()
+            : (subscription.endDate as any).seconds
+              ? (subscription.endDate as any).seconds * 1000
+              : (subscription.endDate as any).toMillis?.()
+                ?? new Date(subscription.endDate as any).getTime();
+          if (!isNaN(endMs) && Date.now() > endMs) expired = true;
+        }
+        if (!expired) return 'active';
+      }
     }
 
-    return true;
-  }, [subscription]);
+    if (subscription?.status === 'pending' || hasPendingPayment) return 'pending';
+    return 'locked';
+  }, [subscription, isPremiumFeature, hasPendingPayment]);
 
-  if (!isPremiumFeature || userIsPremium) {
+  if (premiumState === 'free' || premiumState === 'active') {
     return <>{children}</>;
   }
 
+  const benefit = FEATURE_BENEFITS[feature];
+
+  // Pending — informational only
+  if (premiumState === 'pending') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.pendingOverlay}>
+          <View style={styles.pendingCard}>
+            <Ionicons name="time-outline" size={40} color="#FF9800" />
+            <Text style={styles.pendingTitle}>
+              {isNe ? 'प्रिमियम जाँच हुँदैछ' : 'Premium Being Verified'}
+            </Text>
+            <Text style={styles.pendingText}>
+              {isNe
+                ? 'तपाईंको भुक्तानी जाँच भइरहेको छ। यसले केहि घण्टा लिन सक्छ।'
+                : 'Your payment is being verified. This usually takes a few hours.'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Locked — benefit + visual badge only, NO buttons
   return (
     <View style={styles.container}>
-      <View style={styles.content}>{children}</View>
-      <View style={styles.paywall}>
-        <View style={styles.paywallContent}>
-          <Ionicons name="lock-closed" size={48} color="#F5A623" />
-          <Text style={styles.paywallTitle}>{isNe ? 'प्रीमियम सुविधा' : 'Premium Feature'}</Text>
-          <Text style={styles.paywallText}>
-            {isNe
-              ? 'यो सुविधा प्रयोग गर्न प्रिमियम सदस्यता आवश्यक छ।'
-              : 'This feature requires a premium subscription.'}
+      <View style={styles.dimmedContent}>{children}</View>
+      <View style={styles.lockedOverlay}>
+        <View style={styles.lockedCard}>
+          <Text style={styles.lockedIcon}>{benefit.icon}</Text>
+          <Text style={styles.lockedTitle}>
+            {isNe ? 'प्रिमियम सुविधा' : 'Premium Feature'}
           </Text>
-          <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
-            <Text style={styles.upgradeBtnText}>
-              {isNe ? 'थप जानकारी' : 'Learn More'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.lockedBenefit}>
+            {isNe ? benefit.ne : benefit.en}
+          </Text>
+          <View style={styles.premiumBadge}>
+            <Ionicons name="diamond-outline" size={14} color="#E8602C" />
+            <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -93,8 +179,8 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
           <Text style={styles.previewTitle}>{isNe ? 'प्रीमियम सुविधा' : 'Premium Feature'}</Text>
           <Text style={styles.previewText}>
             {isNe
-              ? 'सबै विकासका चरणहरू ट्र्याक गर्न प्रिमियम सदस्यता लिनुहोस्।'
-              : 'Upgrade to track all milestones'}
+              ? 'सबै विकासका चरणहरू ट्र्याक गर्न प्रिमियम सदस्यता आवश्यक छ।'
+              : 'A premium subscription is required to track all milestones.'}
           </Text>
         </View>
       </View>
@@ -104,31 +190,42 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
 
 const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
-  content: { flex: 1 },
-  paywall: {
+  dimmedContent: { flex: 1, opacity: 0.4 },
+
+  lockedOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center', padding: 20,
   },
-  paywallContent: {
-    backgroundColor: '#FDF8F2', borderRadius: 16, padding: 24,
-    alignItems: 'center', marginHorizontal: 20,
+  lockedCard: {
+    backgroundColor: '#FDF8F2', borderRadius: 20, padding: 28, alignItems: 'center',
+    maxWidth: 320, width: '100%', borderWidth: 1.5, borderColor: '#EDE0D4',
+    shadowColor: '#C4956A', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
   },
-  paywallTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginTop: 16, marginBottom: 8 },
-  paywallText: { fontSize: 14, color: '#7A6E65', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  upgradeBtn: {
-    backgroundColor: '#E8602C', borderRadius: 28, paddingVertical: 12,
-    paddingHorizontal: 32, marginBottom: 8,
+  lockedIcon: { fontSize: 40, marginBottom: 12 },
+  lockedTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 8 },
+  lockedBenefit: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  premiumBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFF5F0', paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1, borderColor: '#E8602C',
   },
-  upgradeBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  premiumBadgeText: { fontSize: 11, fontWeight: '800', color: '#E8602C', letterSpacing: 2 },
+
+  pendingOverlay: {
+    ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center',
+    padding: 20, backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  pendingCard: {
+    backgroundColor: '#FFF8E1', borderRadius: 20, padding: 28, alignItems: 'center',
+    maxWidth: 320, width: '100%', borderWidth: 2, borderColor: '#FF9800',
+  },
+  pendingTitle: { fontSize: 18, fontWeight: '700', color: '#E65100', marginTop: 12, marginBottom: 8 },
+  pendingText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
+
   previewContainer: { position: 'relative', opacity: 0.6 },
   previewContent: { flex: 1 },
-  previewOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  previewOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center' },
   previewMessage: { alignItems: 'center' },
   previewTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginTop: 12 },
   previewText: { fontSize: 13, color: '#7A6E65', marginTop: 8, textAlign: 'center' },

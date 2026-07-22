@@ -166,7 +166,7 @@ export default function PDFReportScreen({ route }: Props) {
   };
 
   return (
-    <PremiumGuard feature="growth_report" onUpgrade={() => navigation.navigate('Subscription')}>
+    <PremiumGuard feature="growth_report" >
       <View style={styles.container}>
         {/* Document Icon */}
         <Text style={styles.docIcon}>📋</Text>
