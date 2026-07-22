@@ -36,7 +36,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const t = translations[language];
   const isNe = language === 'ne';
   const { subscription } = useAuth();
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());
@@ -71,11 +71,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
 
   const updateStatus = async (milestoneId: string, status: 'achieved' | 'denied') => {
     if (!isPremium) {
-      Alert.alert(
-        isNe ? 'प्रिमियम सुविधा' : 'Premium Feature',
-        isNe ? 'विकासका चरणहरू चिन्ह लगाउन प्रिमियम सदस्यता आवश्यक छ।' : 'Marking milestones requires a premium subscription.',
-        [{ text: isNe ? 'पछि' : 'Later' }, { text: isNe ? 'अपग्रेड गर्नुहोस्' : 'Upgrade', onPress: () => navigation.navigate('Subscription') }]
-      );
+      Alert.alert(isNe ? 'प्रिमियम सुविधा' : 'Premium Feature', isNe ? 'विकासका चरणहरू चिन्ह लगाउन प्रिमियम सदस्यता आवश्यक छ।' : 'Marking milestones requires a premium subscription.');
       return;
     }
     try {

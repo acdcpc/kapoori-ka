@@ -117,7 +117,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const { subscription } = useAuth();
   const t = translations[language];
   const isNe = language === 'ne';
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   const [vaccineRecords, setVaccineRecords] = useState<VaccineRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,12 +217,9 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
               </TouchableOpacity>
             ))}
             {!isPremium && (
-              <TouchableOpacity style={styles.upgradePill} onPress={() => {
-                Alert.alert(isNe ? 'प्रिमियम सुविधा' : 'Premium Feature', isNe ? 'आउँदो र छुटेको खोप ट्याबहरू प्रिमियमको लागि मात्र।' : 'Upcoming & Missed tabs are premium only.',
-                  [{ text: isNe ? 'पछि' : 'Later' }, { text: isNe ? 'अपग्रेड' : 'Upgrade', onPress: () => navigation.navigate('Subscription') }]);
-              }}>
-                <Text style={styles.upgradePillText}>{isNe ? 'अपग्रेड' : 'Upgrade'}</Text>
-              </TouchableOpacity>
+              <View style={styles.premiumTag}>
+                <Text style={styles.premiumTagText}>{isNe ? 'प्रिमियम' : 'PREMIUM'}</Text>
+              </View>
             )}
           </View>
 
@@ -367,8 +364,8 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
   filterPillText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
   filterPillTextActive: { color: '#fff', fontWeight: 'bold' },
-  upgradePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F5A623' },
-  upgradePillText: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  premiumTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#FFF5F0', borderWidth: 1, borderColor: '#E8602C' },
+  premiumTagText: { fontSize: 10, color: '#E8602C', fontWeight: '800', letterSpacing: 1 },
 
   content: { flex: 1, paddingHorizontal: 10 },
   noMoreCard: { backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },

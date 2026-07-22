@@ -1,12 +1,6 @@
 import React, { useState, useContext } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -16,14 +10,18 @@ import { usePremiumGuard, PREMIUM_FEATURES } from '../hooks/usePremiumGuard';
 export default function ConsultationScreen({ navigation }: any) {
   const { language } = useContext(LanguageContext);
   const { subscription } = useAuth();
-  const { guardFeature, getRemainingConsultations, isPremium } = usePremiumGuard();
+  const { isPremium, getRemainingConsultations } = usePremiumGuard();
   const [loading, setLoading] = useState(false);
 
   const isNe = language === 'ne';
   const remaining = getRemainingConsultations();
 
   const handleBookConsultation = async () => {
-    if (!guardFeature(PREMIUM_FEATURES.ONLINE_CONSULTATION)) {
+    if (!isPremium()) {
+      Alert.alert(
+        isNe ? 'प्रिमियम सुविधा' : 'Premium Feature',
+        isNe ? 'अनलाइन परामर्श प्रिमियम सदस्यताको लागि मात्र उपलब्ध छ।' : 'Online consultations are available for premium subscribers only.',
+      );
       return;
     }
 
@@ -45,17 +43,14 @@ export default function ConsultationScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.lockedContent}>
-          <Ionicons name="lock-closed" size={48} color="#ffc107" />
-          <Text style={styles.lockedTitle}>{isNe ? 'प्रीमियम' : 'Premium'}</Text>
+          <Ionicons name="lock-closed" size={48} color="#F5A623" />
+          <Text style={styles.lockedTitle}>{isNe ? 'प्रिमियम सुविधा' : 'Premium Feature'}</Text>
           <Text style={styles.lockedText}>
-            {isNe ? 'केवल प्रीमियम प्रयोगकर्ताहरूका लागि' : 'Premium only'}
+            {isNe
+              ? 'अनलाइन परामर्श प्रिमियम सदस्यताको लागि मात्र उपलब्ध छ।'
+              : 'Online consultations are available for premium subscribers only.'}
           </Text>
-          <TouchableOpacity
-            style={styles.upgradeBtn}
-            onPress={() => navigation.navigate('Subscription')}
-          >
-            <Text style={styles.upgradeBtnText}>{isNe ? 'अपग्रेड' : 'Upgrade'}</Text>
-          </TouchableOpacity>
+          {/* NO upgrade button — compliant with Google Play policy */}
         </View>
       </View>
     );
@@ -110,8 +105,6 @@ const styles = StyleSheet.create({
   lockedContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   lockedTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 15 },
   lockedText: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center' },
-  upgradeBtn: { backgroundColor: '#ffc107', padding: 12, borderRadius: 8, marginTop: 20 },
-  upgradeBtnText: { color: '#333', fontWeight: '600' },
   header: { marginBottom: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 10 },
   badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f5e9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },

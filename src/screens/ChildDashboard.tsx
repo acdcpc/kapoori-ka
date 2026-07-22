@@ -23,7 +23,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const t = translations[language];
   const isNe = language === 'ne';
 
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   const menuItems = [
     { title: t.growthChart,    icon: '📈', color: '#E8602C', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
@@ -143,11 +143,6 @@ export default function ChildDashboard({ route, navigation }: Props) {
           </TouchableOpacity>
         ))}
 
-        {!isPremium && (
-          <TouchableOpacity style={styles.subBanner} onPress={() => navigation.navigate('Subscription')}>
-            <Text style={styles.subBannerText}>✨ {isNe ? 'प्रिमियममा अपग्रेड गर्नुहोस् र सबै सुविधाहरू खोल्नुहोस् ›' : 'Upgrade to Premium & Unlock All Features ›'}</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
