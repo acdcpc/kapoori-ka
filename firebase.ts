@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 
@@ -69,5 +70,6 @@ if (Platform.OS !== 'web') {
 }
 
 export const auth = authInstance;
-export { db, storage };
+const functions = getFunctions(app);
+export { db, storage, functions };
 export default app;

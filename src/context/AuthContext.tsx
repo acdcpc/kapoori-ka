@@ -23,7 +23,8 @@ import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { auth, db } from '../../firebase';
+import { auth, db, functions } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
 import type { UserProfile, Subscription } from '../types/firestore';
 import { FIRESTORE_COLLECTIONS } from '../types/firestore';
 
@@ -313,37 +314,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Upgrade to premium.
    */
+  /**
+   * Upgrade to premium via server-side Cloud Function.
+   * The Cloud Function verifies the eSewa transaction before activating the subscription.
+   * This prevents client-side tampering with subscription status.
+   */
   const upgradeToPremium = useCallback(async (paymentData: any) => {
     try {
       setError(null);
       setLoading(true);
       if (!user) throw new Error('No user logged in');
 
-      const subscriptionRef = doc(db, FIRESTORE_COLLECTIONS.SUBSCRIPTIONS, user.uid);
-      const updatedSubscription: Subscription = {
-        status: 'pending',
+      // Call the Cloud Function for server-side verification
+      const verifyPayment = httpsCallable(functions, 'verifyPayment');
+      const result = await verifyPayment({
+        transactionId: paymentData.transactionId,
         plan: paymentData.plan || 'premium',
-        startDate: Timestamp.now(),
-        endDate: Timestamp.fromMillis(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        autoRenew: true,
-        paymentMethod: paymentData.method || 'unknown',
-        transactionId: paymentData.transactionId || null,
-        price: paymentData.amount || 0,
-        consultationsRemaining: paymentData.plan === 'yearly' ? 100 : 5,
-      };
-
-      await setDoc(subscriptionRef, updatedSubscription);
-      setSubscription(updatedSubscription);
-
-      const paymentRef = doc(db, FIRESTORE_COLLECTIONS.PAYMENTS, `PAY_${Date.now()}_${user.uid}`);
-      await setDoc(paymentRef, {
-        userId: user.uid, amount: updatedSubscription.price,
-        method: updatedSubscription.paymentMethod, transactionId: updatedSubscription.transactionId,
-        status: 'pending', createdAt: Timestamp.now(),
+        amount: paymentData.amount || 0,
+        productCode: paymentData.productCode || null,
       });
+
+      const data = result.data as any;
+      if (!data?.success) {
+        throw new Error('Payment verification failed. Please check your transaction ID.');
+      }
+
+      // Cloud Function already updated Firestore — just refresh local state
+      const subscriptionRef = doc(db, FIRESTORE_COLLECTIONS.SUBSCRIPTIONS, user.uid);
+      const subscriptionSnap = await getDoc(subscriptionRef);
+      if (subscriptionSnap.exists()) {
+        setSubscription(subscriptionSnap.data() as Subscription);
+      }
+
+      setError(null);
     } catch (err: any) {
       console.error('Upgrade to premium error:', err);
-      setError(err.message || 'Failed to upgrade to premium');
+      setError(
+        err.code === 'functions/failed-precondition'
+          ? 'eSewa verification failed. Check your transaction ID.'
+          : err.message || 'Failed to upgrade to premium'
+      );
     } finally {
       setLoading(false);
     }

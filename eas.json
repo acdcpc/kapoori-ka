@@ -13,37 +13,10 @@
       "android": {
         "buildType": "apk"
       },
-      "prebuildCommand": "npx expo prebuild --clean --platform android",
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCGbVpqcoRguLUA8Vw3ZXL3D4oMeZsCGcM",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "kapoori-ka.firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "kapoori-ka",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "kapoori-ka.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "391729474242",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:391729474242:web:ffded3abd5817e5ab2295b",
-        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-ZQLWYB0SRS",
-        "EXPO_PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY": "6LcfkjYtAAAAANLVQBvc0GOL7zAEOIHKLyeJKC_v",
-        "EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID": "391729474242-gjfr7roo4v3oreurkqcgupi72gru1cnk.apps.googleusercontent.com",
-        "EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID": "391729474242-jdn2770jngjplqvd8kmak5m3ha4he2ej.apps.googleusercontent.com",
-        "EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
-        "EXPO_PUBLIC_SCHEME": "com.kapoori.ka"
-      }
+      "prebuildCommand": "npx expo prebuild --clean --platform android"
     },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCGbVpqcoRguLUA8Vw3ZXL3D4oMeZsCGcM",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "kapoori-ka.firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "kapoori-ka",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "kapoori-ka.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "391729474242",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:391729474242:web:ffded3abd5817e5ab2295b",
-        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-ZQLWYB0SRS",
-        "EXPO_PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY": "6LcfkjYtAAAAANLVQBvc0GOL7zAEOIHKLyeJKC_v",
-        "EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID": "391729474242-gjfr7roo4v3oreurkqcgupi72gru1cnk.apps.googleusercontent.com",
-        "EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID": "391729474242-jdn2770jngjplqvd8kmak5m3ha4he2ej.apps.googleusercontent.com",
-        "EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com"
-      }
+      "autoIncrement": true
     }
   }
 }
