@@ -15,7 +15,7 @@ pnpm install
 # or: npm install
 
 # Step 3 — Check for any issues
-npx expo-doctor@latest
+tor@latestnpx expo-doc
 
 # Step 4 — Run on Android
 expo start --android

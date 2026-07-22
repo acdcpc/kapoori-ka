@@ -180,6 +180,9 @@ export default function HeightMeasureScreen() {
             const timer = setTimeout(() => {
               console.error(`[HEIGHT] ❌ downloadAsync(${label}) TIMEOUT after 5s`);
               reject(new Error(`downloadAsync(${label}) timed out after 5 seconds`));
+                // ISSUE 1 FIX: Fallback to raw require() URI if downloadAsync fails
+                // On APK builds, expo-asset localUri may be null initially.
+                // The raw require() returns a module ID that can be used directly.
             }, 5000);
 
             asset.downloadAsync()
@@ -200,13 +203,33 @@ export default function HeightMeasureScreen() {
           });
         };
 
-        const [detResult, lmResult] = await Promise.all([
-          downloadWithTimeout(detAsset, 'detector'),
-          downloadWithTimeout(lmAsset, 'landmark'),
-        ]);
+        // ISSUE 1 FIX: Each asset gets its own fallback chain.
+        // If downloadAsync fails (APK, network), fall back to raw require() URI.
+        const resolveUri = async (asset: any, rawModule: any, label: string): Promise<string> => {
+          try {
+            const result = await downloadWithTimeout(asset, label);
+            const uri = result.localUri || result.uri;
+            console.log(`[HEIGHT] ${label} download OK:`, uri);
+            return uri;
+          } catch (downloadErr: any) {
+            console.warn(`[HEIGHT] ${label} download failed, trying raw URI:`, downloadErr?.message);
+            const rawUri = typeof rawModule === 'string' ? rawModule : String(rawModule);
+            if (rawUri && rawUri.length > 0) {
+              console.log(`[HEIGHT] ${label} using raw URI:`, rawUri);
+              return rawUri;
+            }
+            if (asset.uri && asset.uri.startsWith('file://')) {
+              console.log(`[HEIGHT] ${label} using asset.uri:`, asset.uri);
+              return asset.uri;
+            }
+            throw new Error(`Could not resolve ${label} model URI`);
+          }
+        };
 
-        const detUri = detResult.localUri || detResult.uri;
-        const lmUri = lmResult.localUri || lmResult.uri;
+        const [detUri, lmUri] = await Promise.all([
+          resolveUri(detAsset, detModule, 'detector'),
+          resolveUri(lmAsset, lmModule, 'landmark'),
+        ]);
 
         console.log('[HEIGHT] Final URIs for TFLite loader:');
         console.log('[HEIGHT]   detUri:', detUri);
@@ -272,7 +295,14 @@ export default function HeightMeasureScreen() {
         // Phase 1: Load detector
         setModelPhase('loading_detector');
         console.log('[HEIGHT] ═══ STEP 2a: Loading detector from:', detUrl, '═══');
-        const detModel = await loadTF({ url: detUrl }, []);
+        // ISSUE 1 FIX: 10-second timeout to prevent infinite hang
+        const loadWithTimeout = (url: string): Promise<any> =>
+          new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Model load timeout after 10s')), 10000);
+            loadTF({ url }, []).then((m: any) => { clearTimeout(timer); resolve(m); }).catch(reject);
+          });
+
+        const detModel = await loadWithTimeout(detUrl);
         detModelRef.current = detModel;
         console.log('[HEIGHT] ✅ Detector loaded');
         console.log('[HEIGHT] Detector metadata:', JSON.stringify({
@@ -283,7 +313,7 @@ export default function HeightMeasureScreen() {
         // Phase 2: Load landmark
         setModelPhase('loading_landmark');
         console.log('[HEIGHT] ═══ STEP 2b: Loading landmark from:', lmUrl, '═══');
-        const lmModel = await loadTF({ url: lmUrl }, []);
+        const lmModel = await loadWithTimeout(lmUrl);
         lmModelRef.current = lmModel;
         console.log('[HEIGHT] ✅ Landmark loaded');
         console.log('[HEIGHT] Landmark metadata:', JSON.stringify({
@@ -322,7 +352,7 @@ export default function HeightMeasureScreen() {
       } catch (e: any) {
         console.error('[HEIGHT] ❌ Model loading failed at phase:', modelPhase, e?.message || e);
         setModelPhase('error');
-        setModelError(`${modelPhase}: ${e?.message || e}`);
+        setModelError(`model_load: ${e?.message || e}`);
       }
     })();
   }, [detUrl, lmUrl, modelPhase]);

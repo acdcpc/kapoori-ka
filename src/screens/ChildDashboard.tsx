@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
-
 import { doc, deleteDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Alert } from 'react-native';
@@ -27,94 +26,91 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
   const menuItems = [
-    { title: t.growthChart,    icon: '📈', color: '#4CAF50', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
+    { title: t.growthChart,    icon: '📈', color: '#E8602C', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
     { title: isNe ? 'उचाइ नाप' : 'Height Measure', icon: '📏', color: '#795548', screen: 'HeightMeasure' as const, desc: isNe ? 'क्यामेराबाट उचाइ नाप्नुहोस्' : 'Measure height with camera', premium: true },
-    { title: t.immunization,   icon: '💉', color: '#1a73e8', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
-    { title: t.milestones,     icon: '🧠', color: '#9C27B0', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
-    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#FF9800', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
-    { title: t.mchat,          icon: '🔍', color: '#FF5722', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
+    { title: t.immunization,   icon: '💉', color: '#3D8B5E', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
+    { title: t.milestones,     icon: '🧠', color: '#6B21A8', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
+    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#3D8B5E', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
+    { title: t.mchat,          icon: '🔍', color: '#C0392B', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
   ];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: child.sex === 'male' ? '#1a73e8' : '#e91e8c' }]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { backgroundColor: child.sex === 'male' ? '#1a73e8' : '#e91e8c' }]}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {
-              Alert.alert(
-                isNe ? 'बच्चा हटाउने?' : 'Delete Child?',
-                isNe
-                  ? `के तपाईं ${child.name} लाई स्थायी रूपमा हटाउन चाहनुहुन्छ? यो कार्य पूर्ववत गर्न सकिने छैन।`
-                  : `Are you sure you want to permanently delete ${child.name}? This cannot be undone.`,
-                [
-                  { text: isNe ? 'रद्द गर्नुहोस्' : 'Cancel' },
-                  {
-                    text: isNe ? 'हटाउनुहोस्' : 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        // Delete child doc
-                        await deleteDoc(doc(db, 'children', child.id));
-                        // Delete related records
-                        const collections = ['growth_records', 'vaccinations', 'milestones', 'mchat_responses'];
-                        for (const col of collections) {
-                          const q = query(collection(db, col), where('childId', '==', child.id));
-                          const snap = await getDocs(q);
-                          const batch: Promise<void>[] = [];
-                          snap.forEach(d => batch.push(deleteDoc(doc(db, col, d.id))));
-                          await Promise.all(batch);
-                        }
-                        Alert.alert(isNe ? 'हटाइयो' : 'Deleted', `${child.name} ${isNe ? 'हटाइयो' : 'has been removed.'}`);
-                        navigation.goBack();
-                      } catch {
-                        Alert.alert('Error', isNe ? 'हटाउन सकिएन' : 'Could not delete child.');
+        {/* Top bar: back + delete */}
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#7A6E65" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            Alert.alert(
+              isNe ? 'बच्चा हटाउने?' : 'Delete Child?',
+              isNe
+                ? `के तपाईं ${child.name} लाई स्थायी रूपमा हटाउन चाहनुहुन्छ? यो कार्य पूर्ववत गर्न सकिने छैन।`
+                : `Are you sure you want to permanently delete ${child.name}? This cannot be undone.`,
+              [
+                { text: isNe ? 'रद्द गर्नुहोस्' : 'Cancel' },
+                {
+                  text: isNe ? 'हटाउनुहोस्' : 'Delete', style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteDoc(doc(db, 'children', child.id));
+                      const collections = ['growth_records', 'vaccinations', 'milestones', 'mchat_responses'];
+                      for (const col of collections) {
+                        const q = query(collection(db, col), where('childId', '==', child.id));
+                        const snap = await getDocs(q);
+                        const batch: Promise<void>[] = [];
+                        snap.forEach(d => batch.push(deleteDoc(doc(db, col, d.id))));
+                        await Promise.all(batch);
                       }
-                    }
+                      Alert.alert(isNe ? 'हटाइयो' : 'Deleted', `${child.name} ${isNe ? 'हटाइयो' : 'has been removed.'}`);
+                      navigation.goBack();
+                    } catch { Alert.alert('Error', isNe ? 'हटाउन सकिएन' : 'Could not delete child.'); }
                   }
-                ]
-              );
-            }} style={styles.deleteBtn}>
-              <Ionicons name="trash-outline" size={22} color="rgba(255,255,255,0.8)" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.headerEmoji}>{child.sex === 'male' ? '👦' : '👧'}</Text>
-          <Text style={styles.headerName}>{child.name}</Text>
-          {child.nameNepali ? <Text style={styles.headerNameNepali}>{child.nameNepali}</Text> : null}
-          <Text style={styles.headerAge}>{formatAge(child.dateOfBirth, language)}</Text>
-          <Text style={styles.headerDob}>{isNe ? 'जन्म' : 'Born'}: {child.dateOfBirth}</Text>
+                }
+              ]
+            );
+          }} style={styles.deleteBtn}>
+            <Ionicons name="trash-outline" size={22} color="#C0392B" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.infoRow}>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>{isNe ? 'जन्मको तौल' : 'Birth Weight'}</Text>
-            <Text style={styles.infoValue}>{child.birthWeight} kg</Text>
+        {/* Avatar */}
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarEmoji}>{child.sex === 'male' ? '👦' : '👧'}</Text>
+        </View>
+
+        {/* Name & info */}
+        <Text style={styles.childName}>{child.name}</Text>
+        {child.nameNepali ? <Text style={styles.childNameNepali}>{child.nameNepali}</Text> : null}
+        <Text style={styles.childAge}>{formatAge(child.dateOfBirth, language)}</Text>
+        <Text style={styles.childDob}>{isNe ? 'जन्म' : 'Born'}: {child.dateOfBirth}</Text>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statChip}>
+            <Text style={styles.statValue}>{child.birthWeight} kg</Text>
+            <Text style={styles.statLabel}>{isNe ? 'जन्मको तौल' : 'Birth Weight'}</Text>
           </View>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>{isNe ? 'लिंग' : 'Sex'}</Text>
-            <Text style={styles.infoValue}>{child.sex === 'male' ? t.male : t.female}</Text>
+          <View style={styles.statChip}>
+            <Text style={styles.statValue}>{child.sex === 'male' ? t.male : t.female}</Text>
+            <Text style={styles.statLabel}>{isNe ? 'लिंग' : 'Sex'}</Text>
           </View>
         </View>
 
-        <View style={styles.hintBox}>
-          <Ionicons name="information-circle" size={18} color="#1a73e8" />
-          <Text style={styles.hintText}>
-            {isNe
-              ? 'तलका विकल्पहरूमा थिचेर आफ्नो बच्चाको स्वास्थ्य रेकर्ड व्यवस्थापन गर्नुहोस्।'
-              : 'Tap the options below to manage your child\'s health records.'}
-          </Text>
-        </View>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>{isNe ? 'स्वास्थ्य रेकर्ड' : 'Health Records'}</Text>
+        {/* Section */}
+        <Text style={styles.sectionTitle}>{isNe ? 'स्वास्थ्य रेकर्ड' : 'HEALTH RECORDS'}</Text>
 
+        {/* Feature Rows */}
         {menuItems.map(item => (
           <TouchableOpacity
             key={item.screen}
@@ -129,22 +125,21 @@ export default function ChildDashboard({ route, navigation }: Props) {
               }
             }}
           >
-            <View style={[styles.menuIconBox, { backgroundColor: item.color + '20' }]}>
-              <Text style={styles.menuIcon}>{item.icon}</Text>
+            <View style={[styles.menuIconBox, { backgroundColor: item.color + '26' }]}>
+              <Text style={[styles.menuIcon, { color: item.color }]}>{item.icon}</Text>
             </View>
             <View style={styles.menuTextBox}>
               <View style={styles.titleRow}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 {item.premium && !isPremium && (
                   <View style={styles.premiumBadge}>
-                    <Ionicons name="star" size={10} color="#fff" />
                     <Text style={styles.premiumBadgeText}>{isNe ? 'प्रिमियम' : 'Premium'}</Text>
                   </View>
                 )}
               </View>
               <Text style={styles.menuDesc}>{item.desc}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={22} color="#999" />
+            <Text style={styles.chevron}>→</Text>
           </TouchableOpacity>
         ))}
 
@@ -159,34 +154,34 @@ export default function ChildDashboard({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1EB' },
+  container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
-  header: { paddingTop: 10, paddingBottom: 30, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, marginBottom: 8 },
   backBtn: { padding: 8 },
   deleteBtn: { padding: 8 },
-  headerEmoji: { fontSize: 60, marginBottom: 10 },
-  headerName: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  headerNameNepali: { fontSize: 18, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  headerAge: { fontSize: 16, color: 'rgba(255,255,255,0.95)', marginTop: 8, fontWeight: '600' },
-  headerDob: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
-  infoRow: { flexDirection: 'row', padding: 15, gap: 12, marginTop: -20 },
-  infoCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 4 },
-  infoLabel: { fontSize: 12, color: '#888', marginBottom: 6, fontWeight: '600', textTransform: 'uppercase' },
-  infoValue: { fontSize: 18, fontWeight: '700', color: '#222' },
-  hintBox: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 15, marginBottom: 4, backgroundColor: '#E8F0FE', borderRadius: 10, padding: 10, gap: 8 },
-  hintText: { flex: 1, fontSize: 12, color: '#1a73e8', lineHeight: 18 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#888', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, marginHorizontal: 15, marginBottom: 12, borderRadius: 16, elevation: 2 },
-  menuIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  menuIcon: { fontSize: 24 },
+  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#E8602C', alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  avatarEmoji: { fontSize: 32, color: '#fff' },
+  childName: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', textAlign: 'center', marginTop: 12 },
+  childNameNepali: { fontSize: 15, color: '#7A6E65', textAlign: 'center', marginTop: 2 },
+  childAge: { fontSize: 16, color: '#7A6E65', textAlign: 'center', marginTop: 4 },
+  childDob: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginTop: 2 },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, paddingHorizontal: 16 },
+  statChip: { backgroundColor: '#FDF8F2', borderRadius: 12, borderWidth: 1, borderColor: '#EDE0D4', paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center' },
+  statValue: { fontWeight: '700', fontSize: 16, color: '#1A1A2E' },
+  statLabel: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
+  divider: { backgroundColor: '#EDE0D4', height: 1, marginHorizontal: 20, marginTop: 16, marginBottom: 8 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#7A6E65', letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FDF8F2', padding: 14, marginHorizontal: 15, marginBottom: 10, borderRadius: 16, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  menuIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  menuIcon: { fontSize: 20 },
   menuTextBox: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  menuTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  premiumBadge: { backgroundColor: '#FF9800', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  menuTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
+  premiumBadge: { backgroundColor: '#F5A623', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   premiumBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  menuDesc: { fontSize: 12, color: '#999', marginTop: 2 },
-  subBanner: { margin: 15, backgroundColor: '#1a73e8', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
+  menuDesc: { fontSize: 13, color: '#7A6E65', marginTop: 2 },
+  chevron: { fontSize: 20, color: '#C4956A', fontWeight: '600' },
+  subBanner: { margin: 15, backgroundColor: '#E8602C', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
   subBannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

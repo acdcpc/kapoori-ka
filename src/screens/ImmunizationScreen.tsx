@@ -20,18 +20,8 @@ import { useAuth } from '../context/AuthContext';
 type Props = NativeStackScreenProps<RootStackParamList, 'Immunization'>;
 
 interface NIPEntry {
-  id: string;
-  name: string;
-  nameNe: string;
-  ageLabel: string;
-  ageLabelNe: string;
-  ageInDays: number;
-  diseases: string;
-  diseasesNe: string;
-  route: string;
-  routeNe: string;
-  dose: string;
-  doseNe: string;
+  id: string; name: string; nameNe: string; ageLabel: string; ageLabelNe: string;
+  ageInDays: number; diseases: string; diseasesNe: string; route: string; routeNe: string; dose: string; doseNe: string;
 }
 
 const NIP_SCHEDULE: NIPEntry[] = [
@@ -56,21 +46,19 @@ const NIP_SCHEDULE: NIPEntry[] = [
 ];
 
 const AGE_GROUPS = [
-  { label: 'At Birth', labelNe: 'जन्मदा', ageInDays: 0, color: '#1a73e8' },
-  { label: '6 Weeks', labelNe: '६ हप्ता', ageInDays: 42, color: '#4CAF50' },
-  { label: '10 Weeks', labelNe: '१० हप्ता', ageInDays: 70, color: '#FF9800' },
-  { label: '14 Weeks', labelNe: '१४ हप्ता', ageInDays: 98, color: '#9C27B0' },
-  { label: '9 Months', labelNe: '९ महिना', ageInDays: 274, color: '#F44336' },
-  { label: '12 Months', labelNe: '१२ महिना', ageInDays: 365, color: '#E91E63' },
-  { label: '15 Months', labelNe: '१५ महिना', ageInDays: 456, color: '#673AB7' },
+  { label: 'At Birth', labelNe: 'जन्मदा', ageInDays: 0 },
+  { label: '6 Weeks', labelNe: '६ हप्ता', ageInDays: 42 },
+  { label: '10 Weeks', labelNe: '१० हप्ता', ageInDays: 70 },
+  { label: '14 Weeks', labelNe: '१४ हप्ता', ageInDays: 98 },
+  { label: '9 Months', labelNe: '९ महिना', ageInDays: 274 },
+  { label: '12 Months', labelNe: '१२ महिना', ageInDays: 365 },
+  { label: '15 Months', labelNe: '१५ महिना', ageInDays: 456 },
 ];
 
 type VaccineStatus = 'given' | 'due' | 'upcoming' | 'missed';
 
 interface ComputedVaccine extends NIPEntry {
-  scheduledDate: string;
-  status: VaccineStatus;
-  daysUntilDue: number;
+  scheduledDate: string; status: VaccineStatus; daysUntilDue: number;
 }
 
 function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<string>): ComputedVaccine[] {
@@ -78,8 +66,7 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
   return NIP_SCHEDULE.map(v => {
     const scheduledDate = dayjs(dob).add(v.ageInDays, 'day').startOf('day');
     const daysUntilDue = scheduledDate.diff(today, 'day');
-    const isGiven = givenIds.has(v.id);
-    const isMissed = missedIds.has(v.id);
+    const isGiven = givenIds.has(v.id), isMissed = missedIds.has(v.id);
     let status: VaccineStatus;
     if (isGiven) status = 'given';
     else if (isMissed) status = 'missed';
@@ -90,10 +77,12 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
   });
 }
 
-const STATUS_COLOR: Record<VaccineStatus, string> = { given: '#4CAF50', due: '#F44336', upcoming: '#1a73e8', missed: '#FF5722' };
-const STATUS_ICON: Record<VaccineStatus, string> = { given: '✅', due: '⚠️', upcoming: '📅', missed: '❗' };
-const STATUS_LABEL_EN: Record<VaccineStatus, string> = { given: 'Given', due: 'Due Now', upcoming: 'Upcoming', missed: 'Missed' };
-const STATUS_LABEL_NE: Record<VaccineStatus, string> = { given: 'दिइयो', due: 'दिनुपर्छ', upcoming: 'आउँदो', missed: 'छुट्यो' };
+const STATUS_PILL: Record<VaccineStatus, { bg: string; text: string; labelEn: string; labelNe: string }> = {
+  given: { bg: '#D1FAE5', text: '#065F46', labelEn: 'Given', labelNe: 'दिइयो' },
+  due: { bg: '#FEF3C7', text: '#92400E', labelEn: 'Due Now', labelNe: 'दिनुपर्छ' },
+  upcoming: { bg: '#EDE0D4', text: '#7A6E65', labelEn: 'Upcoming', labelNe: 'आउँदो' },
+  missed: { bg: '#FEE2E2', text: '#991B1B', labelEn: 'Missed', labelNe: 'छुट्यो' },
+};
 
 const neMonths = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फागुन','चैत्र'];
 const neDigits = (n: number) => String(n).split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
@@ -107,27 +96,19 @@ function formatDateNe(dateStr: string): string {
   } catch { return dateStr; }
 }
 
-// BS date picker helpers
 const BS_YEARS = Array.from({ length: 10 }, (_, i) => 2081 + i);
 const BS_MONTHS_LIST = Array.from({ length: 12 }, (_, i) => i + 1);
 const AD_YEARS = Array.from({ length: 5 }, (_, i) => 2024 + i);
 const AD_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 function bsToAdStr(bsYear: number, bsMonth: number, bsDay: number): string {
-  try {
-    const bs = new NepaliDate(bsYear, bsMonth - 1, bsDay);
-    const ad = bs.toJsDate();
-    return dayjs(ad).format('YYYY-MM-DD');
-  } catch { return dayjs().format('YYYY-MM-DD'); }
+  try { return dayjs(new NepaliDate(bsYear, bsMonth - 1, bsDay).toJsDate()).format('YYYY-MM-DD'); }
+  catch { return dayjs().format('YYYY-MM-DD'); }
 }
 
 function bsDaysInMonth(bsYear: number, bsMonth: number): number {
-  try {
-    const bs = new NepaliDate(bsYear, bsMonth - 1, 1);
-    const nextMonth = new NepaliDate(bsYear, bsMonth, 1);
-    const diff = nextMonth.toJsDate().getTime() - bs.toJsDate().getTime();
-    return Math.round(diff / 86400000);
-  } catch { return 30; }
+  try { return Math.round((new NepaliDate(bsYear, bsMonth, 1).toJsDate().getTime() - new NepaliDate(bsYear, bsMonth - 1, 1).toJsDate().getTime()) / 86400000); }
+  catch { return 30; }
 }
 
 export default function ImmunizationScreen({ route, navigation }: Props) {
@@ -143,7 +124,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const [activeTab, setActiveTab] = useState<'tracker' | 'schedule'>('tracker');
   const [trackerFilter, setTrackerFilter] = useState<'all' | 'upcoming' | 'missed'>('all');
 
-  // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingVaccine, setPendingVaccine] = useState<ComputedVaccine | null>(null);
   const [bsYear, setBsYear] = useState(2081);
@@ -165,78 +145,57 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   useEffect(() => { loadRecords(); }, []);
 
-  // Auto-schedule notifications when records change (premium only)
   useEffect(() => {
     if (vaccineRecords.length > 0 && isPremium) {
       const givenIds2 = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
       const missedIds2 = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
-      const updated = computeSchedule(child.dateOfBirth, givenIds2, missedIds2);
-      scheduleVaccineReminders(child.name, updated, language).catch(() => {});
+      scheduleVaccineReminders(child.name, computeSchedule(child.dateOfBirth, givenIds2, missedIds2), language).catch(() => {});
     }
   }, [vaccineRecords.length, isPremium]);
 
   const handleSetStatus = (vaccine: ComputedVaccine, status: 'given' | 'missed') => {
     if (status === 'given') {
-      setPendingVaccine(vaccine);
-      setShowDatePicker(true);
-      setSelectedADDate(dayjs().format('YYYY-MM-DD'));
-      if (isNe) {
-        try {
-          const bs = new NepaliDate(new Date());
-          setBsYear(bs.getYear());
-          setBsMonth(bs.getMonth() + 1);
-          setBsDay(bs.getDay());
-        } catch {}
-      }
-    } else {
-      confirmSetStatus(vaccine, 'missed', dayjs().format('YYYY-MM-DD'));
-    }
+      setPendingVaccine(vaccine); setShowDatePicker(true); setSelectedADDate(dayjs().format('YYYY-MM-DD'));
+      if (isNe) { try { const bs = new NepaliDate(new Date()); setBsYear(bs.getYear()); setBsMonth(bs.getMonth() + 1); setBsDay(bs.getDay()); } catch {} }
+    } else { confirmSetStatus(vaccine, 'missed', dayjs().format('YYYY-MM-DD')); }
   };
 
   const confirmSetStatus = async (vaccine: ComputedVaccine, status: 'given' | 'missed', givenDate: string) => {
     try {
       const user = auth.currentUser;
-      const docId = `${child.id}_${vaccine.id}`;
-      await setDoc(doc(db, 'vaccinations', docId), {
-        childId: child.id,
-        ownerId: user?.uid || 'anonymous',
-        vaccineName: vaccine.id,
-        vaccineNameNepali: vaccine.nameNe,
-        scheduledDate: vaccine.scheduledDate,
-        givenDate: status === 'given' ? givenDate : null,
-        customGivenDate: status === 'given' ? givenDate : null,
-        isGiven: status === 'given',
-        isMissed: status === 'missed',
+      await setDoc(doc(db, 'vaccinations', `${child.id}_${vaccine.id}`), {
+        childId: child.id, ownerId: user?.uid || 'anonymous', vaccineName: vaccine.id, vaccineNameNepali: vaccine.nameNe,
+        scheduledDate: vaccine.scheduledDate, givenDate: status === 'given' ? givenDate : null, customGivenDate: status === 'given' ? givenDate : null,
+        isGiven: status === 'given', isMissed: status === 'missed',
       });
       await loadRecords();
     } catch { Alert.alert('Error', 'Could not save.'); }
   };
 
-  if (loading) return <ActivityIndicator size="large" color="#1a73e8" style={{ flex: 1 }} />;
+  if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
 
   const givenIds = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
   const missedIds = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
   const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds);
   const childAgeMonths = dayjs().diff(dayjs(child.dateOfBirth), 'month');
-
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
-
   const filterTabs: string[] = ['all'];
   if (isPremium) { filterTabs.push('upcoming', 'missed'); }
 
   return (
     <View style={styles.container}>
       {nextDue && (
-        <View style={[styles.nextVaccineBanner, { borderLeftColor: nextDue.status === 'due' ? '#F44336' : '#1a73e8' }]}>
-          <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#F44336' : '#1a73e8'} />
-          <Text style={[styles.nextVaccineText, { color: nextDue.status === 'due' ? '#c62828' : '#1a73e8' }]}>
+        <View style={[styles.nextBanner, { borderLeftColor: nextDue.status === 'due' ? '#C0392B' : '#E8602C' }]}>
+          <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#C0392B' : '#E8602C'} />
+          <Text style={[styles.nextBannerText, { color: nextDue.status === 'due' ? '#991B1B' : '#92400E' }]}>
             {isNe
-              ? `अर्को खोप: ${nextDue.nameNe} (${nextDue.ageLabelNe}) — ${formatDateNe(nextDue.scheduledDate)} — ${STATUS_LABEL_NE[nextDue.status]}`
-              : `Next vaccine: ${nextDue.name} (${nextDue.ageLabel}) — ${nextDue.scheduledDate} — ${STATUS_LABEL_EN[nextDue.status]}`}
+              ? `अर्को खोप: ${nextDue.nameNe} (${nextDue.ageLabelNe}) — ${formatDateNe(nextDue.scheduledDate)} — ${STATUS_PILL[nextDue.status].labelNe}`
+              : `Next vaccine: ${nextDue.name} (${nextDue.ageLabel}) — ${nextDue.scheduledDate} — ${STATUS_PILL[nextDue.status].labelEn}`}
           </Text>
         </View>
       )}
 
+      {/* Tabs — underline style */}
       <View style={styles.tabBar}>
         <TouchableOpacity style={[styles.tab, activeTab === 'tracker' && styles.activeTab]} onPress={() => setActiveTab('tracker')}>
           <Text style={[styles.tabText, activeTab === 'tracker' && styles.activeTabText]}>{isNe ? 'ट्र्याकर' : 'Tracker'}</Text>
@@ -248,29 +207,21 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
       {activeTab === 'tracker' ? (
         <View style={{ flex: 1 }}>
+          {/* Filter pills */}
           <View style={styles.filterRow}>
             {filterTabs.map((f) => (
-              <TouchableOpacity key={f} style={[styles.filterBtn, trackerFilter === f && styles.filterBtnActive]} onPress={() => setTrackerFilter(f as any)}>
-                <Text style={[styles.filterBtnText, trackerFilter === f && styles.filterBtnTextActive]}>
+              <TouchableOpacity key={f} style={[styles.filterPill, trackerFilter === f && styles.filterPillActive]} onPress={() => setTrackerFilter(f as any)}>
+                <Text style={[styles.filterPillText, trackerFilter === f && styles.filterPillTextActive]}>
                   {f === 'all' ? (isNe ? 'सबै' : 'All') : f === 'upcoming' ? (isNe ? 'आउँदो' : 'Upcoming') : (isNe ? 'छुट्यो' : 'Missed')}
                 </Text>
               </TouchableOpacity>
             ))}
             {!isPremium && (
-              <TouchableOpacity style={styles.upgradePromptBtn} onPress={() => {
-                Alert.alert(
-                  isNe ? 'प्रिमियम सुविधा' : 'Premium Feature',
-                  isNe 
-                    ? 'आउँदो र छुटेको खोप ट्याबहरू र पुश नोटिफिकेसन सुविधा प्रिमियम सदस्यताको लागि मात्र उपलब्ध छन्।'
-                    : 'Upcoming & Missed vaccine tabs and push notifications are only available for premium members.',
-                  [
-                    { text: isNe ? 'पछि' : 'Later' },
-                    { text: isNe ? 'अपग्रेड गर्नुहोस्' : 'Upgrade', onPress: () => navigation.navigate('Subscription') }
-                  ]
-                );
+              <TouchableOpacity style={styles.upgradePill} onPress={() => {
+                Alert.alert(isNe ? 'प्रिमियम सुविधा' : 'Premium Feature', isNe ? 'आउँदो र छुटेको खोप ट्याबहरू प्रिमियमको लागि मात्र।' : 'Upcoming & Missed tabs are premium only.',
+                  [{ text: isNe ? 'पछि' : 'Later' }, { text: isNe ? 'अपग्रेड' : 'Upgrade', onPress: () => navigation.navigate('Subscription') }]);
               }}>
-                <Ionicons name="star" size={14} color="#fff" />
-                <Text style={styles.upgradePromptText}>{isNe ? 'प्रिमियमको लागि अपग्रेड गर्नुहोस्' : 'Upgrade to Premium'}</Text>
+                <Text style={styles.upgradePillText}>{isNe ? 'अपग्रेड' : 'Upgrade'}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -278,7 +229,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
           <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
             {childAgeMonths >= 16 && (
               <View style={styles.noMoreCard}>
-                <Text style={styles.noMoreText}>{isNe ? '१५ महिनापछि अब कुनै राष्ट्रिय खोप छैन' : 'No more national vaccine after 15 months'}</Text>
+                <Text style={styles.noMoreText}>{isNe ? '१५ महिनापछि कुनै राष्ट्रिय खोप छैन' : 'No more national vaccines after 15 months'}</Text>
               </View>
             )}
 
@@ -292,38 +243,54 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
               if (filtered.length === 0) return null;
 
               return (
-                <View key={group.label} style={styles.ageGroup}>
-                  <View style={[styles.ageHeader, { backgroundColor: group.color }]}>
-                    <Text style={styles.ageHeaderText}>{isNe ? group.labelNe : group.label}</Text>
+                <View key={group.label} style={styles.groupSection}>
+                  {/* Group Header — horizontal rule style */}
+                  <View style={styles.groupHeader}>
+                    <View style={styles.groupLine} />
+                    <Text style={styles.groupHeaderText}>{isNe ? group.labelNe : group.label}</Text>
+                    <View style={styles.groupLine} />
                   </View>
-                  {filtered.map(v => (
-                    <View key={v.id} style={styles.vItem}>
-                      <View style={styles.vMain}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.vName}>{isNe ? v.nameNe : v.name}</Text>
-                          <Text style={styles.vDisease}>{isNe ? v.diseasesNe : v.diseases}</Text>
-                          <Text style={styles.vDate}>
-                            {isNe ? formatDateNe(v.scheduledDate) : v.scheduledDate}
-                          </Text>
+
+                  {filtered.map(v => {
+                    const pill = STATUS_PILL[v.status];
+                    return (
+                      <View key={v.id} style={styles.timelineRow}>
+                        {/* Timeline left column */}
+                        <View style={styles.timelineLeft}>
+                          <View style={styles.timelineLine} />
+                          <View style={[styles.timelineDot,
+                            v.status === 'given' && styles.timelineDotGiven,
+                            (v.status === 'missed' || v.status === 'due') && styles.timelineDotMissed,
+                            v.status === 'upcoming' && styles.timelineDotUpcoming,
+                          ]} />
                         </View>
-                        <View style={[styles.sBadge, { backgroundColor: STATUS_COLOR[v.status] }]}>
-                          <Text style={styles.sText}>
-                            {STATUS_ICON[v.status]} {isNe ? STATUS_LABEL_NE[v.status] : STATUS_LABEL_EN[v.status]}
-                          </Text>
+
+                        {/* Vaccine card */}
+                        <View style={styles.vaccineCard}>
+                          <View style={styles.vaccineCardTop}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.vaccineName}>{isNe ? v.nameNe : v.name}</Text>
+                              <Text style={styles.vaccineSubtitle}>{isNe ? v.diseasesNe : v.diseases} · {isNe ? v.routeNe : v.route} · {isNe ? v.doseNe : v.dose}</Text>
+                              <Text style={styles.vaccineDate}>{isNe ? formatDateNe(v.scheduledDate) : v.scheduledDate}</Text>
+                            </View>
+                            <View style={[styles.statusPill, { backgroundColor: pill.bg }]}>
+                              <Text style={[styles.statusPillText, { color: pill.text }]}>{isNe ? pill.labelNe : pill.labelEn}</Text>
+                            </View>
+                          </View>
+                          <View style={styles.actionRow}>
+                            <TouchableOpacity style={[styles.actionBtn, v.status === 'given' && styles.actionBtnGiven]} onPress={() => handleSetStatus(v, 'given')}>
+                              <Ionicons name={v.status === 'given' ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={v.status === 'given' ? '#fff' : '#3D8B5E'} />
+                              <Text style={[styles.actionBtnText, v.status === 'given' && styles.actionBtnTextActive]}>{isNe ? 'दिइयो' : 'Given'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.actionBtn, v.status === 'missed' && styles.actionBtnMissed]} onPress={() => handleSetStatus(v, 'missed')}>
+                              <Ionicons name={v.status === 'missed' ? 'close-circle' : 'ellipse-outline'} size={16} color={v.status === 'missed' ? '#fff' : '#C0392B'} />
+                              <Text style={[styles.actionBtnText, v.status === 'missed' && styles.actionBtnTextActive]}>{isNe ? 'छुट्यो' : 'Missed'}</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
-                      <View style={styles.aRow}>
-                        <TouchableOpacity style={[styles.aBtn, v.status === 'given' && styles.bgGiven]} onPress={() => handleSetStatus(v, 'given')}>
-                          <Ionicons name={v.status === 'given' ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={v.status === 'given' ? '#fff' : '#4CAF50'} />
-                          <Text style={[styles.aBtnText, v.status === 'given' && styles.cWhite]}>{isNe ? 'दिइयो ✓' : 'Given'}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.aBtn, v.status === 'missed' && styles.bgMissed]} onPress={() => handleSetStatus(v, 'missed')}>
-                          <Ionicons name={v.status === 'missed' ? 'close-circle' : 'ellipse-outline'} size={16} color={v.status === 'missed' ? '#fff' : '#f44336'} />
-                          <Text style={[styles.aBtnText, v.status === 'missed' && styles.cWhite]}>{isNe ? 'छुट्यो ✗' : 'Missed'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               );
             })}
@@ -340,7 +307,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                 <Text style={[styles.cell, styles.wRoute, styles.hText]}>{isNe ? 'विधि' : 'Route'}</Text>
               </View>
               {NIP_SCHEDULE.map((v, idx) => (
-                <View key={v.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#f9f9f9' }]}>
+                <View key={v.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#FDF8F2' }]}>
                   <Text style={[styles.cell, styles.wAge]}>{isNe ? v.ageLabelNe : v.ageLabel}</Text>
                   <Text style={[styles.cell, styles.wName, { fontWeight: 'bold' }]}>{isNe ? v.nameNe : v.name}</Text>
                   <Text style={[styles.cell, styles.wDisease]}>{isNe ? v.diseasesNe : v.diseases}</Text>
@@ -356,117 +323,25 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       <Modal visible={showDatePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {isNe ? 'खोप दिएको मिति छान्नुहोस्' : 'Select Date Vaccine Given'}
-            </Text>
-            <Text style={styles.modalSubtitle}>
-              {isNe
-                ? `${pendingVaccine?.nameNe || ''} — ${pendingVaccine?.ageLabelNe || ''}`
-                : `${pendingVaccine?.name || ''} — ${pendingVaccine?.ageLabel || ''}`}
-            </Text>
-
+            <Text style={styles.modalTitle}>{isNe ? 'खोप दिएको मिति छान्नुहोस्' : 'Select Date Vaccine Given'}</Text>
+            <Text style={styles.modalSubtitle}>{isNe ? `${pendingVaccine?.nameNe || ''} — ${pendingVaccine?.ageLabelNe || ''}` : `${pendingVaccine?.name || ''} — ${pendingVaccine?.ageLabel || ''}`}</Text>
             {isNe ? (
               <View style={styles.pickerRow}>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={BS_YEARS.map(y => ({ label: neDigits(y), value: y }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === bsYear && styles.pickerItemSel]}
-                        onPress={() => setBsYear(item.value)}>
-                        <Text style={[styles.pickerItemTxt, item.value === bsYear && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={BS_MONTHS_LIST.map(m => ({ label: neMonths[m - 1], value: m }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === bsMonth && styles.pickerItemSel]}
-                        onPress={() => setBsMonth(item.value)}>
-                        <Text style={[styles.pickerItemTxt, item.value === bsMonth && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={Array.from({ length: bsDaysInMonth(bsYear, bsMonth) }, (_, i) => ({ label: neDigits(i + 1), value: i + 1 }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === bsDay && styles.pickerItemSel]}
-                        onPress={() => setBsDay(item.value)}>
-                        <Text style={[styles.pickerItemTxt, item.value === bsDay && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
+                <View style={styles.pickerCol}><FlatList data={BS_YEARS.map(y => ({ label: neDigits(y), value: y }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === bsYear && styles.pickerItemSel]} onPress={() => setBsYear(item.value)}><Text style={[styles.pickerItemTxt, item.value === bsYear && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
+                <View style={styles.pickerCol}><FlatList data={BS_MONTHS_LIST.map(m => ({ label: neMonths[m - 1], value: m }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === bsMonth && styles.pickerItemSel]} onPress={() => setBsMonth(item.value)}><Text style={[styles.pickerItemTxt, item.value === bsMonth && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
+                <View style={styles.pickerCol}><FlatList data={Array.from({ length: bsDaysInMonth(bsYear, bsMonth) }, (_, i) => ({ label: neDigits(i + 1), value: i + 1 }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === bsDay && styles.pickerItemSel]} onPress={() => setBsDay(item.value)}><Text style={[styles.pickerItemTxt, item.value === bsDay && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
               </View>
             ) : (
               <View style={styles.pickerRow}>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={AD_YEARS.map(y => ({ label: String(y), value: y }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).year() && styles.pickerItemSel]}
-                        onPress={() => setSelectedADDate(dayjs(selectedADDate).year(item.value).format('YYYY-MM-DD'))}>
-                        <Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).year() && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={AD_MONTHS.map(m => ({ label: dayjs().month(m - 1).format('MMM'), value: m }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).month() + 1 && styles.pickerItemSel]}
-                        onPress={() => setSelectedADDate(dayjs(selectedADDate).month(item.value - 1).format('YYYY-MM-DD'))}>
-                        <Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).month() + 1 && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <View style={styles.pickerCol}>
-                  <FlatList
-                    data={Array.from({ length: dayjs(selectedADDate).daysInMonth() }, (_, i) => ({ label: String(i + 1), value: i + 1 }))}
-                    keyExtractor={i => String(i.value)}
-                    style={{ maxHeight: 180 }}
-                    getItemLayout={(_, index) => ({ length: 40, offset: 40 * index, index })}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).date() && styles.pickerItemSel]}
-                        onPress={() => setSelectedADDate(dayjs(selectedADDate).date(item.value).format('YYYY-MM-DD'))}>
-                        <Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).date() && styles.pickerItemTxtSel]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
+                <View style={styles.pickerCol}><FlatList data={AD_YEARS.map(y => ({ label: String(y), value: y }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).year() && styles.pickerItemSel]} onPress={() => setSelectedADDate(dayjs(selectedADDate).year(item.value).format('YYYY-MM-DD'))}><Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).year() && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
+                <View style={styles.pickerCol}><FlatList data={AD_MONTHS.map(m => ({ label: dayjs().month(m - 1).format('MMM'), value: m }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).month() + 1 && styles.pickerItemSel]} onPress={() => setSelectedADDate(dayjs(selectedADDate).month(item.value - 1).format('YYYY-MM-DD'))}><Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).month() + 1 && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
+                <View style={styles.pickerCol}><FlatList data={Array.from({ length: dayjs(selectedADDate).daysInMonth() }, (_, i) => ({ label: String(i + 1), value: i + 1 }))} keyExtractor={i => String(i.value)} style={{ maxHeight: 180 }} getItemLayout={(_, i) => ({ length: 40, offset: 40 * i, index: i })} renderItem={({ item }) => (<TouchableOpacity style={[styles.pickerItem, item.value === dayjs(selectedADDate).date() && styles.pickerItemSel]} onPress={() => setSelectedADDate(dayjs(selectedADDate).date(item.value).format('YYYY-MM-DD'))}><Text style={[styles.pickerItemTxt, item.value === dayjs(selectedADDate).date() && styles.pickerItemTxtSel]}>{item.label}</Text></TouchableOpacity>)} /></View>
               </View>
             )}
-
             <View style={styles.modalBtnRow}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.modalCancelBtnText}>{isNe ? 'रद्द गर्नुहोस्' : 'Cancel'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirmBtn} onPress={() => {
-                const finalDate = isNe ? bsToAdStr(bsYear, bsMonth, bsDay) : selectedADDate;
-                setShowDatePicker(false);
-                if (pendingVaccine) confirmSetStatus(pendingVaccine, 'given', finalDate);
-              }}>
-                <Text style={styles.modalConfirmBtnText}>{isNe ? 'पुष्टि गर्नुहोस्' : 'Confirm'}</Text>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowDatePicker(false)}><Text style={styles.modalCancelBtnText}>{isNe ? 'रद्द' : 'Cancel'}</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirmBtn} onPress={() => { const finalDate = isNe ? bsToAdStr(bsYear, bsMonth, bsDay) : selectedADDate; setShowDatePicker(false); if (pendingVaccine) confirmSetStatus(pendingVaccine, 'given', finalDate); }}>
+                <Text style={styles.modalConfirmBtnText}>{isNe ? 'पुष्टि' : 'Confirm'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -477,68 +352,79 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  nextVaccineBanner: {
-    marginHorizontal: 10, marginTop: 8, marginBottom: 2,
-    backgroundColor: '#fff', borderRadius: 10, padding: 10,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderLeftWidth: 4, elevation: 1,
-  },
-  nextVaccineText: { fontSize: 12, fontWeight: '600', flex: 1 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', padding: 4, margin: 10, borderRadius: 8 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 6 },
-  activeTab: { backgroundColor: '#1a73e8' },
-  tabText: { fontWeight: '600', color: '#666' },
-  activeTabText: { color: '#fff' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 10, gap: 8, marginBottom: 10, alignItems: 'center' },
-  filterBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd' },
-  filterBtnActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  filterBtnText: { fontSize: 12, color: '#666' },
-  filterBtnTextActive: { color: '#fff', fontWeight: 'bold' },
-  upgradePromptBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFB300', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, alignSelf: 'center', marginTop: 4, elevation: 2 },
-  upgradePromptText: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  container: { flex: 1, backgroundColor: '#F7F1EB' },
+  nextBanner: { marginHorizontal: 10, marginTop: 8, marginBottom: 2, backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderLeftWidth: 4, elevation: 1 },
+  nextBannerText: { fontSize: 12, fontWeight: '600', flex: 1 },
+
+  tabBar: { flexDirection: 'row', backgroundColor: '#FDF8F2', paddingHorizontal: 16, margin: 10, marginBottom: 4, borderRadius: 0, borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
+  tab: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  activeTab: { borderBottomColor: '#E8602C' },
+  tabText: { fontWeight: '600', color: '#7A6E65', fontSize: 14 },
+  activeTabText: { color: '#E8602C' },
+
+  filterRow: { flexDirection: 'row', paddingHorizontal: 10, gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' },
+  filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2' },
+  filterPillActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
+  filterPillText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
+  filterPillTextActive: { color: '#fff', fontWeight: 'bold' },
+  upgradePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F5A623' },
+  upgradePillText: { fontSize: 12, color: '#fff', fontWeight: '700' },
+
   content: { flex: 1, paddingHorizontal: 10 },
-  ageGroup: { marginBottom: 15, backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden', elevation: 2 },
-  ageHeader: { padding: 8 },
-  ageHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  vItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  vMain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  vName: { fontSize: 15, fontWeight: 'bold', color: '#333' },
-  vDisease: { fontSize: 11, color: '#888', marginTop: 1 },
-  vDate: { fontSize: 11, color: '#888', marginTop: 2 },
-  sBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  sText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  aRow: { flexDirection: 'row', gap: 8 },
-  aBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#eee', gap: 4 },
-  bgGiven: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
-  bgMissed: { backgroundColor: '#f44336', borderColor: '#f44336' },
-  aBtnText: { fontSize: 11, color: '#666', fontWeight: 'bold' },
-  cWhite: { color: '#fff' },
-  noMoreCard: { backgroundColor: '#E8F5E9', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#4CAF50' },
-  noMoreText: { color: '#2E7D32', fontWeight: 'bold', fontSize: 13 },
-  tableWrapper: { backgroundColor: '#fff', marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#eee', minWidth: 640 },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#1a73e8', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  noMoreCard: { backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
+  noMoreText: { color: '#065F46', fontWeight: 'bold', fontSize: 13 },
+
+  groupSection: { marginBottom: 8 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4, gap: 8 },
+  groupLine: { flex: 1, height: 1, backgroundColor: '#EDE0D4' },
+  groupHeaderText: { fontSize: 11, color: '#7A6E65', letterSpacing: 1.1, fontWeight: '700', textTransform: 'uppercase' },
+
+  timelineRow: { flexDirection: 'row', marginBottom: 10 },
+  timelineLeft: { width: 24, alignItems: 'center', marginRight: 8 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: '#EDE0D4' },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EDE0D4', borderWidth: 2, borderColor: '#F7F1EB', position: 'absolute', top: 8 },
+  timelineDotGiven: { backgroundColor: '#3D8B5E', borderColor: '#3D8B5E' },
+  timelineDotMissed: { backgroundColor: '#C0392B', borderColor: '#C0392B' },
+  timelineDotUpcoming: { backgroundColor: 'transparent', borderColor: '#EDE0D4', borderWidth: 2 },
+
+  vaccineCard: { flex: 1, backgroundColor: '#FDF8F2', borderRadius: 12, padding: 12, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 1 }, shadowRadius: 6, elevation: 1 },
+  vaccineCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  vaccineName: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
+  vaccineSubtitle: { fontSize: 12, color: '#7A6E65', marginTop: 1 },
+  vaccineDate: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusPillText: { fontSize: 10, fontWeight: 'bold' },
+
+  actionRow: { flexDirection: 'row', gap: 8 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2', gap: 4 },
+  actionBtnGiven: { backgroundColor: '#3D8B5E', borderColor: '#3D8B5E' },
+  actionBtnMissed: { backgroundColor: '#C0392B', borderColor: '#C0392B' },
+  actionBtnText: { fontSize: 11, color: '#7A6E65', fontWeight: 'bold' },
+  actionBtnTextActive: { color: '#fff' },
+
+  tableWrapper: { backgroundColor: '#FDF8F2', marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#EDE0D4', minWidth: 640 },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#E8602C', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
   hText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  cell: { padding: 10, fontSize: 11, color: '#333', borderRightWidth: 1, borderRightColor: '#eee', justifyContent: 'center' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
+  cell: { padding: 10, fontSize: 11, color: '#1A1A2E', borderRightWidth: 1, borderRightColor: '#EDE0D4', justifyContent: 'center' },
   wAge: { width: 100 },
   wName: { width: 120 },
   wDisease: { width: 200 },
   wRoute: { width: 180 },
-  // Date Picker Modal
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', width: '92%', borderRadius: 16, padding: 20, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 4 },
-  modalSubtitle: { fontSize: 13, color: '#1a73e8', textAlign: 'center', marginBottom: 16, fontWeight: '600' },
+  modalContent: { backgroundColor: '#FDF8F2', width: '92%', borderRadius: 16, padding: 20, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: 4 },
+  modalSubtitle: { fontSize: 13, color: '#E8602C', textAlign: 'center', marginBottom: 16, fontWeight: '600' },
   pickerRow: { flexDirection: 'row', height: 200, gap: 4 },
   pickerCol: { flex: 1 },
   pickerItem: { height: 40, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 6 },
-  pickerItemSel: { backgroundColor: '#e8f0fe' },
-  pickerItemTxt: { fontSize: 14, color: '#444', textAlign: 'center' },
-  pickerItemTxtSel: { color: '#1a73e8', fontWeight: '700' },
+  pickerItemSel: { backgroundColor: '#E8602C20' },
+  pickerItemTxt: { fontSize: 14, color: '#7A6E65', textAlign: 'center' },
+  pickerItemTxtSel: { color: '#E8602C', fontWeight: '700' },
   modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  modalCancelBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#f0f0f0', alignItems: 'center' },
-  modalCancelBtnText: { color: '#666', fontWeight: '600' },
-  modalConfirmBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#1a73e8', alignItems: 'center' },
+  modalCancelBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: '#F7F1EB', alignItems: 'center' },
+  modalCancelBtnText: { color: '#7A6E65', fontWeight: '600' },
+  modalConfirmBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: '#E8602C', alignItems: 'center' },
   modalConfirmBtnText: { color: '#fff', fontWeight: '700' },
 });
