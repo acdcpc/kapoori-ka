@@ -43,7 +43,7 @@ export interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
   upgradeToGoogle: () => Promise<void>;
-  upgradeToPremium: (paymentData: any) => Promise<void>;
+  redeemCode: (code: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
@@ -315,45 +315,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Upgrade to premium.
    */
   /**
-   * Upgrade to premium via server-side Cloud Function.
-   * The Cloud Function verifies the eSewa transaction before activating the subscription.
-   * This prevents client-side tampering with subscription status.
+   * Redeem activation code — web-based payment flow.
+   * User received a code from admin via WhatsApp after paying on the web payment page.
+   * Calls the redeemActivationCode Cloud Function which validates the code
+   * and activates the premium subscription server-side.
    */
-  const upgradeToPremium = useCallback(async (paymentData: any) => {
+  const redeemCode = useCallback(async (code: string) => {
+    if (!user) {
+      setError('No user logged in');
+      throw new Error('No user logged in');
+    }
+
+    setError(null);
+    setLoading(true);
     try {
-      setError(null);
-      setLoading(true);
-      if (!user) throw new Error('No user logged in');
-
-      // Call the Cloud Function for server-side verification
-      const verifyPayment = httpsCallable(functions, 'verifyPayment');
-      const result = await verifyPayment({
-        transactionId: paymentData.transactionId,
-        plan: paymentData.plan || 'premium',
-        amount: paymentData.amount || 0,
-        productCode: paymentData.productCode || null,
-      });
-
+      const redeemActivationCode = httpsCallable(functions, 'redeemActivationCode');
+      const result = await redeemActivationCode({ code });
       const data = result.data as any;
-      if (!data?.success) {
-        throw new Error('Payment verification failed. Please check your transaction ID.');
-      }
 
-      // Cloud Function already updated Firestore — just refresh local state
-      const subscriptionRef = doc(db, FIRESTORE_COLLECTIONS.SUBSCRIPTIONS, user.uid);
-      const subscriptionSnap = await getDoc(subscriptionRef);
-      if (subscriptionSnap.exists()) {
-        setSubscription(subscriptionSnap.data() as Subscription);
+      if (data?.success) {
+        // Refresh subscription state
+        const subRef = doc(db, FIRESTORE_COLLECTIONS.SUBSCRIPTIONS, user.uid);
+        const subSnap = await getDoc(subRef);
+        if (subSnap.exists()) {
+          setSubscription(subSnap.data() as Subscription);
+        }
       }
-
-      setError(null);
     } catch (err: any) {
-      console.error('Upgrade to premium error:', err);
-      setError(
-        err.code === 'functions/failed-precondition'
-          ? 'eSewa verification failed. Check your transaction ID.'
-          : err.message || 'Failed to upgrade to premium'
-      );
+      console.error('Redeem code error:', err);
+      // Re-throw so the SubscriptionScreen can show a user-friendly message
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -457,7 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     user, userProfile, subscription, loading, error,
     signInAsGuest, signInWithEmail, signUpWithEmail, signInWithGoogle,
-    signOutUser, upgradeToGoogle, upgradeToPremium, refreshUserData,
+    signOutUser, upgradeToGoogle, redeemCode, refreshUserData,
     sendPasswordReset, resendVerificationEmail,
   };
 

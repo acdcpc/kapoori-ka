@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kapoori Ka — Payment Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #FDF8F2;
+      color: #333;
+      line-height: 1.6;
+      padding: 16px;
+    }
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 20px;
+      box-shadow: 0 4px 20px rgba(196, 149, 106, 0.15);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .logo-text {
+      font-size: 28px;
+      font-weight: 800;
+      color: #E8602C;
+    }
+    .logo-sub {
+      font-size: 13px;
+      color: #C4956A;
+      margin-top: 2px;
+    }
+    h2 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 6px;
+    }
+    p { font-size: 14px; color: #555; margin-bottom: 16px; }
+
+    .step {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 32px; height: 32px;
+      background: #E8602C;
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px;
+      flex-shrink: 0;
+    }
+    .step-content { flex: 1; }
+    .step-title { font-weight: 700; font-size: 15px; color: #333; margin-bottom: 4px; }
+    .step-desc { font-size: 13px; color: #666; }
+
+    .qr-box {
+      text-align: center;
+      background: #FDF8F2;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 16px 0;
+      border: 2px dashed #E8602C;
+    }
+    .qr-box img {
+      width: 220px; height: 220px;
+      border-radius: 12px;
+    }
+    .qr-label {
+      font-size: 13px; color: #C4956A;
+      margin-top: 8px;
+    }
+
+    .amount-tag {
+      display: inline-block;
+      background: #FFF5F0;
+      color: #E8602C;
+      font-weight: 700;
+      font-size: 20px;
+      padding: 6px 16px;
+      border-radius: 10px;
+      margin: 8px 0;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      margin-bottom: 12px;
+    }
+    .btn-wa {
+      background: #25D366;
+      color: #fff;
+    }
+    .btn-wa:hover { background: #1ebe57; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #EDE0D4;
+      margin: 20px 0;
+    }
+
+    .lang-toggle {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .lang-toggle button {
+      background: #F7F1EB;
+      border: 1px solid #EDE0D4;
+      color: #C4956A;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .lang-toggle button.active {
+      background: #E8602C;
+      color: #fff;
+      border-color: #E8602C;
+    }
+
+    .ne { display: none; }
+    body.show-ne .en { display: none; }
+    body.show-ne .ne { display: block; }
+
+    .note {
+      background: #FFF9C4;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      color: #8D6E00;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="lang-toggle">
+      <button onclick="switchLang('en')" class="active" id="btn-en">English</button>
+      <button onclick="switchLang('ne')" id="btn-ne">नेपाली</button>
+    </div>
+
+    <div class="logo">
+      <div class="logo-text">कपूरी क</div>
+      <div class="logo-sub en">Kapoori Ka — Child Growth Tracker</div>
+      <div class="logo-sub ne">कपूरी क — बाल विकास ट्र्याकर</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title en">Choose Your Plan</div>
+        <div class="step-title ne">आफ्नो योजना छान्नुहोस्</div>
+        <div class="step-desc en">
+          Monthly: <strong>NPR 100</strong><br>
+          Yearly: <strong>NPR 500</strong> (58% saving!)
+        </div>
+        <div class="step-desc ne">
+          मासिक: <strong>NPR १००</strong><br>
+          वार्षिक: <strong>NPR ५००</strong> (५८% बचत!)
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title en">Scan the eSewa QR</div>
+        <div class="step-title ne">eSewa QR स्क्यान गर्नुहोस्</div>
+        <div class="step-desc en">
+          Open your eSewa app and scan the QR code below to pay:
+        </div>
+        <div class="step-desc ne">
+          eSewa एप खोलेर तलको QR स्क्यान गरी भुक्तानी गर्नुहोस्:
+        </div>
+      </div>
+    </div>
+
+    <div class="qr-box">
+      <img src="https://via.placeholder.com/300x400.png?text=eSewa+QR+Code" alt="eSewa QR Code">
+      <div class="qr-label en">Scan with eSewa app</div>
+      <div class="qr-label ne">eSewa एप बाट स्क्यान गर्नुहोस्</div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title en">WhatsApp Us Your Transaction ID</div>
+        <div class="step-title ne">Transaction ID WhatsApp मा पठाउनुहोस्</div>
+        <div class="step-desc en">
+          After payment, tap the button below and send us your eSewa Transaction ID.
+          We will verify it and send you an <strong>Activation Code</strong>.
+        </div>
+        <div class="step-desc ne">
+          भुक्तानी पछि, तलको बटन थिचेर eSewa Transaction ID पठाउनुहोस्।
+          हामी जाँच गरेर <strong>एक्टिभेसन कोड</strong> पठाउनेछौं।
+        </div>
+      </div>
+    </div>
+
+    <a class="btn btn-wa" href="https://wa.me/9779840516603?text=Hello%2C%20I%20have%20paid%20via%20eSewa.%20Amount%3A%20NPR%20%5BEnter%20amount%5D%0AMy%20Transaction%20ID%3A%20%5BEnter%20ID%5D" target="_blank">
+      💬 <span class="en">Contact on WhatsApp</span><span class="ne">WhatsApp मा सम्पर्क गर्नुहोस्</span>
+    </a>
+
+    <hr class="divider">
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title en">Enter Code in the App</div>
+        <div class="step-title ne">एपमा कोड लेख्नुहोस्</div>
+        <div class="step-desc en">
+          Open the Kapoori Ka app → Subscription → enter your Activation Code → <strong>Premium activated!</strong>
+        </div>
+        <div class="step-desc ne">
+          कपूरी क एप खोल्नुहोस् → Subscription → एक्टिभेसन कोड लेख्नुहोस् → <strong>प्रिमियम सक्रिय!</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="note en">
+      ⚠️ Activation is manual and may take up to a few hours. We will WhatsApp you your code as soon as we verify your payment.
+    </div>
+    <div class="note ne">
+      ⚠️ कोड म्यानुअल रूपमा पठाइन्छ। भुक्तानी जाँच गरेपछि हामी WhatsApp मा कोड पठाउनेछौं।
+    </div>
+  </div>
+
+  <script>
+    function switchLang(lang) {
+      const body = document.body;
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+      document.getElementById('btn-ne').classList.toggle('active', lang === 'ne');
+      if (lang === 'ne') {
+        body.classList.add('show-ne');
+      } else {
+        body.classList.remove('show-ne');
+      }
+    }
+  </script>
+</body>
+</html>
