@@ -1,9 +1,8 @@
-// src/components/PremiumGuard.tsx — Production Audit Fix
-// ISSUE 5 FIX: Removed mock bypass. Uses real AuthContext subscription.
-// ISSUE 5 FIX: Added stale-state guard — caches subscription on mount.
-// ISSUE 5 FIX: Shows loading state while subscription is resolving.
+// src/components/PremiumGuard.tsx — v2
+// Checks BOTH active status AND expiry date.
+// Uses Firestore as source of truth; local cache drives optimistic UI only.
 
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
@@ -31,17 +30,28 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
   const isPremiumFeature = FEATURE_ACCESS[feature] === 'premium';
   const { subscription } = useAuth();
 
-  // ISSUE 5 FIX: Cache initial subscription value to prevent flickers
-  // during auth state transitions (token refresh, etc.)
-  const cachedSub = useRef(subscription);
-  if (subscription && subscription.status === 'active') {
-    cachedSub.current = subscription;
-  }
+  // Check active AND not expired
+  const userIsPremium = useMemo(() => {
+    if (!subscription) return false;
+    const hasActiveStatus = subscription.status === 'active'
+      || subscription.plan === 'premium'
+      || subscription.plan === 'yearly'
+      || subscription.plan === 'monthly';
+    if (!hasActiveStatus) return false;
 
-  // ISSUE 5 FIX: Standard premium check — status 'active' OR plan 'premium'/'yearly'
-  // Removed 'beta_free' since that was a development artifact.
-  const effectiveSub = subscription ?? cachedSub.current;
-  const userIsPremium = effectiveSub?.status === 'active' || effectiveSub?.plan === 'premium' || effectiveSub?.plan === 'yearly';
+    // Also check expiry
+    if (subscription.endDate) {
+      const endMs = subscription.endDate instanceof Date
+        ? subscription.endDate.getTime()
+        : (subscription.endDate as any).seconds
+          ? (subscription.endDate as any).seconds * 1000
+          : (subscription.endDate as any).toMillis?.()
+            ?? new Date(subscription.endDate as any).getTime();
+      if (!isNaN(endMs) && Date.now() > endMs) return false;
+    }
+
+    return true;
+  }, [subscription]);
 
   if (!isPremiumFeature || userIsPremium) {
     return <>{children}</>;
@@ -55,14 +65,15 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
           <Ionicons name="lock-closed" size={48} color="#F5A623" />
           <Text style={styles.paywallTitle}>{isNe ? 'प्रीमियम सुविधा' : 'Premium Feature'}</Text>
           <Text style={styles.paywallText}>
-            {isNe ? 'यो सुविधा प्रयोग गर्न प्रिमियम सदस्यता आवश्यक छ।' : 'This feature requires a premium subscription.'}
+            {isNe
+              ? 'यो सुविधा प्रयोग गर्न प्रिमियम सदस्यता आवश्यक छ।'
+              : 'This feature requires a premium subscription.'}
           </Text>
           <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
-            <Text style={styles.upgradeBtnText}>{isNe ? 'अपग्रेड गर्नुहोस्' : 'Upgrade Now'}</Text>
+            <Text style={styles.upgradeBtnText}>
+              {isNe ? 'थप जानकारी' : 'Learn More'}
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.paywallNote}>
-            {isNe ? 'प्रिमियम सदस्यता लिएर सबै सुविधाहरू प्रयोग गर्नुहोस्।' : 'Unlock all features with premium membership'}
-          </Text>
         </View>
       </View>
     </View>
@@ -80,7 +91,11 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
         <View style={styles.previewMessage}>
           <Ionicons name="star" size={32} color="#F5A623" />
           <Text style={styles.previewTitle}>{isNe ? 'प्रीमियम सुविधा' : 'Premium Feature'}</Text>
-          <Text style={styles.previewText}>{isNe ? 'सबै विकासका चरणहरू ट्र्याक गर्न प्रिमियम सदस्यता लिनुहोस्।' : 'Upgrade to track all milestones'}</Text>
+          <Text style={styles.previewText}>
+            {isNe
+              ? 'सबै विकासका चरणहरू ट्र्याक गर्न प्रिमियम सदस्यता लिनुहोस्।'
+              : 'Upgrade to track all milestones'}
+          </Text>
         </View>
       </View>
     </View>
@@ -90,16 +105,30 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
 const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
   content: { flex: 1 },
-  paywall: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.7)', justifyContent: 'center', alignItems: 'center' },
-  paywallContent: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 24, alignItems: 'center', marginHorizontal: 20 },
+  paywall: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paywallContent: {
+    backgroundColor: '#FDF8F2', borderRadius: 16, padding: 24,
+    alignItems: 'center', marginHorizontal: 20,
+  },
   paywallTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginTop: 16, marginBottom: 8 },
   paywallText: { fontSize: 14, color: '#7A6E65', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  upgradeBtn: { backgroundColor: '#F5A623', borderRadius: 28, paddingVertical: 12, paddingHorizontal: 32, marginBottom: 12 },
+  upgradeBtn: {
+    backgroundColor: '#E8602C', borderRadius: 28, paddingVertical: 12,
+    paddingHorizontal: 32, marginBottom: 8,
+  },
   upgradeBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  paywallNote: { fontSize: 12, color: '#7A6E65', textAlign: 'center', fontStyle: 'italic' },
   previewContainer: { position: 'relative', opacity: 0.6 },
   previewContent: { flex: 1 },
-  previewOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255, 255, 255, 0.8)', justifyContent: 'center', alignItems: 'center' },
+  previewOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   previewMessage: { alignItems: 'center' },
   previewTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginTop: 12 },
   previewText: { fontSize: 13, color: '#7A6E65', marginTop: 8, textAlign: 'center' },

@@ -11,127 +11,126 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Admin check via Firebase Auth custom claim (not Firestore field)
     function isAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-    }
-
-    // Validates that the written document's owner field matches the authenticated user
-    function ownedBySelf() {
-      return request.resource.data.ownerId == request.auth.uid;
-    }
-
-    // Validates that the existing document's owner matches the authenticated user
-    function isSelfOwned() {
-      return resource.data.ownerId == request.auth.uid;
-    }
-
-    // Validates the child belongs to the authenticated user
-    function isSelfChild(childId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/children/$(childId)).data.ownerId == request.auth.uid;
+      return signedIn() && request.auth.token.admin == true;
     }
 
     // ===========================
     // USERS
+    // Users can create & read their own doc.
+    // Cannot update/delete — Cloud Functions (Admin SDK) handles premium/isAdmin.
     // ===========================
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     // ===========================
     // CHILDREN
     // ===========================
     match /children/{childId} {
-      // Allow list: returns only children owned by the current user
-      allow get: if signedIn() && (isSelfOwned() || isAdmin());
+      allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn() && ownedBySelf();
-      allow update: if signedIn() && isSelfOwned();
-      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // ===========================
     // GROWTH RECORDS
     // ===========================
     match /growth_records/{recordId} {
-      allow get: if signedIn() && (isSelfOwned() || isAdmin());
+      allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn() && ownedBySelf();
-      allow update: if signedIn() && isSelfOwned();
-      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // ===========================
-    // VACCINE RECORDS
+    // VACCINE RECORDS (vaccinations)
     // ===========================
     match /vaccinations/{recordId} {
-      allow get: if signedIn() && (isSelfOwned() || isAdmin());
+      allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn() && ownedBySelf();
-      allow update: if signedIn() && isSelfOwned();
-      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // ===========================
     // MILESTONE RECORDS
     // ===========================
     match /milestones/{recordId} {
-      allow get: if signedIn() && isSelfChild(resource.data.childId);
+      allow get: if signedIn() && (
+        get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid
+        || isAdmin()
+      );
       allow list: if signedIn();
-      allow create: if signedIn() && isSelfChild(request.resource.data.childId);
-      allow update: if signedIn() && isSelfChild(resource.data.childId);
-      allow delete: if signedIn() && isSelfChild(resource.data.childId);
+      allow create: if signedIn() && (
+        get(/databases/$(database)/documents/children/$(request.resource.data.childId)).data.ownerId == request.auth.uid
+      );
+      allow update: if signedIn() && (
+        get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid
+      );
+      allow delete: if signedIn() && (
+        get(/databases/$(database)/documents/children/$(resource.data.childId)).data.ownerId == request.auth.uid
+      );
     }
 
     // ===========================
-    // MCHAT
+    // MCHAT RESPONSES
     // ===========================
     match /mchat_responses/{responseId} {
-      allow get: if signedIn() && (isSelfOwned() || isAdmin());
+      allow get: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow list: if signedIn();
-      allow create: if signedIn() && ownedBySelf();
-      allow update: if signedIn() && isSelfOwned();
-      allow delete: if signedIn() && (isSelfOwned() || isAdmin());
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
     // ===========================
     // SUBSCRIPTIONS
+    // Users can create their own initial free subscription.
+    // CRITICAL: Users CANNOT self-upgrade. Only Cloud Functions (Admin SDK) can.
     // ===========================
     match /subscriptions/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.status == 'free';
+      allow update, delete: if isAdmin();
     }
 
     // ===========================
     // PAYMENTS
+    // Users can create their own payment record (status forced to 'pending').
+    // Users cannot update/delete after creation.
+    // Admin can read/update/delete.
     // ===========================
     match /payments/{paymentId} {
       allow get: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.verifiedAt == null
+        && request.resource.data.verifiedBy == null;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     // ===========================
-    // ACTIVATION CODES (web-based payment flow)
-    // Only the Cloud Function (Admin SDK) can write. Users can get their own.
+    // ACTIVATION CODES
+    // Read by users (to verify code exists), managed by admin
     // ===========================
     match /activation_codes/{code} {
       allow get: if signedIn();
       allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

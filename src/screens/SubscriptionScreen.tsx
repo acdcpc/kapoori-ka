@@ -1,15 +1,15 @@
 // src/screens/SubscriptionScreen.tsx
-// Web-based payment flow: User pays on the web payment page, admin sends back
-// an activation code, user enters it here to activate premium.
+// v2: Google Play compliant — NO payment links, buttons, or instructions in-app.
+// Shows premium benefits + status (Locked / Pending / Active).
+// Activation code redemption for the web-based payment flow.
 import React, { useContext, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
-  Linking, ActivityIndicator, Image, TextInput,
+  ActivityIndicator, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { WHATSAPP_NUMBER, ESEWA_QR_URL, PAYMENT_WEB_URL } from '../constants';
 
 const MONTHLY_PRICE_NPR = 100;
 const YEARLY_PRICE_NPR = 500;
@@ -31,7 +31,7 @@ const FREE_FEATURES_NE = [
 ];
 
 const PAID_FEATURES_EN = [
-  { icon: '👨‍👩‍👧‍👦', text: 'Unlimited children profiles' },
+  { icon: '👨👩👧👦', text: 'Unlimited children profiles' },
   { icon: '📊', text: 'Full WHO growth diagnostics (Stunted/Wasted/Obese)' },
   { icon: '📄', text: 'PDF growth & health reports' },
   { icon: '🧠', text: 'Full developmental milestone tracker' },
@@ -41,7 +41,7 @@ const PAID_FEATURES_EN = [
 ];
 
 const PAID_FEATURES_NE = [
-  { icon: '👨‍👩‍👧‍👦', text: 'असीमित बच्चाको प्रोफाइल' },
+  { icon: '👨👩👧👦', text: 'असीमित बच्चाको प्रोफाइल' },
   { icon: '📊', text: 'पूर्ण WHO वृद्धि निदान (Stunted/Wasted/Obese)' },
   { icon: '📄', text: 'PDF वृद्धि र स्वास्थ्य रिपोर्ट' },
   { icon: '🧠', text: 'पूर्ण विकास मापदण्ड ट्र्याकर' },
@@ -55,28 +55,14 @@ export default function SubscriptionScreen() {
   const { subscription, redeemCode, refreshUserData, loading: authLoading } = useAuth();
   const isNe = language === 'ne';
 
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
-  const [showQR, setShowQR] = useState(false);
   const [redemptionCode, setRedemptionCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
   const freeFeatures = isNe ? FREE_FEATURES_NE : FREE_FEATURES_EN;
   const paidFeatures = isNe ? PAID_FEATURES_NE : PAID_FEATURES_EN;
-  const amount = selectedPlan === 'monthly' ? MONTHLY_PRICE_NPR : YEARLY_PRICE_NPR;
 
-  const openPaymentPage = () => {
-    Linking.openURL(PAYMENT_WEB_URL);
-  };
-
-  const openWhatsApp = () => {
-    const planLabel = selectedPlan === 'yearly'
-      ? (isNe ? 'वार्षिक' : 'Yearly')
-      : (isNe ? 'मासिक' : 'Monthly');
-    const msg = encodeURIComponent(
-      `Hello, I have paid NPR ${amount} for the ${planLabel} plan via eSewa.\nMy Transaction ID is: [Please enter your eSewa Transaction ID here]`
-    );
-    Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER.replace('+', '')}?text=${msg}`);
-  };
+  const isActive = subscription?.status === 'active';
+  const isPending = subscription?.status === 'pending';
 
   const handleRedeem = async () => {
     if (!redemptionCode.trim()) {
@@ -95,7 +81,6 @@ export default function SubscriptionScreen() {
         isNe ? 'प्रिमियम सक्रिय भयो! 🎉' : 'Premium activated successfully! 🎉',
       );
       setRedemptionCode('');
-      setShowQR(false);
       if (refreshUserData) await refreshUserData();
     } catch (err: any) {
       let msg = isNe ? 'कोड रिडिम गर्न सकिएन' : 'Failed to redeem code';
@@ -116,7 +101,7 @@ export default function SubscriptionScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
       {/* Active Subscription Status */}
-      {subscription?.status === 'active' ? (
+      {isActive && (
         <View style={styles.statusCard}>
           <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -129,15 +114,34 @@ export default function SubscriptionScreen() {
               {isNe ? 'समाप्त मिति' : 'Expires'}:{' '}
               {subscription.endDate instanceof Date
                 ? subscription.endDate.toLocaleDateString()
-                : 'N/A'}
+                : subscription.endDate
+                  ? new Date(subscription.endDate as any).toLocaleDateString()
+                  : 'N/A'}
             </Text>
           </View>
         </View>
-      ) : null}
+      )}
+
+      {/* Pending Verification Status */}
+      {isPending && (
+        <View style={styles.pendingCard}>
+          <Ionicons name="time-outline" size={28} color="#FF9800" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.pendingTitle}>
+              {isNe ? 'भुक्तानी जाँच हुँदैछ' : 'Payment Being Verified'}
+            </Text>
+            <Text style={styles.pendingText}>
+              {isNe
+                ? 'तपाईंको भुक्तानी जाँच भइरहेको छ। यसले केहि घण्टा लिन सक्छ।'
+                : 'Your payment is being verified. This usually takes a few hours.'}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Free vs Premium */}
       <Text style={styles.sectionLabel}>
-        {isNe ? '🆓 निःशुल्क  vs  ⭐ प्रिमियम' : "🆓 What's Free vs ⭐ Premium?"}
+        {isNe ? '🆓 निःशुल्क  vs  ⭐ प्रिमियम' : "🆓 What's Free vs ⭐ Premium"}
       </Text>
 
       <View style={styles.featuresRow}>
@@ -168,126 +172,45 @@ export default function SubscriptionScreen() {
         </View>
       </View>
 
-      {/* Plans & Payment — only if not already active */}
-      {subscription?.status !== 'active' && (
+      {/* Pricing */}
+      {!isActive && (
         <>
           <Text style={styles.sectionLabel}>
-            {isNe ? 'आफ्नो योजना छान्नुहोस्' : 'Choose Your Plan'}
+            {isNe ? 'मूल्य' : 'Pricing'}
           </Text>
 
-          <TouchableOpacity
-            style={[styles.planCard, selectedPlan === 'monthly' && styles.planCardActive]}
-            onPress={() => setSelectedPlan('monthly')}
-          >
-            <View>
-              <Text style={styles.planName}>{isNe ? 'मासिक' : 'Monthly'}</Text>
-              <Text style={styles.planPrice}>
-                NPR {MONTHLY_PRICE_NPR} / {isNe ? 'महिना' : 'month'}
-              </Text>
+          <View style={styles.pricingRow}>
+            <View style={styles.priceCard}>
+              <Text style={styles.pricePlan}>{isNe ? 'मासिक' : 'Monthly'}</Text>
+              <Text style={styles.priceAmount}>NPR 100</Text>
+              <Text style={styles.pricePeriod}>/ {isNe ? 'महिना' : 'month'}</Text>
             </View>
-            <View style={[styles.planRadio, selectedPlan === 'monthly' && styles.planRadioActive]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.planCard, selectedPlan === 'yearly' && styles.planCardActive]}
-            onPress={() => setSelectedPlan('yearly')}
-          >
-            <View>
-              <Text style={styles.planName}>{isNe ? 'वार्षिक' : 'Yearly'}</Text>
-              <Text style={styles.planPrice}>
-                NPR {YEARLY_PRICE_NPR} / {isNe ? 'वर्ष' : 'year'}
-              </Text>
-              <Text style={styles.planSaving}>
+            <View style={[styles.priceCard, styles.priceCardBest]}>
+              <View style={styles.bestBadge}>
+                <Text style={styles.bestBadgeText}>{isNe ? 'सर्वोत्तम' : 'BEST'}</Text>
+              </View>
+              <Text style={styles.pricePlan}>{isNe ? 'वार्षिक' : 'Yearly'}</Text>
+              <Text style={[styles.priceAmount, { color: '#E8602C' }]}>NPR 500</Text>
+              <Text style={styles.pricePeriod}>/ {isNe ? 'वर्ष' : 'year'}</Text>
+              <Text style={styles.priceSave}>
                 {isNe ? '५८% बचत!' : '58% saving!'}
-              </Text>
-            </View>
-            <View>
-              <View style={[styles.planRadio, selectedPlan === 'yearly' && styles.planRadioActive]} />
-              <View style={styles.bestValueBadge}>
-                <Text style={styles.bestValueText}>BEST</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Payment Instructions */}
-          <View style={styles.instructionsCard}>
-            <Text style={styles.instructionsTitle}>
-              {isNe ? '📋 भुक्तानी गर्ने तरिका' : '📋 How to Pay'}
-            </Text>
-
-            <View style={styles.instructionStep}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <Text style={styles.stepText}>
-                {isNe
-                  ? `हाम्रो वेबसाइटमा जानुहोस् र eSewa QR स्क्यान गरेर NPR ${amount} भुक्तानी गर्नुहोस्`
-                  : `Visit our payment page and scan the eSewa QR to pay NPR ${amount}`}
-              </Text>
-            </View>
-
-            <TouchableOpacity style={styles.webBtn} onPress={openPaymentPage}>
-              <Ionicons name="globe-outline" size={20} color="#fff" />
-              <Text style={styles.webBtnText}>
-                {isNe ? 'भुक्तानी पेज खोल्नुहोस्' : 'Open Payment Page'}
-              </Text>
-            </TouchableOpacity>
-
-            {!showQR ? (
-              <TouchableOpacity style={styles.qrToggle} onPress={() => setShowQR(true)}>
-                <Ionicons name="qr-code-outline" size={18} color="#E8602C" />
-                <Text style={styles.qrToggleText}>
-                  {isNe ? 'QR कोड हेर्नुहोस्' : 'View QR Code'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.qrBox}>
-                <Image
-                  source={{ uri: ESEWA_QR_URL }}
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
-                <TouchableOpacity onPress={() => setShowQR(false)}>
-                  <Text style={styles.qrHide}>
-                    {isNe ? 'लुकाउनुहोस्' : 'Hide QR'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View style={styles.instructionStep}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <Text style={styles.stepText}>
-                {isNe
-                  ? 'eSewa बाट भुक्तानी गरेपछि Transaction ID सहित WhatsApp मा सम्पर्क गर्नुहोस्'
-                  : 'After paying via eSewa, WhatsApp us with your Transaction ID'}
-              </Text>
-            </View>
-
-            <TouchableOpacity style={styles.waBtn} onPress={openWhatsApp}>
-              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-              <Text style={styles.waBtnText}>
-                {isNe ? 'WhatsApp मा सम्पर्क गर्नुहोस्' : 'Contact on WhatsApp'}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.instructionStep}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <Text style={styles.stepText}>
-                {isNe
-                  ? 'हामीले तपाईंलाई एक्टिभेसन कोड पठाउनेछौं। त्यो कोड तल लेखेर प्रिमियम सक्रिय गर्नुहोस्।'
-                  : 'We will send you an activation code. Enter it below to activate premium.'}
               </Text>
             </View>
           </View>
 
-          {/* Redemption Code Input */}
+          {/* Neutral compliance message — no links, no URLs, no payment instructions */}
+          <View style={styles.complianceNote}>
+            <Ionicons name="information-circle-outline" size={20} color="#C4956A" />
+            <Text style={styles.complianceText}>
+              {isNe
+                ? 'प्रिमियम हाल हाम्रो आधिकारिक माध्यमहरू मार्फत उपलब्ध छ।'
+                : 'Premium is currently available through our official channels.'}
+            </Text>
+          </View>
+
+          {/* Activation Code Redemption (neutral — not a payment solicitation) */}
           <Text style={styles.sectionLabel}>
-            {isNe ? '🔑 एक्टिभेसन कोड' : '🔑 Activation Code'}
+            {isNe ? '🔑 एक्टिभेसन कोड छ? सक्रिय गर्नुहोस्' : '🔑 Have an activation code? Redeem it'}
           </Text>
 
           <View style={styles.redeemBox}>
@@ -306,16 +229,10 @@ export default function SubscriptionScreen() {
               disabled={!redemptionCode.trim()}
             >
               <Text style={styles.redeemBtnText}>
-                {isNe ? 'सक्रिय गर्नुहोस्' : 'Activate'}
+                {isNe ? 'सक्रिय' : 'Redeem'}
               </Text>
             </TouchableOpacity>
           </View>
-
-          <Text style={styles.paymentNote}>
-            {isNe
-              ? '💡 भुक्तानी पेजमा गएर eSewa बाट भुक्तानी गर्नुहोस् → WhatsApp मा Transaction ID पठाउनुहोस् → हामीले एक्टिभेसन कोड पठाउनेछौं → कोड लेखेर प्रिमियम सक्रिय गर्नुहोस्।'
-              : '💡 Pay via eSewa on our payment page → WhatsApp us your Transaction ID → We send you an activation code → Enter it here to activate premium.'}
-          </Text>
         </>
       )}
     </ScrollView>
@@ -332,6 +249,14 @@ const styles = StyleSheet.create({
   },
   statusActive: { fontSize: 16, fontWeight: '700', color: '#2E7D32' },
   statusExpiry: { fontSize: 12, color: '#666', marginTop: 4 },
+  pendingCard: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 12, marginTop: 16, marginBottom: 8,
+    backgroundColor: '#FFF8E1', borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderColor: '#FF9800',
+  },
+  pendingTitle: { fontSize: 16, fontWeight: '700', color: '#E65100' },
+  pendingText: { fontSize: 13, color: '#666', marginTop: 4, lineHeight: 18 },
 
   sectionLabel: {
     fontSize: 13, fontWeight: '700', color: '#C4956A',
@@ -355,66 +280,37 @@ const styles = StyleSheet.create({
   featureIcon: { fontSize: 14, width: 22 },
   featureText: { flex: 1, fontSize: 11, color: '#555', lineHeight: 16 },
 
-  planCard: {
-    marginHorizontal: 12, marginBottom: 10, backgroundColor: '#fff',
-    borderRadius: 14, padding: 18, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 2, borderColor: '#EDE0D4', elevation: 1,
+  // Pricing
+  pricingRow: { flexDirection: 'row', marginHorizontal: 12, gap: 10, marginBottom: 16 },
+  priceCard: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 14,
+    padding: 16, alignItems: 'center',
+    borderWidth: 2, borderColor: '#EDE0D4',
   },
-  planCardActive: { borderColor: '#E8602C', backgroundColor: '#FFF5F0' },
-  planName: { fontSize: 18, fontWeight: '700', color: '#333' },
-  planPrice: { fontSize: 14, color: '#666', marginTop: 2 },
-  planSaving: { fontSize: 12, color: '#4CAF50', fontWeight: '700', marginTop: 4 },
-  planRadio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#ccc' },
-  planRadioActive: { borderColor: '#E8602C', backgroundColor: '#E8602C' },
-  bestValueBadge: {
-    position: 'absolute', top: -35, right: -10,
-    backgroundColor: '#FFD700', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  priceCardBest: {
+    borderColor: '#E8602C', backgroundColor: '#FFF5F0',
   },
-  bestValueText: { fontSize: 10, fontWeight: '900', color: '#000' },
+  bestBadge: {
+    position: 'absolute', top: -10, backgroundColor: '#FFD700',
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8,
+  },
+  bestBadgeText: { fontSize: 10, fontWeight: '900', color: '#000' },
+  pricePlan: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 6 },
+  priceAmount: { fontSize: 24, fontWeight: '800', color: '#333' },
+  pricePeriod: { fontSize: 12, color: '#999', marginTop: 2 },
+  priceSave: { fontSize: 12, color: '#4CAF50', fontWeight: '700', marginTop: 6 },
 
-  // Payment Instructions
-  instructionsCard: {
-    marginHorizontal: 12, marginTop: 12, backgroundColor: '#fff',
-    borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#EDE0D4',
+  // Compliance note — no links, no URLs
+  complianceNote: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    marginHorizontal: 12, marginTop: 8, marginBottom: 4,
+    backgroundColor: '#F7F1EB', borderRadius: 12, padding: 14, gap: 8,
   },
-  instructionsTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 16 },
-  instructionStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 10 },
-  stepNumber: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: '#E8602C', alignItems: 'center', justifyContent: 'center',
-    marginTop: 2,
-  },
-  stepNumberText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  stepText: { flex: 1, fontSize: 13, color: '#555', lineHeight: 20 },
-
-  webBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#E8602C', borderRadius: 12, padding: 14, marginBottom: 10, gap: 8,
-  },
-  webBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  qrToggle: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    padding: 10, gap: 6,
-  },
-  qrToggleText: { color: '#E8602C', fontWeight: '600', fontSize: 14 },
-  qrBox: {
-    alignItems: 'center', backgroundColor: '#FDF8F2',
-    borderRadius: 12, padding: 16, marginVertical: 8,
-  },
-  qrImage: { width: 200, height: 200, marginBottom: 8 },
-  qrHide: { color: '#C4956A', fontSize: 12, marginTop: 4 },
-
-  waBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#25D366', borderRadius: 12, padding: 14, marginTop: 4, gap: 8,
-  },
-  waBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  complianceText: { flex: 1, fontSize: 13, color: '#C4956A', lineHeight: 18 },
 
   // Redemption
   redeemBox: {
-    flexDirection: 'row', marginHorizontal: 12,
+    flexDirection: 'row', marginHorizontal: 12, marginTop: 8,
     backgroundColor: '#fff', borderRadius: 14, padding: 8,
     borderWidth: 1.5, borderColor: '#E8602C', gap: 8,
   },
@@ -429,9 +325,4 @@ const styles = StyleSheet.create({
   },
   redeemBtnDisabled: { backgroundColor: '#EDE0D4' },
   redeemBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  paymentNote: {
-    fontSize: 12, color: '#C4956A', textAlign: 'center',
-    marginTop: 12, paddingHorizontal: 20, lineHeight: 18,
-  },
 });

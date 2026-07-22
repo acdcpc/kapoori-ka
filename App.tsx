@@ -39,7 +39,7 @@ function Navigation() {
     );
   }
 
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'beta_free';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   return (
     <NavigationContainer>

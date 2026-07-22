@@ -8,8 +8,12 @@
     ],
     "rewrites": [
       {
+        "source": "/admin/**",
+        "destination": "/admin/index.html"
+      },
+      {
         "source": "**",
-        "destination": "/payment-guide.html"
+        "destination": "/payment.html"
       }
     ]
   },
