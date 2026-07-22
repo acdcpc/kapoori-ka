@@ -121,5 +121,17 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    // ===========================
+    // ACTIVATION CODES (web-based payment flow)
+    // Only the Cloud Function (Admin SDK) can write. Users can get their own.
+    // ===========================
+    match /activation_codes/{code} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }
