@@ -1,8 +1,7 @@
 // src/constants.ts
+// v2: Removed PAYMENT_WEB_URL and ESEWA_QR_URL — no payment links in-app (Google Play compliance).
 
 export const WHATSAPP_NUMBER = '+9779840516603';
-export const ESEWA_QR_URL = 'https://via.placeholder.com/300x400.png?text=eSewa+QR+Code';
-export const PAYMENT_WEB_URL = 'https://acdcpc.github.io/kapoori-ka/';
 
 export const COLORS = {
   PRIMARY: '#E8602C',

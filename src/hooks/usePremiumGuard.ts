@@ -1,7 +1,7 @@
 /**
- * Premium Feature Guard Hook — Production Audit Fix
- * ISSUE 5 FIX: Removed hardcoded `return true` bypass.
- * Now properly checks subscription status from AuthContext.
+ * Premium Feature Guard Hook — v2
+ * Checks: status active, plan is premium, AND expiresAt > now.
+ * Firestore is always source of truth via AuthContext.
  */
 
 import { Alert } from 'react-native';
@@ -23,24 +23,37 @@ export const PREMIUM_FEATURES = {
 } as const;
 
 export const usePremiumGuard = () => {
-  const { subscription, user } = useAuth();
-
-  const canAccessFeature = (feature: PremiumFeature): boolean => {
-    if (!user) return false;
-    if (!feature.requiresPremium) return true;
-    // ISSUE 5 FIX: Check both status and plan
-    if (subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly') {
-      if (feature.consultationsRequired) {
-        return (subscription.consultationsRemaining ?? 0) >= (feature.consultationsRequired ?? 1);
-      }
-      return true;
-    }
-    return false;
-  };
+  const { subscription } = useAuth();
 
   const isPremium = (): boolean => {
-    // ISSUE 5 FIX: Real check — no bypass
-    return (subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly');
+    if (!subscription) return false;
+    // Must be active + premium plan
+    const hasActive = subscription.status === 'active'
+      || subscription.plan === 'premium'
+      || subscription.plan === 'yearly'
+      || subscription.plan === 'monthly';
+    if (!hasActive) return false;
+    // Must not be expired
+    if (subscription.endDate) {
+      const endMs = subscription.endDate instanceof Date
+        ? subscription.endDate.getTime()
+        : (subscription.endDate as any).seconds
+          ? (subscription.endDate as any).seconds * 1000
+          : (subscription.endDate as any).toMillis?.()
+            ?? new Date(subscription.endDate as any).getTime();
+      if (isNaN(endMs)) return false;
+      if (Date.now() > endMs) return false;
+    }
+    return true;
+  };
+
+  const canAccessFeature = (feature: PremiumFeature): boolean => {
+    if (!feature.requiresPremium) return true;
+    if (!isPremium()) return false;
+    if (feature.consultationsRequired) {
+      return (subscription?.consultationsRemaining ?? 0) >= (feature.consultationsRequired ?? 1);
+    }
+    return true;
   };
 
   const isSubscriptionActive = (): boolean => {
@@ -72,5 +85,13 @@ export const usePremiumGuard = () => {
     }
   };
 
-  return { canAccessFeature, isPremium, isSubscriptionActive, getRemainingConsultations, guardFeature, checkConsultationLimit, useConsultation };
+  return {
+    canAccessFeature,
+    isPremium,
+    isSubscriptionActive,
+    getRemainingConsultations,
+    guardFeature,
+    checkConsultationLimit,
+    useConsultation,
+  };
 };

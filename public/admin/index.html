@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kapoori Ka — Admin Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F5F5F5; color: #333; padding: 16px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .header h1 { font-size: 22px; color: #E8602C; }
+    .header .user-info { font-size: 13px; color: #999; }
+    .header button {
+      background: #E8602C; color: #fff; border: none;
+      padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer;
+    }
+    .header button:hover { background: #D45525; }
+
+    .tabs {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .tab {
+      background: #fff; border: 2px solid #EDE0D4; padding: 10px 20px;
+      border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px;
+    }
+    .tab.active { border-color: #E8602C; background: #FFF5F0; color: #E8602C; }
+
+    .search-bar {
+      display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .search-bar input {
+      flex: 1; min-width: 200px; padding: 12px; border: 2px solid #EDE0D4;
+      border-radius: 10px; font-size: 14px;
+    }
+
+    table {
+      width: 100%; background: #fff; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      font-size: 13px;
+    }
+    th {
+      background: #E8602C; color: #fff; padding: 12px 10px;
+      text-align: left; font-weight: 600; white-space: nowrap;
+    }
+    td { padding: 10px; border-bottom: 1px solid #EDE0D4; }
+    tr:hover { background: #FDF8F2; }
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 8px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-pending { background: #FFF3E0; color: #E65100; }
+    .badge-approved { background: #E8F5E9; color: #2E7D32; }
+    .badge-rejected { background: #FFEBEE; color: #C62828; }
+
+    .action-btn {
+      padding: 6px 14px; border-radius: 8px; border: none;
+      font-weight: 600; font-size: 12px; cursor: pointer; margin-right: 4px;
+    }
+    .btn-approve { background: #4CAF50; color: #fff; }
+    .btn-reject { background: #F44336; color: #fff; }
+    .btn-view { background: #2196F3; color: #fff; }
+    .action-btn:hover { opacity: 0.85; }
+
+    .screenshot-thumb { max-width: 60px; max-height: 60px; border-radius: 6px; cursor: pointer; }
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #fff; border-radius: 16px; padding: 24px; max-width: 600px;
+      width: 90%; max-height: 80vh; overflow-y: auto;
+    }
+    .modal-content h2 { color: #E8602C; margin-bottom: 12px; }
+    .modal-content img { max-width: 100%; border-radius: 10px; margin: 10px 0; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    .loading { text-align: center; padding: 40px; color: #999; }
+    .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+
+    .reject-reason { margin-top: 10px; }
+    .reject-reason textarea {
+      width: 100%; padding: 10px; border: 2px solid #EDE0D4;
+      border-radius: 10px; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Kapoori Ka — Admin</h1>
+        <div class="user-info" id="userInfo">Loading...</div>
+      </div>
+      <button onclick="signOut()">Sign Out</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('pending')">Pending</div>
+      <div class="tab" onclick="switchTab('approved')">Approved</div>
+      <div class="tab" onclick="switchTab('rejected')">Rejected</div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search by name, email, or transaction ID..." oninput="filterRows()">
+    </div>
+
+    <div id="tableContainer">
+      <div class="loading">Loading...</div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal" id="detailModal" onclick="if(event.target === this) closeModal()">
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div class="modal" id="rejectModal" onclick="if(event.target === this) closeRejectModal()">
+      <div class="modal-content">
+        <h2>Reject Payment</h2>
+        <p>Why are you rejecting this payment?</p>
+        <div class="reject-reason">
+          <textarea id="rejectReason" rows="3" placeholder="Reason for rejection..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="action-btn btn-reject" id="confirmRejectBtn" onclick="confirmReject()">Reject</button>
+          <button class="action-btn btn-view" onclick="closeRejectModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import { getFirestore, collection, query, where, orderBy, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlGNIXCGRsyilNFsSr62Xx4vDJls-rra0",
+      authDomain: "kapoori-ka.firebaseapp.com",
+      projectId: "kapoori-ka",
+      storageBucket: "kapoori-ka.appspot.com",
+      messagingSenderId: "391729474242",
+      appId: "1:391729474242:web:9c0636ca3e6b7c3503865b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window._auth = auth;
+    window._db = db;
+  </script>
+
+  <script>
+    let currentTab = 'pending';
+    let allPayments = [];
+    let rejectPaymentId = null;
+
+    // Auth
+    onAuthStateChanged(window._auth, async (user) => {
+      if (!user) {
+        // Show login
+        document.getElementById('tableContainer').innerHTML = `
+          <div style="background:#fff;border-radius:14px;padding:40px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+            <h2 style="color:#E8602C;margin-bottom:16px;">Admin Login</h2>
+            <div style="max-width:320px;margin:0 auto;">
+              <input id="loginEmail" type="email" placeholder="Email"
+                style="width:100%;padding:12px;margin-bottom:10px;border:2px solid #EDE0D4;border-radius:10px;font-size:14px;">
+              <input id="loginPassword" type="password" placeholder="Password"
+                style="width:100%;padding:12px;margin-bottom:10px;border:2px solid #EDE0D4;border-radius:10px;font-size:14px;">
+              <button onclick="doLogin()"
+                style="width:100%;padding:14px;background:#E8602C;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">
+                Sign In
+              </button>
+            </div>
+          </div>`;
+        return;
+      }
+
+      // Verify admin claim
+      const idTokenResult = await user.getIdTokenResult();
+      if (!idTokenResult.claims.admin) {
+        document.getElementById('tableContainer').innerHTML = `
+          <div style="background:#FFEBEE;border-radius:14px;padding:40px;text-align:center;">
+            <p style="color:#C62828;font-size:16px;">⛔ Not authorized. Admin access required.</p>
+            <button onclick="signOut()" style="margin-top:16px;padding:10px 20px;background:#E8602C;color:#fff;border:none;border-radius:10px;cursor:pointer;">Sign Out</button>
+          </div>`;
+        return;
+      }
+
+      document.getElementById('userInfo').textContent = `Signed in as: ${user.email}`;
+      loadPayments();
+    });
+
+    window.doLogin = async function() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      if (!email || !password) {
+        alert('Please enter email and password.');
+        return;
+      }
+      try {
+        await signInWithEmailAndPassword(window._auth, email, password);
+      } catch (err) {
+        alert('Login failed: ' + err.message);
+      }
+    };
+
+    window.signOut = function() {
+      signOut(window._auth);
+    };
+
+    window.switchTab = function(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => {
+        if (t.textContent.toLowerCase().startsWith(tab)) t.classList.add('active');
+      });
+      filterRows();
+    };
+
+    async function loadPayments() {
+      const container = document.getElementById('tableContainer');
+      container.innerHTML = '<div class="loading">Loading payments...</div>';
+
+      try {
+        const q = query(collection(window._db, 'payments'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        allPayments = [];
+        snap.forEach(doc => {
+          allPayments.push({ id: doc.id, ...doc.data() });
+        });
+      } catch (err) {
+        container.innerHTML = `<div class="loading" style="color:red;">Error: ${err.message}</div>`;
+        return;
+      }
+
+      renderTable();
+    }
+
+    function filterRows() {
+      renderTable();
+    }
+
+    function renderTable() {
+      const container = document.getElementById('tableContainer');
+      const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+
+      let filtered = allPayments;
+      if (currentTab !== 'all') {
+        filtered = filtered.filter(p => p.status === currentTab);
+      }
+      if (search) {
+        filtered = filtered.filter(p =>
+          (p.name || '').toLowerCase().includes(search) ||
+          (p.email || '').toLowerCase().includes(search) ||
+          (p.paymentId || '').toLowerCase().includes(search)
+        );
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty">No ${currentTab} payments found.</div>`;
+        return;
+      }
+
+      let html = `<table>
+        <thead><tr>
+          <th>Date</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Method</th>
+          <th>Txn ID</th>
+          <th>Amount</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Screenshot</th>
+          <th>Actions</th>
+        </tr></thead><tbody>`;
+
+      filtered.forEach(p => {
+        const date = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString() : '-';
+        const statusBadge = `<span class="badge badge-${p.status}">${p.status}</span>`;
+        const screenshot = p.screenshotUrl
+          ? `<img src="${p.screenshotUrl}" class="screenshot-thumb" onclick="window.open('${p.screenshotUrl}')">`
+          : '-';
+
+        let actions = `<button class="action-btn btn-view" onclick="viewPayment('${p.id}')">View</button>`;
+        if (p.status === 'pending') {
+          actions += ` <button class="action-btn btn-approve" onclick="approvePayment('${p.id}')">Approve</button>`;
+          actions += ` <button class="action-btn btn-reject" onclick="openReject('${p.id}')">Reject</button>`;
+        }
+
+        html += `<tr>
+          <td>${date}</td>
+          <td>${p.name || '-'}</td>
+          <td>${p.email || '-'}</td>
+          <td>${p.paymentMethod || '-'}</td>
+          <td style="font-family:monospace;font-size:12px;">${p.paymentId || '-'}</td>
+          <td>NPR ${p.amount || 0}</td>
+          <td>${p.plan || 'yearly'}</td>
+          <td>${statusBadge}</td>
+          <td>${screenshot}</td>
+          <td>${actions}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    window.viewPayment = function(id) {
+      const p = allPayments.find(x => x.id === id);
+      if (!p) return;
+
+      const date = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : '-';
+      const verified = p.verifiedAt?.toDate ? p.verifiedAt.toDate().toLocaleString() : '-';
+
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Payment Details</h2>
+        <p><strong>Name:</strong> ${p.name}</p>
+        <p><strong>Email:</strong> ${p.email}</p>
+        <p><strong>Mobile:</strong> ${p.mobile || '-'}</p>
+        <p><strong>Method:</strong> ${p.paymentMethod}</p>
+        <p><strong>Transaction ID:</strong> ${p.paymentId}</p>
+        <p><strong>Amount:</strong> NPR ${p.amount}</p>
+        <p><strong>Plan:</strong> ${p.plan}</p>
+        <p><strong>Status:</strong> ${p.status}</p>
+        <p><strong>Submitted:</strong> ${date}</p>
+        <p><strong>Verified:</strong> ${verified}</p>
+        <p><strong>Rejection Reason:</strong> ${p.rejectionReason || '-'}</p>
+        <p><strong>Notes:</strong> ${p.notes || '-'}</p>
+        ${p.screenshotUrl ? `<img src="${p.screenshotUrl}" alt="Screenshot">` : ''}
+        <div class="modal-actions">
+          ${p.status === 'pending' ? `
+            <button class="action-btn btn-approve" onclick="approvePayment('${p.id}')">Approve</button>
+            <button class="action-btn btn-reject" onclick="closeModal(); openReject('${p.id}')">Reject</button>
+          ` : ''}
+          <button class="action-btn btn-view" onclick="closeModal()">Close</button>
+        </div>`;
+
+      document.getElementById('detailModal').classList.add('active');
+    };
+
+    window.closeModal = function() {
+      document.getElementById('detailModal').classList.remove('active');
+    };
+
+    window.openReject = function(id) {
+      rejectPaymentId = id;
+      document.getElementById('rejectReason').value = '';
+      document.getElementById('rejectModal').classList.add('active');
+    };
+
+    window.closeRejectModal = function() {
+      document.getElementById('rejectModal').classList.remove('active');
+      rejectPaymentId = null;
+    };
+
+    window.confirmReject = async function() {
+      if (!rejectPaymentId) return;
+      const reason = document.getElementById('rejectReason').value.trim();
+      if (!reason) {
+        alert('Please provide a reason for rejection.');
+        return;
+      }
+
+      const btn = document.getElementById('confirmRejectBtn');
+      btn.disabled = true;
+      btn.textContent = 'Rejecting...';
+
+      try {
+        const rejectFn = window._rejectPaymentFn;
+        if (rejectFn) {
+          await rejectFn({ paymentId: rejectPaymentId, reason });
+          alert('Payment rejected.');
+          closeRejectModal();
+          loadPayments();
+        } else {
+          alert('Cloud Functions not available. Use Firebase console to reject.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reject';
+      }
+    };
+
+    window.approvePayment = async function(id) {
+      if (!confirm('Approve this payment and activate premium for the user?')) return;
+
+      try {
+        const approveFn = window._approvePaymentFn;
+        if (approveFn) {
+          await approveFn({ paymentId: id });
+          alert('Payment approved! Premium activated for the user.');
+          closeModal();
+          loadPayments();
+        } else {
+          alert('Cloud Functions not available. Use Firebase console to update manually.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    };
+  </script>
+</body>
+</html>
