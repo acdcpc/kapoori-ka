@@ -44,7 +44,8 @@
   "devDependencies": {
     "@types/react": "~19.2.14",
     "babel-preset-expo": "~56.0.17",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "@babel/plugin-transform-shorthand-properties": "^7.27.1"
   },
   "scripts": {
     "start": "expo start",
