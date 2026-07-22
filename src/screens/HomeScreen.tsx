@@ -24,17 +24,49 @@ type HomeScreenProps = {
 };
 
 const HOW_TO_STEPS_EN = [
-  { icon: '📈', title: 'Growth Chart', desc: 'Track weight & height' },
-  { icon: '💉', title: 'Immunization', desc: 'Vaccine schedule & reminders' },
-  { icon: '🧠', title: 'Milestones', desc: 'Developmental progress' },
-  { icon: '🥦', title: 'Nutrition', desc: 'Age-specific feeding guides' },
+  {
+    icon: '📈',
+    title: 'Growth Chart',
+    desc: 'Enter your child’s height & weight to track healthy growth.'
+  },
+  {
+    icon: '💉',
+    title: 'Immunization',
+    desc: 'Record vaccines received and track upcoming vaccinations.'
+  },
+  {
+    icon: '🧠',
+    title: 'Milestones',
+    desc: 'Mark achieved milestones and monitor upcoming development.'
+  },
+  {
+    icon: '🥦',
+    title: 'Nutrition',
+    desc: 'Learn age-wise nutrition and prepare nutritious Sarbottam Pitho.'
+  },
 ];
 
 const HOW_TO_STEPS_NE = [
-  { icon: '📈', title: 'वृद्धि चार्ट', desc: 'तौल र उचाइ ट्र्याक गर्नुहोस्' },
-  { icon: '💉', title: 'खोप', desc: 'खोप तालिका र रिमाइन्डर' },
-  { icon: '🧠', title: 'विकास', desc: 'बच्चाको शारीरिक र मानसिक विकास' },
-  { icon: '🥦', title: 'पोषण', desc: 'उमेर अनुसार खाना गाइड' },
+  {
+    icon: '📈',
+    title: 'वृद्धि चार्ट',
+    desc: 'बच्चाको उचाइ र तौल राखेर वृद्धि ट्र्याक गर्नुहोस्।'
+  },
+  {
+    icon: '💉',
+    title: 'खोप',
+    desc: 'लगाइएका खोप दर्ता गर्नुहोस् र आगामी खोप ट्र्याक गर्नुहोस्।'
+  },
+  {
+    icon: '🧠',
+    title: 'विकास',
+    desc: 'पूरा भएका विकास चरणहरू चिन्ह लगाउनुहोस् र आगामी चरण हेर्नुहोस्।'
+  },
+  {
+    icon: '🥦',
+    title: 'पोषण',
+    desc: 'उमेर अनुसारको पोषण जान्नुहोस् र सर्वोत्तम पिठो बनाउने तरिका सिक्नुहोस्।'
+  },
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
