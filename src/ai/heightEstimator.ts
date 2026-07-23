@@ -1,6 +1,6 @@
 // src/ai/heightEstimator.ts
 // ─────────────────────────────────────────────────────────
-// Height estimation from 39 GHUM landmarks + phone tilt.
+// Height estimation from 33 BlazePose landmarks + phone tilt.
 //
 // Signals combined for confidence:
 //   0.25 × detector score
