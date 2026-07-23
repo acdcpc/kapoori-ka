@@ -362,8 +362,22 @@ export default function HeightMeasureScreen() {
   const detModel = modelPhase === 'ready' ? detModelRef.current : undefined;
   const lmModel = modelPhase === 'ready' ? lmModelRef.current : undefined;
 
-  // ── Resize plugin ──
-  const resize = useResizePlugin();
+  // ── Resize plugin (safe-init: doesn't throw at mount) ──
+  const [resizeReady, setResizeReady] = useState(false);
+  const resizeRef = useRef<ReturnType<typeof useResizePlugin> | null>(null);
+  useEffect(() => {
+    if (!modelsReady) return;
+    try {
+      // Dynamically require to avoid eager native init
+      const plugin = require('vision-camera-resize-plugin');
+      resizeRef.current = plugin.createResizePlugin();
+      setResizeReady(true);
+      console.log('[HEIGHT] ✅ Resize plugin initialised');
+    } catch (e: any) {
+      console.error('[HEIGHT] ❌ Resize plugin failed:', e?.message);
+    }
+  }, [modelsReady]);
+  const resize = resizeRef.current;
 
   // ── Tilt ──
   const [tilt, setTilt] = useState<TiltState>({ pitchDeg: 0, rollDeg: 0, isUpright: true });
