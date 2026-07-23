@@ -62,7 +62,13 @@ export default {
         }
       ],
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "react-native-fast-tflite",
+        {
+          "enableAndroidGpuLibraries": true
+        }
+      ]
     ],
     extra: {
       eas: {
