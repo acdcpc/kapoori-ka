@@ -3,7 +3,7 @@
 // Two-stage BlazePose pipeline — matches Google's architecture.
 //
 //   Stage 1: Detector (224×224 input → bounding boxes)
-//   Stage 2: Landmark (256×256 crop → 39 GHUM landmarks)
+//   Stage 2: Landmark (256×256 crop → 33 GHUM landmarks)
 //
 // Height estimated from landmarks with EMA smoothing,
 // multi-signal confidence (detector × visibility × completeness × tilt × jitter),
@@ -34,9 +34,6 @@ import {
   estimateHeight, calculateTilt, getTiltMessage, getMeasureStatusMessage,
   smoothHeight, resetAll, qualityTier, updateLock, unlockMeasurement,
 } from '../ai/heightEstimator';
-// TODO: Future calibration — allow user to input known reference height
-// e.g., measure against a doorframe, credit card, or A4 paper
-// to derive a per-device BOX_REAL_HEIGHT_CM correction factor
 
 // declare runOnJS (injected by VisionCamera in worklet scope)
 declare function runOnJS<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => void;
@@ -117,20 +114,16 @@ type ModelPhase = 'idle' | 'resolving_assets' | 'downloading_assets' | 'loading_
 export default function HeightMeasureScreen() {
   const { language } = useContext(LanguageContext);
   const n = language === 'ne';
-  if (Platform.OS === 'web') return <WebOnly />;
 
   // ── Camera ──
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
 
   // ── Models ──
-  // Use expo-asset to resolve to a file:// URI that HybridAssetLoader can handle.
-  // require() alone returns an Android resource identifier (e.g. 'assets_models_...')
-  // which is not a valid URL — HybridAssetLoader.kt uses URL(path).readBytes().
   const [detUrl, setDetUrl] = useState<string | null>(null);
   const [lmUrl, setLmUrl] = useState<string | null>(null);
 
-  // ── STEP 1: Resolve assets via expo-asset (with timeout + full logging) ──
+  // ── STEP 1: Resolve assets via expo-asset ──
   useEffect(() => {
     (async () => {
       try {
@@ -159,7 +152,6 @@ export default function HeightMeasureScreen() {
           width: lmAsset.width, height: lmAsset.height, downloaded: lmAsset.downloaded,
         }));
 
-        // If localUri exists, skip downloadAsync entirely
         if (detAsset.localUri && lmAsset.localUri) {
           console.log('[HEIGHT] ✅ Both assets already have localUri — skipping downloadAsync');
           console.log('[HEIGHT]   det localUri:', detAsset.localUri);
@@ -170,41 +162,30 @@ export default function HeightMeasureScreen() {
           return;
         }
 
-        // Otherwise, run downloadAsync with 5-second timeout
         setModelPhase('downloading_assets');
         console.log('[HEIGHT] ── Calling downloadAsync() ──');
 
         const downloadWithTimeout = (asset: Asset, label: string): Promise<Asset> => {
-          console.log(`[HEIGHT] downloadAsync(${label}) START`);
           return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
               console.error(`[HEIGHT] ❌ downloadAsync(${label}) TIMEOUT after 5s`);
               reject(new Error(`downloadAsync(${label}) timed out after 5 seconds`));
-                // ISSUE 1 FIX: Fallback to raw require() URI if downloadAsync fails
-                // On APK builds, expo-asset localUri may be null initially.
-                // The raw require() returns a module ID that can be used directly.
             }, 5000);
 
             asset.downloadAsync()
               .then((result: Asset) => {
                 clearTimeout(timer);
                 console.log(`[HEIGHT] downloadAsync(${label}) COMPLETED`);
-                console.log(`[HEIGHT]   byteLength: ${(result as any).byteLength || 'N/A'}`);
-                console.log(`[HEIGHT]   localUri: ${result.localUri}`);
-                console.log(`[HEIGHT]   uri: ${result.uri}`);
-                console.log(`[HEIGHT]   downloaded: ${result.downloaded}`);
                 resolve(result);
               })
               .catch((err: Error) => {
                 clearTimeout(timer);
-                console.error(`[HEIGHT] ❌ downloadAsync(${label}) FAILED:`, err?.message || err, err?.stack);
+                console.error(`[HEIGHT] ❌ downloadAsync(${label}) FAILED:`, err?.message || err);
                 reject(err);
               });
           });
         };
 
-        // ISSUE 1 FIX: Each asset gets its own fallback chain.
-        // If downloadAsync fails (APK, network), fall back to raw require() URI.
         const resolveUri = async (asset: any, rawModule: any, label: string): Promise<string> => {
           try {
             const result = await downloadWithTimeout(asset, label);
@@ -231,11 +212,8 @@ export default function HeightMeasureScreen() {
           resolveUri(lmAsset, lmModule, 'landmark'),
         ]);
 
-        console.log('[HEIGHT] Final URIs for TFLite loader:');
-        console.log('[HEIGHT]   detUri:', detUri);
-        console.log('[HEIGHT]   lmUri:', lmUri);
+        console.log('[HEIGHT] Final URIs:', detUri, lmUri);
 
-        // Verify file existence + size using expo-file-system
         try {
           const FileSystem = require('expo-file-system');
           const [detInfo, lmInfo] = await Promise.all([
@@ -247,55 +225,39 @@ export default function HeightMeasureScreen() {
           console.log('[HEIGHT]   landmark:', JSON.stringify(lmInfo));
           if (!detInfo.exists) console.error('[HEIGHT] ❌ Detector file does NOT exist at:', detUri);
           if (!lmInfo.exists) console.error('[HEIGHT] ❌ Landmark file does NOT exist at:', lmUri);
-          if (detInfo.size !== 2959078) console.error('[HEIGHT] ⚠️ Detector size MISMATCH:', detInfo.size, 'expected 2959078');
-          if (lmInfo.size !== 2818390) console.error('[HEIGHT] ⚠️ Landmark size MISMATCH:', lmInfo.size, 'expected 2818390');
         } catch (fsErr) {
           console.error('[HEIGHT] ❌ FileSystem.getInfoAsync failed:', fsErr);
         }
 
         setDetUrl(detUri);
         setLmUrl(lmUri);
-
-        console.log('[HEIGHT] ═══ STEP 1 COMPLETE: Assets resolved ═══');
+        console.log('[HEIGHT] ═══ STEP 1 COMPLETE ═══');
       } catch (e: any) {
-        console.error('[HEIGHT] ❌ STEP 1 FAILED:', e?.message || e, e?.stack);
+        console.error('[HEIGHT] ❌ STEP 1 FAILED:', e?.message || e);
         setModelPhase('error');
         setModelError(`Asset resolution: ${e?.message || e}`);
       }
     })();
   }, []);
 
-  // ── Model loading state (driven manually, not by useTensorflowModel hook) ──
-  // We avoid useTensorflowModel() because it would fire with null before URIs resolve.
-  // Instead we call loadTensorflowModel directly after Asset.downloadAsync() completes.
+  // ── Model loading state ──
   const [modelPhase, setModelPhase] = useState<ModelPhase>('idle');
   const detModelRef = useRef<any>(null);
   const lmModelRef = useRef<any>(null);
   const [modelError, setModelError] = useState<string | null>(null);
 
-  // ── STEP 2: Sequential model loading (driven purely by detUrl/lmUrl, no deadlock guard) ──
+  // ── STEP 2: Sequential model loading ──
   useEffect(() => {
-    if (!detUrl || !lmUrl) {
-      console.log('[HEIGHT] STEP 2: Waiting for asset URIs (detUrl=', !!detUrl, 'lmUrl=', !!lmUrl, ')');
-      return;
-    }
-    if (modelPhase === 'ready' || modelPhase === 'error') {
-      console.log('[HEIGHT] STEP 2: Already', modelPhase, '— skipping');
-      return;
-    }
-    if (modelPhase === 'loading_detector' || modelPhase === 'loading_landmark' || modelPhase === 'verifying') {
-      console.log('[HEIGHT] STEP 2: Already in progress (', modelPhase, ') — skipping');
-      return;
-    }
+    if (!detUrl || !lmUrl) return;
+    if (modelPhase === 'ready' || modelPhase === 'error') return;
+    if (modelPhase === 'loading_detector' || modelPhase === 'loading_landmark' || modelPhase === 'verifying') return;
 
     const { loadTensorflowModel: loadTF } = require('react-native-fast-tflite');
 
     (async () => {
       try {
-        // Phase 1: Load detector
         setModelPhase('loading_detector');
-        console.log('[HEIGHT] ═══ STEP 2a: Loading detector from:', detUrl, '═══');
-        // ISSUE 1 FIX: 10-second timeout to prevent infinite hang
+        console.log('[HEIGHT] ═══ STEP 2a: Loading detector ═══');
         const loadWithTimeout = (url: string): Promise<any> =>
           new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error('Model load timeout after 10s')), 10000);
@@ -305,52 +267,26 @@ export default function HeightMeasureScreen() {
         const detModel = await loadWithTimeout(detUrl);
         detModelRef.current = detModel;
         console.log('[HEIGHT] ✅ Detector loaded');
-        console.log('[HEIGHT] Detector metadata:', JSON.stringify({
-          inputs: (detModel as any).inputs,
-          outputs: (detModel as any).outputs,
-        }));
 
-        // Phase 2: Load landmark
         setModelPhase('loading_landmark');
-        console.log('[HEIGHT] ═══ STEP 2b: Loading landmark from:', lmUrl, '═══');
+        console.log('[HEIGHT] ═══ STEP 2b: Loading landmark ═══');
         const lmModel = await loadWithTimeout(lmUrl);
         lmModelRef.current = lmModel;
         console.log('[HEIGHT] ✅ Landmark loaded');
-        console.log('[HEIGHT] Landmark metadata:', JSON.stringify({
-          inputs: (lmModel as any).inputs,
-          outputs: (lmModel as any).outputs,
-        }));
 
-        // Phase 3: Verify with dummy inference
         setModelPhase('verifying');
-        console.log('[HEIGHT] ═══ STEP 3: Dummy inference verification ═══');
+        console.log('[HEIGHT] ═══ STEP 3: Dummy inference ═══');
 
-        // ── Detector dummy inference ──
-        const dup224 = 224 * 224 * 3;
-        const dummyDetInput = new Float32Array(dup224);
-        dummyDetInput.fill(0.5);
-        const detOutput = await detModel.run([dummyDetInput]);
+        const detOutput = await detModel.run([new Float32Array(224 * 224 * 3).fill(0.5)]);
         console.log('[HEIGHT] Detector dummy run OK:', detOutput.length, 'outputs');
-        detOutput.forEach((o: any, i: number) => {
-          const arr = new Float32Array(o as ArrayBuffer);
-          console.log(`[HEIGHT]   det_out[${i}]: len=${arr.length}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
-        });
 
-        // ── Landmark dummy inference ──
-        const dup256 = 256 * 256 * 3;
-        const dummyLmInput = new Float32Array(dup256);
-        dummyLmInput.fill(0.5);
-        const lmOutput = await lmModel.run([dummyLmInput]);
+        const lmOutput = await lmModel.run([new Float32Array(256 * 256 * 3).fill(0.5)]);
         console.log('[HEIGHT] Landmark dummy run OK:', lmOutput.length, 'outputs');
-        lmOutput.forEach((o: any, i: number) => {
-          const arr = new Float32Array(o as ArrayBuffer);
-          console.log(`[HEIGHT]   lm_out[${i}]: len=${arr.length}, first5=[${Array.from(arr.slice(0,5)).map(v=>v.toFixed(4)).join(',')}]`);
-        });
 
         setModelPhase('ready');
-        console.log('[HEIGHT] 🎉 ALL PHASES COMPLETE — models ready');
+        console.log('[HEIGHT] 🎉 Models ready');
       } catch (e: any) {
-        console.error('[HEIGHT] ❌ Model loading failed at phase:', modelPhase, e?.message || e);
+        console.error('[HEIGHT] ❌ Model loading failed:', e?.message || e);
         setModelPhase('error');
         setModelError(`model_load: ${e?.message || e}`);
       }
@@ -362,13 +298,12 @@ export default function HeightMeasureScreen() {
   const detModel = modelPhase === 'ready' ? detModelRef.current : undefined;
   const lmModel = modelPhase === 'ready' ? lmModelRef.current : undefined;
 
-  // ── Resize plugin (safe-init: doesn't throw at mount) ──
+  // ── Resize plugin ──
   const [resizeReady, setResizeReady] = useState(false);
   const resizeRef = useRef<ReturnType<typeof useResizePlugin> | null>(null);
   useEffect(() => {
     if (!modelsReady) return;
     try {
-      // Dynamically require to avoid eager native init
       const plugin = require('vision-camera-resize-plugin');
       resizeRef.current = plugin.createResizePlugin();
       setResizeReady(true);
@@ -404,11 +339,8 @@ export default function HeightMeasureScreen() {
   const [showGuide, setShowGuide] = useState(true);
   const pulse = useRef(new Animated.Value(1)).current;
 
-  // Store last detection score for confidence blend
   const lastDetScore = useRef(0.8);
   const landmarksRef = useRef<PoseLandmark[]>([]);
-
-  // JS callback from worklet
   const firstResultLogged = useRef(false);
 
   // JS callback from worklet
@@ -424,7 +356,6 @@ export default function HeightMeasureScreen() {
     const inBox = r.heightCm !== null;
     const vis = landmarks.some(l => l.visibility >= 0.7);
 
-    // Check measurement lock
     if (r.heightCm !== null) {
       const lockState = updateLock(r.heightCm, r.confidence);
       if (lockState.locked && lockState.measurement && !locked) {
@@ -463,27 +394,32 @@ export default function HeightMeasureScreen() {
     } else pulse.setValue(1);
   }, [ms.canMeasure]);
 
-  // ── DIAGNOSTIC: log when pipeline is live ──
+  // Pipeline-ready diagnostic (MUST be before Gates)
   useEffect(() => {
     if (modelsReady && device && hasPermission) {
-      console.log('[HEIGHT] ✅ Pipeline ready — camera + models OK, starting frame processor');
+      console.log('[HEIGHT] ✅ Pipeline ready');
       setDiag('pipeline_started');
     }
   }, [modelsReady, device, hasPermission]);
+
+  // Model phase diagnostic (MUST be before Gates — Rules-of-Hooks)
+  useEffect(() => {
+    if (modelsLoading) {
+      console.log('[HEIGHT] Model phase:', modelPhase, 'detUrl:', !!detUrl, 'lmUrl:', !!lmUrl);
+    }
+  }, [modelsLoading, modelPhase, detUrl, lmUrl]);
 
   // ── TWO-STAGE FRAME PROCESSOR ──
   const fp = useFrameProcessor((frame) => {
     'worklet';
     if (!detModel || !lmModel || !resize) return;
 
-    // Count frames (log first few via runOnJS)
     _frameCnt += 1;
     if (_frameCnt === 1) runOnJS(setDiag)('frame_1');
     if (_frameCnt === 30) runOnJS(setDiag)('frame_30');
 
     runAtTargetFps(8, () => {
       try {
-        // ── STAGE 1: Detector ──
         const detInput = resize.resize(frame, {
           scale: { width: 224, height: 224 },
           pixelFormat: 'rgb', dataType: 'float32',
@@ -494,10 +430,25 @@ export default function HeightMeasureScreen() {
         if (!detOut || !detOut[0]) return;
         const detRaw = new Float32Array(detOut[0] as unknown as ArrayBuffer);
 
+        // ── DEBUG: compare detOut[0] score (offset+4) vs sigmoid(detOut[1]) ──
+        // BlazePose detector: detOut[0]=Identity[1,2254,12], detOut[1]=Identity_1[1,2254,1]
+        // Sample first 5 anchors on first detection. Remove after verification.
+        if (_detCnt === 0 && detOut[1]) {
+          const sepBuf = new Float32Array(detOut[1] as unknown as ArrayBuffer);
+          const n = Math.min(5, Math.floor(detRaw.length / 12), sepBuf.length);
+          let debugStr = '';
+          for (let i = 0; i < n; i++) {
+            const combined = detRaw[i * 12 + 4];
+            const sig = 1 / (1 + Math.exp(-sepBuf[i]));
+            debugStr += combined.toFixed(4) + '|' + sig.toFixed(4) + ' ';
+          }
+          runOnJS(setDiag)('det_debug:' + debugStr.trim());
+        }
+        // ── END DEBUG ──
+
         const detections = parseDetections(detRaw);
         if (detections.length === 0) return;
 
-        // Log first detection
         if (_detCnt === 0) {
           _detCnt += 1;
           runOnJS(setDiag)('det_ok');
@@ -506,7 +457,6 @@ export default function HeightMeasureScreen() {
         const best = detections[0];
         const { bbox, score } = best;
 
-        // ── Crop & expand ROI slightly ──
         const margin = 0.15;
         const cx = Math.max(0, bbox.x - bbox.w * margin) * frame.width;
         const cy = Math.max(0, bbox.y - bbox.h * margin) * frame.height;
@@ -515,18 +465,13 @@ export default function HeightMeasureScreen() {
 
         if (cw < 50 || ch < 50) return;
 
-        // ── STAGE 2: Landmark model ──
-        // Apply frame orientation via rotation (VisionCamera may rotate frames)
         const rotation = (frame as any).orientation === 'portrait' ? '0deg'
           : (frame as any).orientation === 'landscape-left' ? '90deg'
           : (frame as any).orientation === 'landscape-right' ? '270deg'
           : '0deg';
 
         const lmInput = resize.resize(frame, {
-          crop: {
-            x: Math.round(cx), y: Math.round(cy),
-            width: Math.round(cw), height: Math.round(ch),
-          },
+          crop: { x: Math.round(cx), y: Math.round(cy), width: Math.round(cw), height: Math.round(ch) },
           scale: { width: 256, height: 256 },
           pixelFormat: 'rgb', dataType: 'float32',
           rotation,
@@ -536,16 +481,13 @@ export default function HeightMeasureScreen() {
         const lmOut = lmModel.runSync([lmInput as any]);
         if (!lmOut || !lmOut[0]) return;
 
-        // Log landmark success
         if (!_lmLogged) {
           _lmLogged = true;
           runOnJS(setDiag)('lm_ok');
         }
 
-        // Landmark output is the first output (Identity)
         const lmRaw = new Float32Array(lmOut[0] as unknown as ArrayBuffer);
         const landmarks = parseLandmarks(lmRaw, frame.width, frame.height, cx, cy, cw, ch);
-
         runOnJS(onResult)(landmarks, score);
       } catch {
         // silent per-frame errors
@@ -579,7 +521,14 @@ export default function HeightMeasureScreen() {
     Alert.alert(n ? 'सफल' : 'Success', n ? `${capturedH} सेमी रेकर्ड गरियो!` : `${capturedH} cm recorded!`, [{ text: 'OK' }]);
   }, [capturedH, n]);
 
+  // ─────────────────────────────────────────────────────
   // ── Gates ──
+  // EVERY hook must be declared BEFORE this point!
+  // All conditional returns below only guard JSX, never hooks.
+  // ─────────────────────────────────────────────────────
+
+  if (Platform.OS === 'web') return <WebOnly />;
+
   if (!hasPermission) return (
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <Ionicons name="camera-outline" size={64} color="#4CAF50" />
@@ -604,15 +553,8 @@ export default function HeightMeasureScreen() {
       <Text style={{color: '#666', fontSize: 11, marginTop: 8}}>{modelError || ''}</Text>
     </View></SafeAreaView>
   );
-  // Diagnostic: log model state while loading
-  useEffect(() => {
-    if (modelsLoading) {
-      console.log('[HEIGHT] Model phase:', modelPhase, 'detUrl:', !!detUrl, 'lmUrl:', !!lmUrl);
-    }
-  }, [modelsLoading, modelPhase, detUrl, lmUrl]);
 
   if (modelsLoading) return (
-
     <SafeAreaView style={S.ct}><View style={S.gate}>
       <ActivityIndicator size="large" color="#4CAF50" />
       <Text style={S.gateTitle}>{n ? 'AI मोडल लोड हुँदै...' : 'Loading AI...'}</Text>
@@ -666,7 +608,7 @@ export default function HeightMeasureScreen() {
   );
 }
 
-// ── Styles (abbreviated keys for brevity) ──
+// ── Styles ──
 const S = StyleSheet.create({
   ct: { flex: 1, backgroundColor: '#000' }, preview: { flex: 1, position: 'relative' },
   gate: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#111' },

@@ -1,6 +1,12 @@
 // src/ai/PoseTypes.ts
 // ─────────────────────────────────────────────────────────
-// Shared types — 39-landmark BlazePose GHUM (not 33).
+// Shared types — 39-landmark BlazePose GHUM.
+// Actual model (blazepose_landmark_lite_fp16.tflite) outputs:
+//   Identity   (landmarks):      [1, 195] = 39 landmarks × 5 values (x,y,z,vis,presence)
+//   Identity_1 (pose flag):      [1, 1]
+//   Identity_2 (heatmap):        [1, 256, 256, 1]
+//   Identity_3 (segmentation):   [1, 64, 64, 39]
+//   Identity_4 (world landmarks): [1, 117] = 39 landmarks × 3 values (x,y,z)
 // ─────────────────────────────────────────────────────────
 
 /** Single BlazePose GHUM landmark (39 total). */
@@ -9,6 +15,7 @@ export interface PoseLandmark {
   y: number;       // pixel Y in frame coords
   z: number;       // relative depth (smaller = closer)
   visibility: number; // 0–1 confidence
+  presence: number;   // 0–1 presence probability (5th output value)
 }
 
 export interface Detection {
@@ -53,6 +60,7 @@ export interface MeasureState {
 }
 
 // ── 39-LANDMARK INDICES (BlazePose GHUM) ──
+// Matches the actual model output: [1, 195] = 39 × 5 floats.
 export const LM = {
   NOSE: 0,
   LEFT_EYE_INNER: 1,  LEFT_EYE: 2,  LEFT_EYE_OUTER: 3,
@@ -70,13 +78,13 @@ export const LM = {
   LEFT_ANKLE: 27,     RIGHT_ANKLE: 28,
   LEFT_HEEL: 29,      RIGHT_HEEL: 30,
   LEFT_FOOT_INDEX: 31, RIGHT_FOOT_INDEX: 32,
-  // GHUM adds 6 more (indices 33-38)
-  // These are auxiliary face/body landmarks not in the standard 33
+  // GHUM adds 6 auxiliary landmarks (indices 33–38)
   AUX0: 33, AUX1: 34, AUX2: 35, AUX3: 36, AUX4: 37, AUX5: 38,
 } as const;
 
-export const LANDMARK_COUNT = 39;
-export const TENSOR_SIZE = LANDMARK_COUNT * 4; // 156 floats for landmarks
+export const LANDMARK_COUNT = 39;    // 39 landmarks (confirmed from model metadata)
+export const STRIDE = 5;             // 5 floats per landmark: x, y, z, visibility, presence
+export const TENSOR_SIZE = LANDMARK_COUNT * STRIDE; // 195 floats for landmarks
 export const REQUIRED_LANDMARKS: readonly number[] = [LM.NOSE, LM.LEFT_ANKLE, LM.RIGHT_ANKLE];
 
 // ── EMA smoothing config ──

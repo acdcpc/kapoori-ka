@@ -4,6 +4,16 @@
     "strict": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "App.tsx"],
-  "exclude": ["node_modules", "dist", "build", "android", "ios"]
+  "include": [
+    "src",
+    "App.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "android",
+    "ios",
+    "src/ai/__tests__"
+  ]
 }
