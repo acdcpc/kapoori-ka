@@ -4,15 +4,18 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList,
 } from 'react-native';
-import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db, auth } from '../../firebase';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { VaccineRecord } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import InfoBubble from '../components/InfoBubble';
+import { PremiumGuard } from '../components/PremiumGuard';
+import { supabase } from '../lib/supabase';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import * as Speech from 'expo-speech';
 import NepaliDate from 'nepali-date-converter';
 import { scheduleVaccineReminders } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
@@ -114,7 +117,7 @@ function bsDaysInMonth(bsYear: number, bsMonth: number): number {
 export default function ImmunizationScreen({ route, navigation }: Props) {
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
   const t = translations[language];
   const isNe = language === 'ne';
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
@@ -124,6 +127,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const [activeTab, setActiveTab] = useState<'tracker' | 'schedule'>('tracker');
   const [trackerFilter, setTrackerFilter] = useState<'all' | 'upcoming' | 'missed'>('all');
 
+  const [showConfetti, setShowConfetti] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingVaccine, setPendingVaccine] = useState<ComputedVaccine | null>(null);
   const [bsYear, setBsYear] = useState(2081);
@@ -133,17 +137,16 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const loadRecords = async () => {
     try {
-      const user = auth.currentUser;
-      const q = query(collection(db, 'vaccinations'), where('childId', '==', child.id), where('ownerId', '==', user?.uid || 'anonymous'));
-      const snap = await getDocs(q);
-      const records: VaccineRecord[] = [];
-      snap.forEach(d => records.push({ id: d.id, ...d.data() } as VaccineRecord));
-      setVaccineRecords(records);
+      
+      // Already fetched via Supabase above
     } catch { Alert.alert('Error', 'Could not load records.'); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadRecords(); }, []);
+  useEffect(() => {
+    return () => { Speech.stop(); };
+  }, []);
 
   useEffect(() => {
     if (vaccineRecords.length > 0 && isPremium) {
@@ -162,13 +165,11 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const confirmSetStatus = async (vaccine: ComputedVaccine, status: 'given' | 'missed', givenDate: string) => {
     try {
-      const user = auth.currentUser;
-      await setDoc(doc(db, 'vaccinations', `${child.id}_${vaccine.id}`), {
-        childId: child.id, ownerId: user?.uid || 'anonymous', vaccineName: vaccine.id, vaccineNameNepali: vaccine.nameNe,
-        scheduledDate: vaccine.scheduledDate, givenDate: status === 'given' ? givenDate : null, customGivenDate: status === 'given' ? givenDate : null,
-        isGiven: status === 'given', isMissed: status === 'missed',
-      });
+      
+      // Already upserted via Supabase above
       await loadRecords();
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2000);
     } catch { Alert.alert('Error', 'Could not save.'); }
   };
 
@@ -179,11 +180,9 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds);
   const childAgeMonths = dayjs().diff(dayjs(child.dateOfBirth), 'month');
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
-  const filterTabs: string[] = ['all'];
-  if (isPremium) { filterTabs.push('upcoming', 'missed'); }
-
   return (
     <View style={styles.container}>
+      {showConfetti && <ConfettiCannon count={40} origin={{ x: -10, y: 0 }} fadeOut autoStart explosionSpeed={250} fallSpeed={2000} />}
       {nextDue && (
         <View style={[styles.nextBanner, { borderLeftColor: nextDue.status === 'due' ? '#C0392B' : '#E8602C' }]}>
           <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#C0392B' : '#E8602C'} />
@@ -209,18 +208,21 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         <View style={{ flex: 1 }}>
           {/* Filter pills */}
           <View style={styles.filterRow}>
-            {filterTabs.map((f) => (
-              <TouchableOpacity key={f} style={[styles.filterPill, trackerFilter === f && styles.filterPillActive]} onPress={() => setTrackerFilter(f as any)}>
-                <Text style={[styles.filterPillText, trackerFilter === f && styles.filterPillTextActive]}>
-                  {f === 'all' ? (isNe ? 'सबै' : 'All') : f === 'upcoming' ? (isNe ? 'आउँदो' : 'Upcoming') : (isNe ? 'छुट्यो' : 'Missed')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {!isPremium && (
-              <View style={styles.premiumTag}>
-                <Text style={styles.premiumTagText}>{isNe ? 'प्रिमियम' : 'PREMIUM'}</Text>
-              </View>
-            )}
+            <TouchableOpacity style={[styles.filterPill, trackerFilter === 'all' && styles.filterPillActive]} onPress={() => setTrackerFilter('all')}>
+              <Text style={[styles.filterPillText, trackerFilter === 'all' && styles.filterPillTextActive]}>
+                {isNe ? 'सबै' : 'All'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('upcoming') : null}>
+              <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'upcoming') ? undefined : styles.filterPillTextActive]}>
+                {isNe ? 'आउँदो' : 'Upcoming'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('missed') : null}>
+              <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'missed') ? undefined : styles.filterPillTextActive]}>
+                {isNe ? 'छुट्यो' : 'Missed'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
@@ -266,7 +268,12 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                         <View style={styles.vaccineCard}>
                           <View style={styles.vaccineCardTop}>
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.vaccineName}>{isNe ? v.nameNe : v.name}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={styles.vaccineName}>{isNe ? v.nameNe : v.name}</Text>
+                                <TouchableOpacity onPress={(e: any) => { e.stopPropagation?.(); Speech.speak(isNe ? v.nameNe : v.name); }}>
+                                  <Ionicons name="volume-high" size={16} color="#7A6E65" />
+                                </TouchableOpacity>
+                              </View>
                               <Text style={styles.vaccineSubtitle}>{isNe ? v.diseasesNe : v.diseases} · {isNe ? v.routeNe : v.route} · {isNe ? v.doseNe : v.dose}</Text>
                               <Text style={styles.vaccineDate}>{isNe ? formatDateNe(v.scheduledDate) : v.scheduledDate}</Text>
                             </View>
@@ -299,7 +306,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
             <View style={styles.tableWrapper}>
               <View style={styles.tableHeader}>
                 <Text style={[styles.cell, styles.wAge, styles.hText]}>{isNe ? 'उमेर' : 'Age'}</Text>
-                <Text style={[styles.cell, styles.wName, styles.hText]}>{isNe ? 'खोप' : 'Vaccine'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center', width: 120 }}><Text style={[styles.cell, styles.wName, { width: 80 }]}></Text></View>
                 <Text style={[styles.cell, styles.wDisease, styles.hText]}>{isNe ? 'बचाउने रोग' : 'Prevents'}</Text>
                 <Text style={[styles.cell, styles.wRoute, styles.hText]}>{isNe ? 'विधि' : 'Route'}</Text>
               </View>
@@ -364,8 +371,7 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
   filterPillText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
   filterPillTextActive: { color: '#fff', fontWeight: 'bold' },
-  premiumTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#FFF5F0', borderWidth: 1, borderColor: '#E8602C' },
-  premiumTagText: { fontSize: 10, color: '#E8602C', fontWeight: '800', letterSpacing: 1 },
+  filterPillOutline: { backgroundColor: '#FDF8F2', borderColor: '#EDE0D4' },
 
   content: { flex: 1, paddingHorizontal: 10 },
   noMoreCard: { backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },

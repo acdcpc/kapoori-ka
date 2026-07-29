@@ -5,12 +5,11 @@
 import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
-export type FeatureType = 'immunization' | 'growth_report' | 'milestone_tracker' | 'nutrition' | 'autism_screening';
+export type FeatureType = 'immunization' | 'immunization_tracker' | 'growth_report' | 'milestone_tracker' | 'nutrition' | 'autism_screening';
 
 interface PremiumGuardProps {
   children: React.ReactNode;
@@ -19,6 +18,7 @@ interface PremiumGuardProps {
 
 const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
   immunization: 'free',
+  immunization_tracker: 'premium',
   growth_report: 'premium',
   milestone_tracker: 'premium',
   nutrition: 'premium',
@@ -27,9 +27,14 @@ const FEATURE_ACCESS: Record<FeatureType, 'free' | 'premium'> = {
 
 const FEATURE_BENEFITS: Record<FeatureType, { en: string; ne: string; icon: string }> = {
   immunization: {
-    en: 'Track upcoming & missed vaccines with smart reminders',
-    ne: 'स्मार्ट रिमाइन्डरको साथ आउने र छुटेका खोपहरू ट्र्याक गर्नुहोस्',
+    en: 'Core vaccine schedule with smart reminders',
+    ne: 'स्मार्ट रिमाइन्डरको साथ मुख्य खोप तालिका',
     icon: '💉',
+  },
+  immunization_tracker: {
+    en: 'Upcoming & missed vaccine tracking with detailed schedules',
+    ne: 'विस्तृत तालिकासहित आउने र छुटेका खोप ट्र्याकिङ्ग',
+    icon: '📋',
   },
   growth_report: {
     en: 'WHO percentile charts with stunting/wasting/obesity diagnostics',
@@ -65,14 +70,13 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
   const checkPending = useCallback(async () => {
     if (!user || !isPremiumFeature) return;
     try {
-      const q = query(
-        collection(db, 'payments'),
-        where('userId', '==', user.uid),
-        where('status', '==', 'pending'),
-        limit(1),
-      );
-      const snap = await getDocs(q);
-      setHasPendingPayment(!snap.empty);
+      const { data } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('userId', user.uid)
+        .eq('status', 'pending')
+        .limit(1);
+      setHasPendingPayment((data || []).length > 0);
     } catch {
       setHasPendingPayment(false);
     }

@@ -4,17 +4,18 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Alert, ActivityIndicator, Modal,
 } from 'react-native';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db, auth } from '../../firebase';
+import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { Child } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import InfoBubble from '../components/InfoBubble';
 import { getAgeInMonths } from '../utils/growthCalculations';
 import { PremiumGuard } from '../components/PremiumGuard';
+import { supabase } from '../lib/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MChat'>;
 
@@ -130,6 +131,7 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
 ];
 
 export default function MChatScreen({ route, navigation }: Props) {
+  const { user } = useAuth();
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
@@ -164,9 +166,11 @@ export default function MChatScreen({ route, navigation }: Props) {
     const { totalScore, concernList } = calculateScore();
     setScore(totalScore); setConcerns(concernList); setShowResultModal(true); setIsReviewMode(true);
     try {
-      const user = auth.currentUser;
-      if (!user) return;
-      await addDoc(collection(db, 'autism_screenings'), { childId: child.id, ownerId: user.uid, date: dayjs().format('YYYY-MM-DD'), ageMonths, score: totalScore, responses, createdAt: new Date() });
+            if (!user) return;
+      const { error: sbError } = await supabase
+        .from('autism_screenings')
+        .insert({ child_id: child.id, user_id: user.uid, date: dayjs().format('YYYY-MM-DD'), age_months: ageMonths, score: totalScore, responses, created_at: new Date().toISOString() });
+      if (sbError) console.error('Save screening error:', sbError);
     } catch (error) { console.error('Save screening error:', error); }
   };
 
@@ -185,7 +189,7 @@ export default function MChatScreen({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#7A6E65" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>M-CHAT-R/F</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={styles.headerTitle}>M-CHAT-R/F</Text><InfoBubble titleEn='About M-CHAT-R/F' titleNe='M-CHAT बारे' bodyEn='The Modified Checklist for Autism in Toddlers screens for autism risk.' bodyNe='The Modified Checklist for Autism in Toddlers screens for autism risk.' iconSize={16} /></View>
         </View>
 
         {!isAppropriateAge ? (
@@ -283,7 +287,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A1A2E' },
   centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#F7F1EB' },
   warningBoxLarge: { backgroundColor: '#FDF8F2', padding: 28, borderRadius: 20, alignItems: 'center', marginHorizontal: 24, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4, width: '100%' },
-  warningEmoji: { fontSize: 80, marginBottom: 16 },
+  warningEmoji: { fontSize: 64, marginBottom: 16 },
   warningTitleNe: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', textAlign: 'center', marginBottom: 4 },
   warningSubtitleEn: { fontSize: 16, color: '#7A6E65', textAlign: 'center', marginBottom: 12 },
   warningTextLarge: { fontSize: 15, color: '#7A6E65', textAlign: 'center', lineHeight: 22, marginBottom: 24 },

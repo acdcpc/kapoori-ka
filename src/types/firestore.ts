@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore'; // will be replaced in Phase 3
 
 export const FIRESTORE_COLLECTIONS = {
   USERS: 'users',

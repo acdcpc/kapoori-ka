@@ -11,8 +11,8 @@ import { translations } from '../i18n/translations';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import dayjs from 'dayjs';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { PremiumGuard } from '../components/PremiumGuard';
 import { useNavigation } from '@react-navigation/native';
 
@@ -106,6 +106,7 @@ function adToBs(adDateStr: string): string {
 type Props = NativeStackScreenProps<RootStackParamList, 'PDFReport'>;
 
 export default function PDFReportScreen({ route }: Props) {
+  const { user } = useAuth();
   const { child } = route.params || {};
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
@@ -119,18 +120,26 @@ export default function PDFReportScreen({ route }: Props) {
     }
     setGenerating(true);
     try {
-      const user = auth.currentUser;
-      const gQuery = query(collection(db, 'growth_records'), where('childId', '==', child.id), where('ownerId', '==', user?.uid || 'anonymous'));
-      const gSnap = await getDocs(gQuery);
-      const growthData: any[] = [];
-      gSnap.forEach(doc => growthData.push(doc.data()));
-      growthData.sort((a, b) => a.date.localeCompare(b.date));
-
-      const vQuery = query(collection(db, 'vaccinations'), where('childId', '==', child.id), where('ownerId', '==', user?.uid || 'anonymous'));
-      const vSnap = await getDocs(vQuery);
-      const vaccineRecords: any[] = [];
-      vSnap.forEach(doc => vaccineRecords.push(doc.data()));
-      vaccineRecords.sort((a, b) => (a.givenDate || '').localeCompare(b.givenDate || ''));
+            const { data: growthData } = await supabase
+        .from('growth_records')
+        .select('*')
+        .eq('child_id', child.id)
+        .eq('user_id', user?.uid || '')
+        .order('date', { ascending: true });
+      const { data: vaccineData } = await supabase
+        .from('vaccinations')
+        .select('*')
+        .eq('child_id', child.id)
+        .eq('user_id', user?.uid || '')
+        .order('given_date', { ascending: false });
+      const vaccineRecords = (vaccineData || []).map((v: any) => ({
+        vaccineName: v.vaccine_name,
+        vaccineNameNepali: v.vaccine_name_nepali,
+        givenDate: v.given_date,
+        scheduledDate: v.scheduled_date,
+        isGiven: v.is_given,
+        isMissed: v.is_missed,
+      }));
 
       const htmlContent = `
         <html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;color:#333}h1{text-align:center;color:#E8602C}h2{color:#444;margin-top:30px}table{width:100%;border-collapse:collapse;margin:15px 0}th,td{border:1px solid #ccc;padding:10px;text-align:left}th{background-color:#f0f4f8}.center{text-align:center}</style></head>
@@ -141,7 +150,7 @@ export default function PDFReportScreen({ route }: Props) {
           <p><strong>${isNe ? 'लिंग' : 'Sex'}:</strong> ${child.sex === 'male' ? (isNe ? 'छोरा' : 'Male') : (isNe ? 'छोरी' : 'Female')}</p>
           <h2>${isNe ? 'वृद्धि विवरण' : 'Growth Records'}</h2>
           <table><tr><th>${isNe ? 'मिति' : 'Date'}</th><th>${isNe ? 'तौल (किग्रा)' : 'Weight (kg)'}</th><th>${isNe ? 'उचाइ (से.मि.)' : 'Height (cm)'}</th></tr>
-          ${growthData.map((r: any) => `<tr><td>${isNe ? adToBs(r.date) : r.date}</td><td>${r.weight || '-'}</td><td>${r.height || '-'}</td></tr>`).join('')}
+          ${(growthData || []).map((r: any) => `<tr><td>${isNe ? adToBs(r.date) : r.date}</td><td>${r.weight || '-'}</td><td>${r.height || '-'}</td></tr>`).join('')}
           </table>
           <h2>${isNe ? 'खोप विवरण' : 'Vaccination Records'}</h2>
           <table><tr><th>${isNe ? 'खोप' : 'Vaccine'}</th><th>${isNe ? 'दिइएको मिति' : 'Given Date'}</th></tr>
@@ -171,7 +180,7 @@ export default function PDFReportScreen({ route }: Props) {
         {/* Document Icon */}
         <Text style={styles.docIcon}>📋</Text>
 
-        <Text style={styles.title}>{isNe ? 'PDF स्वास्थ्य रिपोर्ट' : 'Generate Health Report'}</Text>
+        <Text style={styles.title}>{isNe ? 'रिपोर्ट बनाउनुहोस्' : 'Generate Health Report'}</Text>
         <Text style={styles.childName}>{child?.name} {child?.nameNepali ? `(${child.nameNepali})` : ''}</Text>
 
         {/* What's Included */}

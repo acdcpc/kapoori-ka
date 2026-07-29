@@ -1,14 +1,18 @@
 // src/screens/AddChildScreen.tsx
 import React, { useContext, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, ScrollView, Alert, Modal, FlatList, StatusBar
 } from 'react-native';
-import { collection, addDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db, auth } from '../../firebase';
+import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { supabase } from '../lib/supabase';
 import { translations } from '../i18n/translations';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -137,12 +141,13 @@ function ScrollPicker({ items, selectedValue, onSelect }: {
 }
 const pickerSt = StyleSheet.create({
   item: { height: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8 },
-  itemSel: { backgroundColor: '#e8f0fe' },
+  itemSel: { backgroundColor: '#FDE8E0' },
   itemTxt: { fontSize: 15, color: '#444' },
-  itemTxtSel: { color: '#1a73e8', fontWeight: '700' },
+  itemTxtSel: { color: '#E8602C', fontWeight: '700' },
 });
 
 export default function AddChildScreen({ navigation }: AddChildScreenProps) {
+  const { user } = useAuth();
   const { language } = useContext(LanguageContext);
   const t = translations[language];
   const isNe = language === 'ne';
@@ -150,6 +155,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
   const [name, setName] = useState('');
   const [nameNepali, setNameNepali] = useState('');
   const [sex, setSex] = useState<'male' | 'female'>('male');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [parentPhone, setParentPhone] = useState('');
 
   // English Date Data
@@ -175,8 +181,43 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
     ? (bsToAd(bsYear, bsMonth, bsDay) ?? '') 
     : dateAD;
 
+  const pickPhoto = async (fromCamera: boolean) => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(isNe ? 'अनुमति अस्वीकृत' : 'Permission denied', isNe ? 'फोटो लिन क्यामेराको अनुमति चाहिन्छ।' : 'Camera permission is needed for the profile photo.');
+        return;
+      }
+      let result;
+      if (fromCamera) {
+        result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
+      }
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      // allowsEditing:true + aspect:[1,1] in the picker forces a square crop
+      // at the OS level. ImageManipulator only needs to resize.
+      const resized = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 300, height: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Copy to persistent local path
+      const childId = name && sex ? `${name.replace(/\s+/g, '_')}_${Date.now()}` : `temp_${Date.now()}`;
+      const destDir = FileSystem.documentDirectory + 'child-photos/';
+      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+      const dest = destDir + childId + '.jpg';
+      await FileSystem.copyAsync({ from: resized.uri, to: dest });
+      setPhotoUri(dest);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not capture photo.');
+    }
+  };
+  
   const validateAndSave = async () => {
-    const storedName = name.trim() || nameNepali.trim();
+    const storedName = isNe ? nameNepali.trim() : name.trim();
     if (!storedName)
       return Alert.alert('Error', isNe ? 'बच्चाको नाम हाल्नुहोस्' : "Please enter child's name");
 
@@ -185,20 +226,25 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 
     setSaving(true);
     try {
-      const user = auth.currentUser;
-      if (!user) return Alert.alert('Error', isNe ? 'कृपया पहिले लगइन गर्नुहोस्' : 'Please login first');
+            if (!user) return Alert.alert('Error', isNe ? 'कृपया पहिले लगइन गर्नुहोस्' : 'Please login first');
 
-      const childRef = await addDoc(collection(db, 'children'), {
-        ownerId: user.uid,
-        name: storedName,
-        nameNepali: nameNepali.trim(),
-        dateOfBirth: derivedDobAD,
-        sex,
-        birthWeight: birthWeight ? parseFloat(birthWeight) : null,
-        birthLength: birthLength ? parseFloat(birthLength) : null,
-        parentPhone: parentPhone.trim(),
-        createdAt: dayjs().toISOString(),
-      });
+      const { data: childData, error: childErr } = await supabase
+        .from('children')
+        .insert({
+          user_id: user.uid,
+          name: storedName,
+          name_nepali: nameNepali.trim() || null,
+          date_of_birth: derivedDobAD,
+          sex,
+          birth_weight: birthWeight ? parseFloat(birthWeight) : null,
+          birth_length: birthLength ? parseFloat(birthLength) : null,
+          photo_uri: photoUri || null,
+          parent_phone: parentPhone.trim() || null,
+        })
+        .select('id')
+        .single();
+      if (childErr) throw childErr;
+      const childId = childData.id;
 
       // Save birth record if weight/length provided
       if (birthWeight || birthLength) {
@@ -207,29 +253,33 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
           const bs = new NepaliDate(new Date(derivedDobAD));
           bsDateStr = bs.format('YYYY-MM-DD');
         } catch(e) {}
-        await addDoc(collection(db, 'growth_records'), {
-          childId: childRef.id,
-          ownerId: user.uid,
-          date: derivedDobAD,
-          bsDate: bsDateStr,
-          weight: birthWeight ? parseFloat(birthWeight) : null,
-          height: birthLength ? parseFloat(birthLength) : null,
-          notes: isNe ? 'जन्मको नाप' : 'Birth measurement',
-          createdAt: dayjs().toISOString(),
-        });
+        await supabase
+          .from('growth_records')
+          .insert({
+            child_id: childId,
+            user_id: user.uid,
+            date: derivedDobAD,
+            bs_date: bsDateStr || null,
+            weight: birthWeight ? parseFloat(birthWeight) : null,
+            height: birthLength ? parseFloat(birthLength) : null,
+            notes: isNe ? 'जन्मको नाप' : 'Birth measurement',
+            recorded_at: dayjs().toISOString(),
+          });
       }
 
       // Save current record if weight/height provided and different from birth date
       if ((currentWeight || currentHeight) && dayjs().format('YYYY-MM-DD') !== derivedDobAD) {
-        await addDoc(collection(db, 'growth_records'), {
-          childId: childRef.id,
-          ownerId: user.uid,
-          date: dayjs().format('YYYY-MM-DD'),
-          weight: currentWeight ? parseFloat(currentWeight) : null,
-          height: currentHeight ? parseFloat(currentHeight) : null,
-          notes: isNe ? 'सुरुको हालको नाप' : 'Initial current measurement',
-          createdAt: dayjs().toISOString(),
-        });
+        await supabase
+          .from('growth_records')
+          .insert({
+            child_id: childId,
+            user_id: user.uid,
+            date: dayjs().format('YYYY-MM-DD'),
+            weight: currentWeight ? parseFloat(currentWeight) : null,
+            height: currentHeight ? parseFloat(currentHeight) : null,
+            notes: isNe ? 'सुरुको हालको नाप' : 'Initial current measurement',
+            recorded_at: dayjs().toISOString(),
+          });
       }
 
       Alert.alert('Success', `${storedName} added!`, [{ text: 'OK', onPress: () => navigation.goBack() }]);
@@ -239,34 +289,41 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF8F2' }}>
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.form}>
-          <Text style={styles.label}>{isNe ? 'बच्चाको नाम (देवनागरीमा) *' : "Child's Name *"}</Text>
-          {isNe ? (
-            <>
-              <TextInput 
-                style={[styles.input, { fontSize: 18 }]} 
-                value={nameNepali} 
-                onChangeText={setNameNepali} 
-                placeholder={'जस्तै:एलिशा कार्की'} 
-              />
-              <Text style={styles.hintText}>{isNe ? 'माथि देवनागरीमा बच्चाको नाम लेख्नुहोस्' : ''}</Text>
-            </>
-          ) : (
-            <TextInput 
-              style={styles.input} 
-              value={name} 
-              onChangeText={setName} 
-              placeholder={'e.g.,Alisha Karki'} 
-            />
-          )}
-          {isNe && nameNepali.trim() && (
-            <Text style={styles.hintText}>{isNe ? 'रोमनमा पनि नाम (वैकल्पिक):' : 'Name in Roman (optional):'}</Text>
-          )}
-          {isNe && <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={'e.g., Alisha Karki'} />}
+          <Text style={styles.label}>{isNe ? 'बच्चाको नाम *' : "Child's Name *"}</Text>
+          <TextInput 
+            style={[styles.input, isNe && { fontSize: 18 }]} 
+            value={isNe ? nameNepali : name} 
+            onChangeText={isNe ? setNameNepali : setName} 
+            placeholder={isNe ? 'जस्तै: एलिशा कार्की' : 'e.g., Alisha Karki'} 
+          />
           
+
+          <View style={styles.photoContainer}>
+            {photoUri ? (
+              <TouchableOpacity onPress={() => pickPhoto(true)}>
+                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="person-outline" size={40} color="#C4956A" />
+              </View>
+            )}
+            <View style={styles.photoActions}>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(true)}>
+                <Ionicons name="camera" size={16} color="#E8602C" />
+                <Text style={styles.photoBtnText}>{isNe ? 'फोटो खिच्नुहोस्' : 'Camera'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(false)}>
+                <Ionicons name="images-outline" size={16} color="#E8602C" />
+                <Text style={styles.photoBtnText}>{isNe ? 'ग्यालरी' : 'Gallery'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Text style={styles.label}>{t.sex}</Text>
           <View style={styles.sexContainer}>
             <TouchableOpacity style={[styles.sexBtn, sex === 'male' && styles.sexBtnActive]} onPress={() => setSex('male')}>
@@ -349,32 +406,39 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  formHeader: { backgroundColor: '#1a73e8', paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 8 },
+  container: { flex: 1, backgroundColor: '#F7F1EB' },
+  formHeader: { backgroundColor: '#E8602C', paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 8 },
   formHeaderIcon: { fontSize: 40, marginBottom: 8 },
   formHeaderTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
   formHeaderSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4, textAlign: 'center' },
   form: { padding: 20, paddingBottom: 120 },
-  label: { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 6, marginTop: 16 },
-  input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#ddd', borderRadius: 10, padding: 14, fontSize: 16, color: '#222' },
+  label: { fontSize: 14, fontWeight: '700', color: '#1A1A2E', marginBottom: 6, marginTop: 16 },
+  input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 10, padding: 14, fontSize: 16, color: '#222' },
   row: { flexDirection: 'row', gap: 10 },
   col: { flex: 1 },
   sexContainer: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  sexBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#eee', alignItems: 'center' },
-  sexBtnActive: { backgroundColor: '#1a73e8' },
-  sexBtnText: { fontWeight: '600', color: '#666' },
+  sexBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#FDF8F2', alignItems: 'center' },
+  sexBtnActive: { backgroundColor: '#E8602C' },
+  sexBtnText: { fontWeight: '600', color: '#7A6E65' },
   sexBtnTextActive: { color: '#fff' },
-  dateBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#1a73e8', borderRadius: 10, padding: 14, alignItems: 'center' },
-  dateBtnText: { fontSize: 16, color: '#1a73e8', fontWeight: '700' },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#1a73e8', textAlign: 'center', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  saveBtn: { backgroundColor: '#1a73e8', borderRadius: 14, padding: 18, marginTop: 36, alignItems: 'center', elevation: 4, shadowColor: '#1a73e8', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10 },
+  dateBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8602C', borderRadius: 10, padding: 14, alignItems: 'center' },
+  dateBtnText: { fontSize: 16, color: '#E8602C', fontWeight: '700' },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#E8602C', textAlign: 'center', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  saveBtn: { backgroundColor: '#E8602C', borderRadius: 14, padding: 18, marginTop: 36, alignItems: 'center', elevation: 4, shadowColor: '#E8602C', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10 },
+
+  photoContainer: { alignItems: 'center', marginBottom: 16 },
+  photoPreview: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#E8602C' },
+  photoPlaceholder: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#EDE0D4', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  photoActions: { flexDirection: 'row', gap: 12 },
+  photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#EDE0D4' },
+  photoBtnText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', width: '90%', borderRadius: 16, padding: 20 },
+  modalContent: { backgroundColor: '#FDF8F2', width: '90%', borderRadius: 16, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
   pickerRow: { flexDirection: 'row', height: 200 },
   pickerCol: { flex: 1 },
-  doneBtn: { backgroundColor: '#1a73e8', borderRadius: 8, padding: 14, marginTop: 20, alignItems: 'center' },
+  doneBtn: { backgroundColor: '#E8602C', borderRadius: 8, padding: 14, marginTop: 20, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   hintText: { fontSize: 11, color: '#888', marginTop: 4, marginBottom: 4 },
 });
