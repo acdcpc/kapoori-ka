@@ -61,6 +61,20 @@ function toAppUser(su: SupabaseUser): AppUser {
   };
 }
 
+/** Shallow equality check on identity-relevant fields — avoids setUser churn */
+function isSameUser(a: AppUser | null, b: AppUser | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.uid === b.uid &&
+    a.email === b.email &&
+    a.displayName === b.displayName &&
+    a.photoURL === b.photoURL &&
+    a.isAnonymous === b.isAnonymous &&
+    a.emailVerified === b.emailVerified
+  );
+}
+
 // ── Provider ──
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -74,7 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const nowISO = () => new Date().toISOString();
 
   // ── Profile init from Supabase ──
-  const initProfile = useCallback(async (uid: string) => {
+  // Takes AppUser fields explicitly (not via closure) so deps are stable.
+  const initProfile = useCallback(async (
+    uid: string,
+    email: string | null,
+    displayName: string | null,
+    photoURL: string | null,
+    isAnonymous: boolean,
+  ) => {
     const { data: p, error: pe } = await supabase
       .from('profiles').select('*').eq('user_id', uid).maybeSingle();
 
@@ -86,11 +107,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!p) {
       // Create profile + subscription
       supabase.from('profiles').insert({
-        user_id: uid, email: user?.email || null,
-        display_name: user?.displayName || 'User',
-        photo_url: user?.photoURL || null,
+        user_id: uid, email: email || null,
+        display_name: displayName || 'User',
+        photo_url: photoURL || null,
         language: 'ne', created_at: now, updated_at: now,
-        is_anonymous: user?.isAnonymous || false,
+        is_anonymous: isAnonymous || false,
       }).then(r => r.error && console.error('Insert profile:', r.error));
 
       supabase.from('subscriptions').insert({
@@ -99,9 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }).then(r => r.error && console.error('Insert sub:', r.error));
 
       setUserProfile({
-        uid, email: user?.email || null, displayName: user?.displayName || 'User',
-        photoURL: user?.photoURL || null, language: 'ne',
-        createdAt: now, updatedAt: now, isAnonymous: user?.isAnonymous || false,
+        uid, email: email || null, displayName: displayName || 'User',
+        photoURL: photoURL || null, language: 'ne',
+        createdAt: now, updatedAt: now, isAnonymous: isAnonymous || false,
       });
       setSubscription({ status: 'free', plan: 'free', autoRenew: false, price: 0, consultationsRemaining: 0 });
     } else {
@@ -121,20 +142,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     }
-  }, [user]);
+  }, []); // ← FIX 1: no deps — closes over nothing from state
 
   // ── Session listener ──
+  // Registered exactly once (empty dep array). Uses refs for stable callbacks.
+  const initProfileRef = useRef(initProfile);
+  initProfileRef.current = initProfile;
+
   useEffect(() => {
     let mounted = true;
+
+    console.log('[AuthContext] Setting up Supabase session listener');
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       if (s?.user) {
         const appUser = toAppUser(s.user);
-        setUser(appUser);
+        setUser(prev => {
+          // FIX 2: only update if identity actually changed (reference-stable)
+          if (isSameUser(prev, appUser)) return prev;
+          console.log('[AuthContext] Initial session — setting user:', appUser.uid);
+          return appUser;
+        });
         if (!initializedRef.current) {
           initializedRef.current = true;
-          initProfile(appUser.uid);
+          initProfileRef.current(appUser.uid, appUser.email, appUser.displayName, appUser.photoURL, appUser.isAnonymous);
         }
       }
       setLoading(false);
@@ -142,12 +174,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((_ev, s) => {
       if (!mounted) return;
+      console.log('[AuthContext] onAuthStateChange:', _ev, s?.user?.id ?? 'no user');
       if (s?.user) {
         const appUser = toAppUser(s.user);
-        setUser(appUser);
+        setUser(prev => {
+          // FIX 2: only update if identity actually changed
+          if (isSameUser(prev, appUser)) {
+            console.log('[AuthContext] User unchanged — skipping setUser');
+            return prev;
+          }
+          console.log('[AuthContext] User changed — setting user:', appUser.uid);
+          return appUser;
+        });
         if (!initializedRef.current) {
           initializedRef.current = true;
-          initProfile(appUser.uid);
+          initProfileRef.current(appUser.uid, appUser.email, appUser.displayName, appUser.photoURL, appUser.isAnonymous);
         }
       } else {
         setUser(null);
@@ -158,8 +199,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => { mounted = false; sub.unsubscribe(); };
-  }, [initProfile]);
+    // FIX 3: cleanup properly unsubscribes
+    return () => {
+      console.log('[AuthContext] Tearing down Supabase session listener');
+      mounted = false;
+      sub.unsubscribe();
+    };
+  }, []); // ← FIX 1: empty deps — registered exactly once
 
   // ── Auth actions ──
   const signInWithEmail = async (email: string, password: string) => {
@@ -167,8 +213,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
     if (e) { setError(e.message); setLoading(false); throw e; }
     if (data.session?.user) {
-      setUser(toAppUser(data.session.user));
-      if (!initializedRef.current) { initializedRef.current = true; initProfile(data.session.user.id); }
+      const au = toAppUser(data.session.user);
+      setUser(prev => isSameUser(prev, au) ? prev : au);
+      if (!initializedRef.current) { initializedRef.current = true; initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous); }
     }
     setLoading(false);
     return data;
@@ -179,8 +226,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: email.split('@')[0] } } });
     if (e) { setError(e.message); setLoading(false); throw e; }
     if (data.session?.user) {
-      setUser(toAppUser(data.session.user));
-      if (!initializedRef.current) { initializedRef.current = true; initProfile(data.session.user.id); }
+      const au = toAppUser(data.session.user);
+      setUser(prev => isSameUser(prev, au) ? prev : au);
+      if (!initializedRef.current) { initializedRef.current = true; initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous); }
     }
     setLoading(false);
     return data;
@@ -191,9 +239,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error: e } = await supabase.auth.signInAnonymously();
     if (e) { setError(e.message); setLoading(false); throw e; }
     if (data.session?.user) {
-      setUser(toAppUser(data.session.user));
+      const au = toAppUser(data.session.user);
+      setUser(prev => isSameUser(prev, au) ? prev : au);
       initializedRef.current = true;
-      initProfile(data.session.user.id);
+      initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous);
     }
     setLoading(false);
   };
@@ -231,7 +280,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendPasswordReset = async (_email?: string) => {
-    // Supabase redirect-based recovery; placeholder for API compatibility
     console.log('[AuthContext] Password reset not yet ported from Firebase');
   };
 
@@ -240,7 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUserData = async () => {
-    if (user) await initProfile(user.uid);
+    if (user) await initProfile(user.uid, user.email, user.displayName, user.photoURL, user.isAnonymous);
   };
 
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
