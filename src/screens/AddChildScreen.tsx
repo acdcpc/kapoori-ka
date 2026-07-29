@@ -228,6 +228,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
     try {
             if (!user) return Alert.alert('Error', isNe ? 'कृपया पहिले लगइन गर्नुहोस्' : 'Please login first');
 
+      console.log('[AddChild] Attempting save — user.uid:', user.uid);
       const { data: childData, error: childErr } = await supabase
         .from('children')
         .insert({
@@ -283,7 +284,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
       }
 
       Alert.alert('Success', `${storedName} added!`, [{ text: 'OK', onPress: () => navigation.goBack() }]);
-    } catch {
+    } catch (err: any) {
+      console.error('AddChild save error:', err?.message || err);
       Alert.alert('Error', 'Could not save.');
     } finally { setSaving(false); }
   };
