@@ -1,0 +1,102 @@
+// Column access helpers: WHO centile tables use format [age, SD-3, SD-2, SD0, SD2, SD3]
+// Indices: 0=age, 1=SD-3, 2=SD-2, 3=SD0(median), 4=SD2, 5=SD3
+
+import { WHO_WAZ_BOYS, WHO_WAZ_GIRLS } from '../data/whoLMS';
+import { WHO_HFA_BOYS, WHO_HFA_GIRLS } from '../data/whoHFA';
+import { WHO_WFA_BOYS, WHO_WFA_GIRLS } from '../data/whoWFA';
+import { WHO_BFA_BOYS, WHO_BFA_GIRLS } from '../data/whoBFA';
+
+// Find closest row at or before ageMonths in a sorted centile table
+function findClosest(table: number[][], ageMonths: number): number[] {
+  let closest = table[0];
+  for (const row of table) {
+    if (row[0] <= ageMonths) closest = row;
+    else break;
+  }
+  return closest;
+}
+
+// Centile-based range (used for height, weight >60mo, and BMI)
+interface CentileRange { min: number; ideal: number; max: number; }
+function centileRange(row: number[]): CentileRange {
+  return { min: row[2], ideal: row[3], max: row[4] };
+}
+
+// LMS z-score calculation (WHO standard, 0-60mo weight only)
+function lmsToZ(L: number, M: number, S: number, z: number): number {
+  if (L === 0) return M * Math.exp(S * z);
+  const base = 1 + L * S * z;
+  if (base <= 0) return M;
+  return M * Math.pow(base, 1 / L);
+}
+
+function weightFromLMS(ageMonths: number, sex: 'male' | 'female'): CentileRange {
+  const table = sex === 'male' ? WHO_WAZ_BOYS : WHO_WAZ_GIRLS;
+  const row = findClosest(table, ageMonths);
+  const L = row[1], M = row[2], S = row[3];
+  return {
+    min: Math.round(lmsToZ(L, M, S, -2) * 10) / 10,
+    ideal: Math.round(M * 10) / 10,
+    max: Math.round(lmsToZ(L, M, S, 2) * 10) / 10,
+  };
+}
+
+function weightFromCentile(ageMonths: number, sex: 'male' | 'female'): CentileRange {
+  const table = sex === 'male' ? WHO_WFA_BOYS : WHO_WFA_GIRLS;
+  return centileRange(findClosest(table, ageMonths));
+}
+
+function heightFromCentile(ageMonths: number, sex: 'male' | 'female'): CentileRange {
+  const table = sex === 'male' ? WHO_HFA_BOYS : WHO_HFA_GIRLS;
+  return centileRange(findClosest(table, ageMonths));
+}
+
+function bmiFromCentile(ageMonths: number, sex: 'male' | 'female'): CentileRange {
+  const table = sex === 'male' ? WHO_BFA_BOYS : WHO_BFA_GIRLS;
+  return centileRange(findClosest(table, ageMonths));
+}
+
+// Get Ideal Ranges for weight, height, and BMI — full 0-216mo range
+export const getIdealRanges = (ageMonths: number, sex: 'male' | 'female') => {
+  // Weight: LMS formula for 0-60mo (more precise), centile table for 61-216mo
+  const weight = ageMonths <= 60
+    ? weightFromLMS(ageMonths, sex)
+    : weightFromCentile(ageMonths, sex);
+
+  const height = heightFromCentile(ageMonths, sex);
+  const bmi = bmiFromCentile(ageMonths, sex);
+
+  return { weight, height, bmi };
+};
+
+// Classify growth using weight-for-age ratio (0.85-1.15 green, 0.75-1.25 yellow, else red)
+// Falls back to grey when no weight data
+export const classifyGrowthStatus = (
+  weight: number | null | undefined,
+  _height: number | null | undefined,
+  ageMonths: number,
+  sex: 'male' | 'female'
+): {
+  status: 'green' | 'yellow' | 'red' | 'grey';
+  labelEn: string;
+  labelNe: string;
+} => {
+  if (!weight) {
+    return { status: 'grey', labelEn: 'Not yet measured', labelNe: 'नाप भएको छैन' };
+  }
+  const ranges = getIdealRanges(ageMonths, sex);
+  if (ranges.weight.ideal > 0) {
+    const ratio = weight / ranges.weight.ideal;
+    if (ratio >= 0.85 && ratio <= 1.15) {
+      return { status: 'green', labelEn: 'Normal', labelNe: 'सामान्य' };
+    } else if (ratio >= 0.75 && ratio <= 1.25) {
+      return { status: 'yellow', labelEn: 'Needs attention', labelNe: 'ध्यान दिनुहोस्' };
+    } else {
+      return { status: 'red', labelEn: 'See doctor', labelNe: 'डाक्टर देखाउनुहोस्' };
+    }
+  }
+  return { status: 'grey', labelEn: 'Weight needed', labelNe: 'तौल चाहिन्छ' };
+};
+
+// ---- existing helpers below unchanged ----
+
