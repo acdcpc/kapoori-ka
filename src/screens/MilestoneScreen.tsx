@@ -3,12 +3,13 @@ import React, { useContext, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, ScrollView, StatusBar,
-  Modal
+  Modal, Image, Animated,
 } from 'react-native';
-import { collection, getDocs, addDoc, query, where, doc, setDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
-import { db } from '../../firebase';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import * as Speech from 'expo-speech';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguageContext } from '../context/LanguageContext';
@@ -20,6 +21,7 @@ import { getAgeInMonths } from '../utils/growthCalculations';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PremiumGuard } from '../components/PremiumGuard';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Milestone'>;
 
@@ -41,6 +43,9 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());
   const [deniedIds, setDeniedIds] = useState<Set<string>>(new Set());
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [celebratingId, setCelebratingId] = useState<string | null>(null);
+  const [animScale] = useState(new Animated.Value(1));
   const [loading, setLoading] = useState(true);
   const [showFullChart, setShowFullChart] = useState(false);
 
@@ -53,14 +58,16 @@ export default function MilestoneScreen({ route, navigation }: Props) {
 
   const loadRecords = async () => {
     try {
-      const q = query(collection(db, 'milestones'), where('childId', '==', child.id));
-      const snapshot = await getDocs(q);
+      const { data, error: sbError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('child_id', child.id);
+      if (sbError) throw sbError;
       const achieved = new Set<string>();
       const denied = new Set<string>();
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.status === 'denied') denied.add(data.milestoneId);
-        else achieved.add(data.milestoneId);
+      (data || []).forEach((r: any) => {
+        if (r.status === 'denied') denied.add(r.milestone_id);
+        else achieved.add(r.milestone_id);
       });
       setAchievedIds(achieved); setDeniedIds(denied);
     } catch { Alert.alert('Error', 'Could not load records.'); }
@@ -68,6 +75,9 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   };
 
   useEffect(() => { loadRecords(); }, [child.id]);
+  useEffect(() => {
+    return () => { Speech.stop(); };
+  }, []);
 
   const updateStatus = async (milestoneId: string, status: 'achieved' | 'denied') => {
     if (!isPremium) {
@@ -75,9 +85,29 @@ export default function MilestoneScreen({ route, navigation }: Props) {
       return;
     }
     try {
-      const docId = `${child.id}_${milestoneId}`;
-      await setDoc(doc(db, 'milestones', docId), { childId: child.id, milestoneId, status, updatedAt: dayjs().toISOString(), ageAtUpdate: ageMonths });
-      if (status === 'achieved') { setAchievedIds(prev => new Set([...prev, milestoneId])); setDeniedIds(prev => { const n = new Set(prev); n.delete(milestoneId); return n; }); }
+      const { error: sbError } = await supabase
+        .from('milestones')
+        .upsert({
+          child_id: child.id,
+          user_id: useAuth().user?.uid || '',
+          milestone_id: milestoneId,
+          status,
+          age_at_update: ageMonths,
+          updated_at: dayjs().toISOString(),
+        }, { onConflict: 'child_id, milestone_id' });
+      if (sbError) throw sbError;
+      if (status === 'achieved') {
+        setAchievedIds(prev => new Set([...prev, milestoneId]));
+        setDeniedIds(prev => { const n = new Set(prev); n.delete(milestoneId); return n; });
+        const milestone = currentMilestones.find(m => m.id === milestoneId);
+        if (milestone && milestone.flagLevel !== 'red') {
+          setCelebratingId(milestoneId);
+          Animated.sequence([
+            Animated.spring(animScale, { toValue: 1.05, useNativeDriver: true, speed: 12, bounciness: 8 }),
+            Animated.spring(animScale, { toValue: 1, useNativeDriver: true, speed: 8, bounciness: 4 }),
+          ]).start(() => setCelebratingId(null));
+        }
+      }
       else { setDeniedIds(prev => new Set([...prev, milestoneId])); setAchievedIds(prev => { const n = new Set(prev); n.delete(milestoneId); return n; }); }
     } catch { Alert.alert('Error', 'Could not save.'); }
   };
@@ -92,8 +122,12 @@ export default function MilestoneScreen({ route, navigation }: Props) {
     const showWarning = (isRedFlag && isAchieved) || (!isRedFlag && isDenied);
     const domain = DOMAIN_COLORS[item.domain] || DOMAIN_COLORS.motor;
 
+    const isThisCelebrating = celebratingId === item.id;
+    const CardWrapper = isThisCelebrating ? Animated.View : View;
+    const scaleStyle = isThisCelebrating ? { transform: [{ scale: animScale }] } : {};
+
     return (
-      <View key={item.id} style={[styles.card, isRedFlag && styles.redCard, showWarning && styles.warningCard]}>
+      <CardWrapper key={item.id} style={[styles.card, isRedFlag && styles.redCard, showWarning && styles.warningCard, scaleStyle]}>
         {/* Category Pill */}
         <View style={[styles.domainPill, { backgroundColor: domain.bg }]}>
           <Text style={styles.domainPillIcon}>{domain.icon}</Text>
@@ -102,7 +136,12 @@ export default function MilestoneScreen({ route, navigation }: Props) {
           </Text>
         </View>
 
-        <Text style={styles.descText}>{isNe ? item.descriptionNepali : item.description}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <Text style={[styles.descText, { flex: 1 }]}>{isNe ? item.descriptionNepali : item.description}</Text>
+          <TouchableOpacity onPress={(e: any) => { e.stopPropagation?.(); Speech.speak(isNe ? item.descriptionNepali : item.description); }}>
+            <Ionicons name="volume-high" size={16} color="#7A6E65" />
+          </TouchableOpacity>
+        </View>
 
         {showWarning && (
           <View style={styles.warningBox}>
@@ -129,7 +168,13 @@ export default function MilestoneScreen({ route, navigation }: Props) {
             </TouchableOpacity>
           </View>
         )}
-      </View>
+
+        {/* Photo attachment section */}
+        {isAchieved && (
+          <>
+          </>
+        )}
+      </CardWrapper>
     );
   };
 
@@ -245,6 +290,8 @@ const styles = StyleSheet.create({
   toggleBtnText: { fontSize: 14, fontWeight: '600', color: '#7A6E65' },
   toggleBtnTextActive: { color: '#fff' },
   toggleBtnTextDenied: { color: '#1A1A2E' },
+
+  // Photo attachment
 
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A2E' },

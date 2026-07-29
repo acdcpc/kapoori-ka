@@ -24,6 +24,7 @@ import {
 
 import { Asset } from 'expo-asset';
 import { useResizePlugin } from 'vision-camera-resize-plugin';
+import { Worklets } from 'react-native-worklets-core';
 import { Accelerometer } from 'expo-sensors';
 import { LanguageContext } from '../context/LanguageContext';
 import type { PoseLandmark, TiltState, MeasureState } from '../ai/PoseTypes';
@@ -35,8 +36,6 @@ import {
   smoothHeight, resetAll, qualityTier, updateLock, unlockMeasurement,
 } from '../ai/heightEstimator';
 
-// declare runOnJS (injected by VisionCamera in worklet scope)
-declare function runOnJS<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => void;
 
 // ── Layout ──
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -106,6 +105,7 @@ function WebOnly() {
 let _frameCnt = 0;
 let _detCnt = 0;
 let _lmLogged = false;
+let _consecutiveFails = 0;
 
 // ── Model loading phases ──
 type ModelPhase = 'idle' | 'resolving_assets' | 'downloading_assets' | 'loading_detector' | 'loading_landmark' | 'verifying' | 'ready' | 'error';
@@ -275,13 +275,28 @@ export default function HeightMeasureScreen() {
         console.log('[HEIGHT] ✅ Landmark loaded');
 
         setModelPhase('verifying');
-        console.log('[HEIGHT] ═══ STEP 3: Dummy inference ═══');
+        console.log('[HEIGHT] ═══ STEP 3: Warm-up verification (runSync + fresh copies) ═══');
 
-        const detOutput = await detModel.run([new Float32Array(224 * 224 * 3).fill(0.5)]);
-        console.log('[HEIGHT] Detector dummy run OK:', detOutput.length, 'outputs');
+        // Use runSync() (not async .run()) to match the frame processor's
+        // production code path. Copy buffer before passing (same pattern as
+        // detInputCopy/lmInputCopy in the per-frame pipeline) so TFLite's
+        // zero-copy transfer never detaches a reused reference.
+        try {
+          const detBuf = new Float32Array(new Float32Array(224 * 224 * 3).fill(0.5));
+          const detOutput = detModel.runSync([detBuf]);
+          if (!detOutput || !detOutput[0]) throw new Error('Detector warm-up produced no output');
+          console.log('[HEIGHT] ✅ Detector warm-up OK, outputs=', detOutput.length);
 
-        const lmOutput = await lmModel.run([new Float32Array(256 * 256 * 3).fill(0.5)]);
-        console.log('[HEIGHT] Landmark dummy run OK:', lmOutput.length, 'outputs');
+          const lmBuf = new Float32Array(new Float32Array(256 * 256 * 3).fill(0.5));
+          const lmOutput = lmModel.runSync([lmBuf]);
+          if (!lmOutput || !lmOutput[0]) throw new Error('Landmark warm-up produced no output');
+          console.log('[HEIGHT] ✅ Landmark warm-up OK, outputs=', lmOutput.length);
+        } catch (e: any) {
+          console.error('[HEIGHT] ❌ Model warm-up failed:', e?.message || e);
+          setModelPhase('error');
+          setModelError(`model_verify: ${e?.message || e}`);
+          return;
+        }
 
         setModelPhase('ready');
         console.log('[HEIGHT] 🎉 Models ready');
@@ -326,6 +341,24 @@ export default function HeightMeasureScreen() {
     return () => sub?.remove();
   }, []);
 
+  // ── Refs for values read inside the worklet→JS callback ──
+  // onResult (below) must NOT close over `tilt`, `language`, or `locked`
+  // directly. Doing so gives onResult a new identity every time any of them
+  // changes (tilt changes ~10x/sec from the accelerometer), which in turn
+  // changes runOnJSImpl's identity (it's a useMemo keyed on [setDiag, onResult]).
+  // But the frame processor's useFrameProcessor dependency array only lists
+  // [detModel, lmModel, resize] — per VisionCamera's worklet closure rules,
+  // the frame processor freezes on whichever onResultJS reference existed the
+  // moment those deps last changed, and keeps calling that one forever. That
+  // means height estimation would silently use a stale tilt/language/locked
+  // reading from app-launch time for the rest of the session. Reading from
+  // refs keeps onResult's identity — and therefore runOnJSImpl's — stable
+  // while still always seeing the latest value.
+  const tiltRef = useRef(tilt);
+  useEffect(() => { tiltRef.current = tilt; }, [tilt]);
+  const languageRef = useRef(language);
+  useEffect(() => { languageRef.current = language; }, [language]);
+
   // ── State ──
   const [ms, setMs] = useState<MeasureState>({
     canMeasure: false, statusMessage: n ? 'क्यामेरा सुरु गर्दै...' : 'Starting camera...',
@@ -334,6 +367,7 @@ export default function HeightMeasureScreen() {
   const [diag, setDiag] = useState<string>('init');
   const [capturedH, setCapturedH] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false); // mirrors `locked`, read inside the stable onResult callback
   const [lockedHt, setLockedHt] = useState<number | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
@@ -343,8 +377,14 @@ export default function HeightMeasureScreen() {
   const landmarksRef = useRef<PoseLandmark[]>([]);
   const firstResultLogged = useRef(false);
 
-  // JS callback from worklet
+  // JS callback from worklet.
+  // Reads tilt/language/locked from refs (not closure) so this callback's
+  // identity — and therefore runOnJSImpl's — never changes across renders.
+  // See the "Refs for values read inside the worklet→JS callback" block above.
   const onResult = useCallback((landmarks: PoseLandmark[], detScore: number) => {
+    const currentTilt = tiltRef.current;
+    const currentLanguage = languageRef.current;
+
     if (!firstResultLogged.current) {
       firstResultLogged.current = true;
       console.log('[HEIGHT] ✅ First result reached JS! Landmarks:', landmarks.length, 'Score:', detScore);
@@ -352,13 +392,14 @@ export default function HeightMeasureScreen() {
     }
     landmarksRef.current = landmarks;
     lastDetScore.current = detScore;
-    const r = estimateHeight(landmarks, tilt, BOX_TOP, BOX_BOT, detScore, SH);
+    const r = estimateHeight(landmarks, currentTilt, BOX_TOP, BOX_BOT, detScore, SH);
     const inBox = r.heightCm !== null;
     const vis = landmarks.some(l => l.visibility >= 0.7);
 
     if (r.heightCm !== null) {
       const lockState = updateLock(r.heightCm, r.confidence);
-      if (lockState.locked && lockState.measurement && !locked) {
+      if (lockState.locked && lockState.measurement && !lockedRef.current) {
+        lockedRef.current = true; // set immediately — don't wait for the effect round trip
         setLocked(true);
         setLockedHt(lockState.measurement.heightCm);
         setCapturedH(lockState.measurement.heightCm);
@@ -367,12 +408,12 @@ export default function HeightMeasureScreen() {
     }
 
     setMs({
-      canMeasure: inBox && tilt.isUpright && r.confidence >= 0.4,
-      statusMessage: getMeasureStatusMessage(r, tilt, language as 'en' | 'ne'),
-      tiltOk: tilt.isUpright, landmarksVisible: vis, childInBox: inBox,
+      canMeasure: inBox && currentTilt.isUpright && r.confidence >= 0.4,
+      statusMessage: getMeasureStatusMessage(r, currentTilt, currentLanguage as 'en' | 'ne'),
+      tiltOk: currentTilt.isUpright, landmarksVisible: vis, childInBox: inBox,
       estimatedHeightCm: r.heightCm, confidence: r.confidence,
     });
-  }, [tilt, language]);
+  }, []); // stable forever — reads live values via refs, never needs to be recreated
 
   // Merge tilt
   useEffect(() => {
@@ -409,14 +450,35 @@ export default function HeightMeasureScreen() {
     }
   }, [modelsLoading, modelPhase, detUrl, lmUrl]);
 
+  
+  // ── createRunOnJS bindings: stable worklet→JS callbacks ──
+  // Using react-native-worklets-core's documented API instead of the
+  // undocumented `runOnJS` global (which Metro incorrectly resolves at
+  // module scope, causing "ReferenceError: Property 'runOnJS' doesn't exist").
+  // Both setDiag (a useState setter) and onResult (now built with an empty
+  // dependency array, see above) have stable identities across renders, so
+  // this useMemo genuinely only runs once per mount — it will NOT churn
+  // every time tilt/language change, which is what previously caused the
+  // frame processor to freeze on a stale callback.
+  const runOnJSImpl = useMemo(() => {
+    return {
+      setDiagJS: Worklets.createRunOnJS(setDiag),
+      onResultJS: Worklets.createRunOnJS(onResult),
+    };
+  }, [setDiag, onResult]);
+
   // ── TWO-STAGE FRAME PROCESSOR ──
+  // runOnJSImpl is included defensively: it's stable today (see above), but
+  // if onResult ever gains a real dependency again in the future, this
+  // ensures the frame processor gets rebuilt to match rather than silently
+  // going stale a second time.
   const fp = useFrameProcessor((frame) => {
     'worklet';
     if (!detModel || !lmModel || !resize) return;
 
     _frameCnt += 1;
-    if (_frameCnt === 1) runOnJS(setDiag)('frame_1');
-    if (_frameCnt === 30) runOnJS(setDiag)('frame_30');
+    if (_frameCnt === 1) runOnJSImpl.setDiagJS('frame_1');
+    if (_frameCnt === 30) runOnJSImpl.setDiagJS('frame_30');
 
     runAtTargetFps(8, () => {
       try {
@@ -426,32 +488,24 @@ export default function HeightMeasureScreen() {
         });
         if (!detInput || detInput.length === 0) return;
 
-        const detOut = detModel.runSync([detInput as any]);
+        // Copy the resize output before passing to runSync: TFLite may
+        // take ownership of the underlying ArrayBuffer (zero-copy transfer
+        // to native), detaching it on the JS side. The resize plugin's
+        // internal buffer pool may recycle the same buffer for the next
+        // frame's lmInput call, which would then throw "ArrayBuffer is
+        // detached". Always give runSync its own copy.
+        const detInputCopy = new Float32Array(detInput);
+        const detOut = detModel.runSync([detInputCopy]);
         if (!detOut || !detOut[0]) return;
         const detRaw = new Float32Array(detOut[0] as unknown as ArrayBuffer);
-
-        // ── DEBUG: compare detOut[0] score (offset+4) vs sigmoid(detOut[1]) ──
-        // BlazePose detector: detOut[0]=Identity[1,2254,12], detOut[1]=Identity_1[1,2254,1]
-        // Sample first 5 anchors on first detection. Remove after verification.
-        if (_detCnt === 0 && detOut[1]) {
-          const sepBuf = new Float32Array(detOut[1] as unknown as ArrayBuffer);
-          const n = Math.min(5, Math.floor(detRaw.length / 12), sepBuf.length);
-          let debugStr = '';
-          for (let i = 0; i < n; i++) {
-            const combined = detRaw[i * 12 + 4];
-            const sig = 1 / (1 + Math.exp(-sepBuf[i]));
-            debugStr += combined.toFixed(4) + '|' + sig.toFixed(4) + ' ';
-          }
-          runOnJS(setDiag)('det_debug:' + debugStr.trim());
-        }
-        // ── END DEBUG ──
 
         const detections = parseDetections(detRaw);
         if (detections.length === 0) return;
 
         if (_detCnt === 0) {
           _detCnt += 1;
-          runOnJS(setDiag)('det_ok');
+          _consecutiveFails = 0;
+          runOnJSImpl.setDiagJS('det_ok');
         }
 
         const best = detections[0];
@@ -478,22 +532,32 @@ export default function HeightMeasureScreen() {
         });
         if (!lmInput || lmInput.length === 0) return;
 
-        const lmOut = lmModel.runSync([lmInput as any]);
+        // Same buffer-ownership concern as detInput above. The `lmInput`
+        // may share an internal buffer pool with detInput from the same
+        // resize plugin instance. Copy to a fresh ArrayBuffer.
+        const lmInputCopy = new Float32Array(lmInput);
+        const lmOut = lmModel.runSync([lmInputCopy]);
         if (!lmOut || !lmOut[0]) return;
 
         if (!_lmLogged) {
           _lmLogged = true;
-          runOnJS(setDiag)('lm_ok');
+          runOnJSImpl.setDiagJS('lm_ok');
         }
 
         const lmRaw = new Float32Array(lmOut[0] as unknown as ArrayBuffer);
         const landmarks = parseLandmarks(lmRaw, frame.width, frame.height, cx, cy, cw, ch);
-        runOnJS(onResult)(landmarks, score);
+        runOnJSImpl.onResultJS(landmarks, score);
       } catch {
-        // silent per-frame errors
+        // Consecutive-failure counter: if every frame fails for 5+ seconds
+        // (~40 frames at 8fps), surface the error to the user instead of
+        // leaving them stuck on "Finding child..." forever.
+        _consecutiveFails += 1;
+        if (_consecutiveFails >= 40) {
+          runOnJSImpl.setDiagJS('frame_error');
+        }
       }
     });
-  }, [detModel, lmModel, resize]);
+  }, [detModel, lmModel, resize, runOnJSImpl]);
 
   // ── Actions ──
   const capture = useCallback(() => {
@@ -511,6 +575,7 @@ export default function HeightMeasureScreen() {
   const retake = useCallback(() => {
     setCapturedH(null);
     setLocked(false);
+    lockedRef.current = false;
     setLockedHt(null);
     setShowGuide(true);
     resetAll();

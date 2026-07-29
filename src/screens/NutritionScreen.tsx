@@ -251,8 +251,8 @@ const styles = StyleSheet.create({
   ageRange: { fontSize: 16, fontWeight: '800', color: '#1A1A2E' },
   yourChildBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   yourChildBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  feedingBadge: { alignSelf: 'flex-start', marginTop: 4 },
-  feedingBadgeText: { fontSize: 13, color: '#7A6E65', fontWeight: '600' },
+  feedingBadge: { alignSelf: 'flex-start', marginTop: 4, backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  feedingBadgeText: { fontSize: 11, color: '#C0392B', fontWeight: '600' },
   ageCardBody: { padding: 14, paddingTop: 0 },
 
   pointRow: { flexDirection: 'row', marginBottom: 8, gap: 8 },

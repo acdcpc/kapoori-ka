@@ -11,6 +11,7 @@ export interface Child {
   birthLength?: number;   // cm
   gestationalAge?: number;
   parentPhone: string;
+  photoUri?: string | null;
   createdAt: string;
 }
 

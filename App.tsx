@@ -34,7 +34,7 @@ function Navigation() {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1a73e8" />
+        <ActivityIndicator size="large" color="#E8602C" />
       </View>
     );
   }
@@ -46,9 +46,11 @@ function Navigation() {
       <StatusBar style="auto" />
       <Stack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: '#1a73e8' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
+          headerStyle: { backgroundColor: '#FDF8F2' },
+          headerTintColor: '#1A1A2E',
+          headerTitleStyle: { fontWeight: '700', fontSize: 17, color: '#1A1A2E' },
+          headerShadowVisible: false,
+          headerBackTitleVisible: false,
         }}
       >
         {user ? (
@@ -107,7 +109,7 @@ export default function App() {
   if (!isReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1a73e8" />
+        <ActivityIndicator size="large" color="#E8602C" />
       </View>
     );
   }
