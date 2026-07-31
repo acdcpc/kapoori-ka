@@ -22,6 +22,7 @@
     "expo-image-picker": "~56.0.22",
     "expo-notifications": "~56.0.21",
     "expo-print": "~56.0.4",
+    "expo-secure-store": "~56.0.4",
     "expo-sensors": "~56.0.6",
     "expo-sharing": "~56.0.22",
     "expo-speech": "~56.0.3",
