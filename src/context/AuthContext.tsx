@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(prev => {
           // FIX 2: only update if identity actually changed (reference-stable)
           if (isSameUser(prev, appUser)) return prev;
-          console.log('[AuthContext] Initial session — setting user:', appUser.uid);
+          // console.log PII removed: user uid
           return appUser;
         });
         if (!initializedRef.current) {
@@ -175,16 +175,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((_ev, s) => {
       if (!mounted) return;
-      console.log('[AuthContext] onAuthStateChange:', _ev, s?.user?.id ?? 'no user');
+      // console.log PII removed: auth event with user id
       if (s?.user) {
         const appUser = toAppUser(s.user);
         setUser(prev => {
           // FIX 2: only update if identity actually changed
           if (isSameUser(prev, appUser)) {
-            console.log('[AuthContext] User unchanged — skipping setUser');
+            // debug log removed in production audit
             return prev;
           }
-          console.log('[AuthContext] User changed — setting user:', appUser.uid);
+          // console.log PII removed: user uid
           return appUser;
         });
         if (!initializedRef.current) {

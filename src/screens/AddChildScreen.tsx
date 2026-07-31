@@ -228,7 +228,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
     try {
             if (!user) return Alert.alert('Error', isNe ? 'कृपया पहिले लगइन गर्नुहोस्' : 'Please login first');
 
-      console.log('[AddChild] Attempting save — user.uid:', user.uid);
+      // console.log PII removed: user uid
       const { data: childData, error: childErr } = await supabase
         .from('children')
         .insert({
