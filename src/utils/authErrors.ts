@@ -1,5 +1,5 @@
 // src/utils/authErrors.ts
-// Centralized Firebase auth error → user-friendly bilingual messages
+// Centralized Firebase + Supabase auth error → user-friendly bilingual messages
 
 import type { Language } from '../i18n/translations';
 
@@ -72,10 +72,36 @@ const errorMap: Record<string, { en: string; ne: string }> = {
     en: 'This link has expired. Please request a new one.',
     ne: 'यो लिङ्कको म्याद सकियो। कृपया नयाँ अनुरोध गर्नुहोस्।',
   },
+  // Supabase Auth errors
+  'email_not_confirmed': {
+    en: 'Please verify your email before logging in. Check your inbox for a confirmation link.',
+    ne: 'कृपया लगइन गर्नु अघि आफ्नो इमेल भेरिफाइ गर्नुहोस्। आफ्नो इनबक्समा भेरिफिकेसन लिङ्क जाँच गर्नुहोस्।',
+  },
+  'Email not confirmed': {
+    en: 'Please verify your email before logging in. Check your inbox for a confirmation link.',
+    ne: 'कृपया लगइन गर्नु अघि आफ्नो इमेल भेरिफाइ गर्नुहोस्। आफ्नो इनबक्समा भेरिफिकेसन लिङ्क जाँच गर्नुहोस्।',
+  },
+  'Invalid login credentials': {
+    en: 'Incorrect email or password. Please try again.',
+    ne: 'गलत इमेल वा पासवर्ड। कृपया पुन: प्रयास गर्नुहोस्।',
+  },
+  'User already registered': {
+    en: 'This email is already registered. Please login instead.',
+    ne: 'यो इमेल पहिले नै दर्ता भएको छ। कृपया लगइन गर्नुहोस्।',
+  },
+  'Password should be at least 6 characters': {
+    en: 'Password must be at least 6 characters.',
+    ne: 'पासवर्ड कम्तिमा ६ characters को हुनुपर्छ।',
+  },
+  'For security purposes, you can only request this after': {
+    en: 'Too many attempts. Please wait a moment and try again.',
+    ne: 'धेरै प्रयास भयो। कृपया केही समय पर्खेर पुन: प्रयास गर्नुहोस्।',
+  },
 };
 
+
 /**
- * Get a user-friendly error message for a Firebase auth error code.
+ * Get a user-friendly error message for a Firebase/Supabase auth error code.
  */
 export function getAuthErrorMessage(error: unknown, language: Language): string {
   const defaultMsg =

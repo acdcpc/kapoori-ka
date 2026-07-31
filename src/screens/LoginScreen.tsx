@@ -39,7 +39,7 @@ export default function LoginScreen() {
 
   useEffect(() => { setAuthError(null); setVerificationSent(false); }, [isRegistering]);
 
-  const validateEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const validateEmail = (e: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(e);
 
   const handleEmailAction = async () => {
     setAuthError(null);
@@ -50,9 +50,13 @@ export default function LoginScreen() {
     try {
       if (isRegistering) {
         if (password !== confirmPassword) { setAuthError(isNe ? 'पासवर्ड मिलेन।' : 'Passwords do not match.'); setLocalLoading(false); return; }
-        await signUpWithEmail(email, password);
-        setVerificationSent(true);
-        setPassword(''); setConfirmPassword('');
+        const signUpResult = await signUpWithEmail(email, password);
+        // If signUp returned a session, email confirmation is disabled — user is logged in.
+        // If no session (only user), email confirmation is enabled — show verification message.
+        if (!signUpResult?.session) {
+          setVerificationSent(true);
+          setPassword(''); setConfirmPassword('');
+        }
       } else { await signInWithEmail(email, password); }
     } catch (error: any) { setAuthError(getAuthErrorMessage(error, language)); }
     finally { setLocalLoading(false); }

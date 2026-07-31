@@ -212,7 +212,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithEmail = async (email: string, password: string) => {
     setError(null); setLoading(true);
     const { data, error: e } = await supabase.auth.signInWithPassword({ email, password });
-    if (e) { setError(e.message); setLoading(false); throw e; }
+    if (e) {
+      // Detect unconfirmed email: Supabase returns 'Email not confirmed' when
+      // email confirmation is enabled in the dashboard and the user hasn't verified.
+      const msg = e.message || '';
+      if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+        setError('email_not_confirmed');
+      } else {
+        setError(msg);
+      }
+      setLoading(false);
+      throw e;
+    }
     if (data.session?.user) {
       const au = toAppUser(data.session.user);
       setUser(prev => isSameUser(prev, au) ? prev : au);
@@ -227,10 +238,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: email.split('@')[0] } } });
     if (e) { setError(e.message); setLoading(false); throw e; }
     if (data.session?.user) {
+      // Email confirmation is disabled → user is logged in immediately
       const au = toAppUser(data.session.user);
       setUser(prev => isSameUser(prev, au) ? prev : au);
       if (!initializedRef.current) { initializedRef.current = true; initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous); }
     }
+    // If data.user exists but data.session is null, email confirmation is enabled
+    // → user must verify email before logging in. LoginScreen shows verification message.
     setLoading(false);
     return data;
   };
