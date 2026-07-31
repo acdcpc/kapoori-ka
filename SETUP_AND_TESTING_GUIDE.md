@@ -195,7 +195,7 @@ For testing, use:
 - **Merchant Code:** `EPAYTEST`
 - **Test URL:** `https://uat.esewa.com.np/epay/main`
 - **Test Mobile:** `9841881234`
-- **Test Password:** `123456`
+- **Test Password:** `******` (use a test password, not a real one)
 
 #### Step 3: Integration
 
@@ -225,7 +225,7 @@ For testing, use:
 - **Public Key:** `test_public_key_xxxxx`
 - **Secret Key:** `test_secret_key_xxxxx`
 - **Test Phone:** `9841881234`
-- **Test OTP:** `123456`
+- **Test OTP:** `******` (use test credentials only)
 
 #### Step 3: Integration
 

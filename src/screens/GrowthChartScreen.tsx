@@ -92,6 +92,13 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const loadRecords = async () => {
     try {
       if (!user?.uid) { setRecords([]); return; }
+      if (!child?.id) {
+        // No child id — should not happen (screen requires child param),
+        // but guard against navigation edge cases.
+        setRecords([]);
+        setLoading(false);
+        return;
+      }
       const { data, error: sbError } = await supabase
         .from('growth_records')
         .select('*')
