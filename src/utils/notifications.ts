@@ -102,7 +102,7 @@ export const scheduleVaccineReminders = async (
             ? `${vaccine.name} is due on ${vaccine.scheduledDate}. Please prepare to visit the health post.`
             : `${vaccine.nameNe} को मिति ${vaccine.scheduledDate} छ। स्वास्थ्य चौकी जाने तयारी गर्नुहोला।`,
           data: { type: 'vaccine', vaccineId: vaccine.id, childName },
-          // channelId: 'vaccine-reminders',
+          // channelId removed in SDK 56 — channels created at startup in registerForPushNotifications()
         },
         trigger: { date: reminder2Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
       });
@@ -119,7 +119,7 @@ export const scheduleVaccineReminders = async (
             ? `Today is the scheduled date for ${vaccine.name}. Don't miss it!`
             : `आज ${childName}लाई ${vaccine.nameNe} लगाउने दिन हो। छुटाउनु नहोस्!`,
           data: { type: 'vaccine', vaccineId: vaccine.id, childName },
-          // channelId: 'vaccine-reminders',
+          // channelId removed in SDK 56 — channels created at startup in registerForPushNotifications()
         },
         trigger: { date: reminderDayOf.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
       });
@@ -155,7 +155,7 @@ export const scheduleMilestoneReminder = async (
         ? `Time to check ${childName}'s developmental milestones for this month.`
         : `${childName}को यस महिनाको विकास मापदण्ड जाँच्ने समय भयो।`,
       data: { type: 'milestone', childId },
-      // channelId: 'milestone-reminders',
+      // channelId removed in SDK 56
     },
     trigger: { date: nextMonth.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
   });
@@ -188,7 +188,7 @@ export const scheduleGrowthAlert = async (
         ? `${childName}'s latest measurement shows: ${statusLabel}. A pediatrician check is recommended — no rush, but don't delay.`
         : `${childName}को ताजा मापन: ${statusLabelNe}। बाल रोग विशेषज्ञसँग जाँच गराउन सिफारिस छ — हतार छैन, तर ढिलो नगर्नुहोस्।`,
       data: { type: 'growth', childId },
-      // channelId: 'growth-alerts',
+      // channelId removed in SDK 56
     },
     trigger: { date: alertTime, type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
   });

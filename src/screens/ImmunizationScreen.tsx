@@ -138,9 +138,28 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const loadRecords = async () => {
     try {
-      
-      // Already fetched via Supabase above
-    } catch { Alert.alert('Error', 'Could not load records.'); }
+      if (!user?.uid || !child?.id) { setVaccineRecords([]); return; }
+      const { data, error: sbError } = await supabase
+        .from('vaccinations')
+        .select('*')
+        .eq('child_id', child.id);
+      if (sbError) throw sbError;
+      const loaded: VaccineRecord[] = (data || []).map((d: any) => ({
+        id: d.id,
+        childId: d.child_id,
+        ownerId: d.user_id,
+        vaccineName: d.vaccine_name,
+        vaccineNameNepali: d.vaccine_name_nepali,
+        scheduledDate: d.scheduled_date,
+        givenDate: d.given_date,
+        isGiven: d.is_given,
+        isMissed: d.is_missed,
+      }));
+      setVaccineRecords(loaded);
+    } catch (e: any) {
+      console.error('Load vaccine records error:', e?.message || e);
+      Alert.alert('Error', 'Could not load records.');
+    }
     finally { setLoading(false); }
   };
 
@@ -150,10 +169,13 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    if (vaccineRecords.length > 0 && isPremium) {
+    if (vaccineRecords.length > 0) {
       const givenIds2 = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
       const missedIds2 = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
-      scheduleVaccineReminders(child.name, computeSchedule(child.dateOfBirth, givenIds2, missedIds2), language).catch(() => {});
+      const childName = child.name || (language === 'ne' ? 'तपाईंको बच्चा' : 'Your Child');
+      scheduleVaccineReminders(childName, computeSchedule(child.dateOfBirth, givenIds2, missedIds2), language).catch((err: any) => {
+        console.error('Failed to schedule vaccine reminders:', err?.message || err);
+      });
     }
   }, [vaccineRecords.length, isPremium]);
 
@@ -166,12 +188,37 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const confirmSetStatus = async (vaccine: ComputedVaccine, status: 'given' | 'missed', givenDate: string) => {
     try {
-      
-      // Already upserted via Supabase above
+      const { data: existing } = await supabase
+        .from('vaccinations')
+        .select('id')
+        .eq('child_id', child.id)
+        .eq('vaccine_name', vaccine.id)
+        .maybeSingle();
+
+      const record = {
+        child_id: child.id,
+        user_id: user?.uid || '',
+        vaccine_name: vaccine.id,
+        vaccine_name_nepali: vaccine.nameNe,
+        scheduled_date: vaccine.scheduledDate,
+        given_date: status === 'given' ? givenDate : null,
+        is_given: status === 'given',
+        is_missed: status === 'missed',
+      };
+
+      if (existing) {
+        await supabase.from('vaccinations').update(record).eq('id', existing.id);
+      } else {
+        await supabase.from('vaccinations').insert(record);
+      }
+
       await loadRecords();
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
-    } catch { Alert.alert('Error', 'Could not save.'); }
+    } catch (e: any) {
+      console.error('Save vaccine error:', e?.message || e);
+      Alert.alert('Error', 'Could not save.');
+    }
   };
 
   if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
