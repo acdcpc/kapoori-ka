@@ -134,6 +134,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const [bsMonth, setBsMonth] = useState(4);
   const [bsDay, setBsDay] = useState(1);
   const [selectedADDate, setSelectedADDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const loadRecords = async () => {
     try {
@@ -213,12 +214,12 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                 {isNe ? 'सबै' : 'All'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('upcoming') : null}>
+            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('upcoming') : setShowPremiumModal(true)}>
               <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'upcoming') ? undefined : styles.filterPillTextActive]}>
                 {isNe ? 'आउँदो' : 'Upcoming'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('missed') : null}>
+            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('missed') : setShowPremiumModal(true)}>
               <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'missed') ? undefined : styles.filterPillTextActive]}>
                 {isNe ? 'छुट्यो' : 'Missed'}
               </Text>
@@ -322,6 +323,24 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
           </ScrollView>
         </ScrollView>
       )}
+
+      {/* Premium Modal — shown when free users tap Upcoming/Missed */}
+      <Modal visible={showPremiumModal} transparent animationType="fade" onRequestClose={() => setShowPremiumModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Ionicons name="diamond-outline" size={48} color="#E8602C" style={{ marginBottom: 12 }} />
+            <Text style={styles.modalTitle}>{isNe ? 'प्रिमियम सुविधा' : 'Premium Feature'}</Text>
+            <Text style={[styles.modalSubtitle, { marginBottom: 20, lineHeight: 22 }]}>
+              {isNe
+                ? 'आउँदो र छुटेका खोपहरूको विस्तृत ट्र्याकिङ्ग प्रिमियम सदस्यता सहित उपलब्ध छ।'
+                : 'Upcoming & missed vaccine tracking with detailed schedules is available with a premium subscription.'}
+            </Text>
+            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%' }]} onPress={() => setShowPremiumModal(false)}>
+              <Text style={styles.modalConfirmBtnText}>{isNe ? 'बुझें' : 'Got it'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="slide">
