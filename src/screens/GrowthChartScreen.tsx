@@ -91,10 +91,29 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
 
   const loadRecords = async () => {
     try {
-      
-      // Already fetched via Supabase above
-      const loaded: GrowthRecord[] = (records as any) || [];
-    } catch { Alert.alert('Error', isNe ? 'डेटा लोड भएन।' : 'Could not load growth records.'); }
+      if (!user?.uid) { setRecords([]); return; }
+      const { data, error: sbError } = await supabase
+        .from('growth_records')
+        .select('*')
+        .eq('child_id', child.id)
+        .order('date', { ascending: true });
+      if (sbError) throw sbError;
+      const loaded: GrowthRecord[] = (data || []).map((d: any) => ({
+        id: d.id,
+        childId: d.child_id,
+        ownerId: d.user_id,
+        date: d.date,
+        weight: d.weight,
+        height: d.height,
+        notes: d.notes,
+        ageMonths: d.age_months,
+        bsDate: d.bs_date,
+      }));
+      setRecords(loaded);
+    } catch (e: any) {
+      console.error('Load growth records error:', e?.message || e);
+      Alert.alert('Error', isNe ? 'डेटा लोड भएन।' : 'Could not load growth records.');
+    }
     finally { setLoading(false); }
   };
 
@@ -189,7 +208,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
 
   if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
 
-  if (!loading && records.length === 0) {
+  if (records.length === 0) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
         <View style={styles.firstCard}>
