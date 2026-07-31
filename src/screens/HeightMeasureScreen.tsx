@@ -250,7 +250,7 @@ export default function HeightMeasureScreen() {
   useEffect(() => {
     if (!detUrl || !lmUrl) return;
     if (modelPhase === 'ready' || modelPhase === 'error') return;
-    if (modelPhase === 'loading_detector' || modelPhase === 'loading_landmark' || modelPhase === 'verifying') return;
+    if (modelPhase === 'loading_detector' || modelPhase === 'loading_landmark') return;
 
     const { loadTensorflowModel: loadTF } = require('react-native-fast-tflite');
 
@@ -274,30 +274,13 @@ export default function HeightMeasureScreen() {
         lmModelRef.current = lmModel;
         console.log('[HEIGHT] ✅ Landmark loaded');
 
-        setModelPhase('verifying');
-        console.log('[HEIGHT] ═══ STEP 3: Warm-up verification (runSync + fresh copies) ═══');
-
-        // Use runSync() (not async .run()) to match the frame processor's
-        // production code path. Copy buffer before passing (same pattern as
-        // detInputCopy/lmInputCopy in the per-frame pipeline) so TFLite's
-        // zero-copy transfer never detaches a reused reference.
-        try {
-          const detBuf = new Float32Array(new Float32Array(224 * 224 * 3).fill(0.5));
-          const detOutput = detModel.runSync([detBuf]);
-          if (!detOutput || !detOutput[0]) throw new Error('Detector warm-up produced no output');
-          console.log('[HEIGHT] ✅ Detector warm-up OK, outputs=', detOutput.length);
-
-          const lmBuf = new Float32Array(new Float32Array(256 * 256 * 3).fill(0.5));
-          const lmOutput = lmModel.runSync([lmBuf]);
-          if (!lmOutput || !lmOutput[0]) throw new Error('Landmark warm-up produced no output');
-          console.log('[HEIGHT] ✅ Landmark warm-up OK, outputs=', lmOutput.length);
-        } catch (e: any) {
-          console.error('[HEIGHT] ❌ Model warm-up failed:', e?.message || e);
-          setModelPhase('error');
-          setModelError(`model_verify: ${e?.message || e}`);
-          return;
-        }
-
+        // Skip warm-up runSync(): on Samsung A24 (Mediatek Helio G99, CPU-only delegate),
+        // runSync() detaches the ArrayBuffer even with a fresh copy, causing 'ArrayBuffer is
+        // detached' errors. The warm-up is not needed for the frame-processor pipeline to work,
+        // since per-frame runSync() calls use camera frame buffers (not JS-allocated Float32Array).
+        // Instead, the frame processor's consecutive-failure counter (40 frames ≈ 5 seconds)
+        // surfaces real inference failures via the 'frame_error' diagnostic.
+        console.log('[HEIGHT] ═══ STEP 3: Skipping warm-up (flag-based approach) ═══');
         setModelPhase('ready');
         console.log('[HEIGHT] 🎉 Models ready');
       } catch (e: any) {
