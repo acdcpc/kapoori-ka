@@ -9,6 +9,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { functions } from '../../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { supabase } from '../lib/supabase';
@@ -249,15 +250,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     setError(null); setLoading(true);
-    const { data, error: e } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        skipBrowserRedirect: false,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    });
-    if (e) { setError(e.message); setLoading(false); throw e; }
-    setLoading(false);
+    try {
+      const redirectTo = makeRedirectUri({
+        scheme: 'com.kapoori.ka',
+        path: 'auth/callback',
+      });
+      console.log('[AuthContext] Google sign-in redirect URL:', redirectTo);
+
+      const { data, error: e } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        },
+      });
+
+      if (e) {
+        console.error('[AuthContext] Google sign-in OAuth error:', e.message);
+        setError(e.message);
+        setLoading(false);
+        throw e;
+      }
+
+      if (!data?.url) {
+        const msg = 'No OAuth URL returned from Supabase';
+        console.error('[AuthContext]', msg);
+        setError(msg);
+        setLoading(false);
+        throw new Error(msg);
+      }
+
+      console.log('[AuthContext] Opening browser for Google sign-in...');
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+        showInRecents: true,
+      });
+
+      console.log('[AuthContext] Browser result type:', result.type);
+
+      if (result.type === 'success') {
+        // Session is picked up by onAuthStateChange listener automatically
+        console.log('[AuthContext] Google sign-in browser returned success');
+      } else if (result.type === 'cancel') {
+        console.log('[AuthContext] Google sign-in cancelled by user');
+        setLoading(false);
+      } else {
+        console.log('[AuthContext] Google sign-in browser returned:', result.type);
+        setLoading(false);
+      }
+    } catch (error: any) {
+      console.error('[AuthContext] Google sign-in failed:', error?.message || error);
+      setError(error?.message || 'Google sign-in failed');
+      setLoading(false);
+      throw error;
+    }
   };
 
   const signOutUser = async () => {

@@ -7,6 +7,7 @@ import { LanguageContext } from './src/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import AddChildScreen from './src/screens/AddChildScreen';
@@ -75,6 +76,9 @@ function Navigation() {
     </NavigationContainer>
   );
 }
+
+// Handle auth session completion for OAuth redirects
+WebBrowser.maybeCompleteAuthSession();
 
 export default function App() {
   const [language, setLanguage] = useState<'en' | 'ne'>('ne');
