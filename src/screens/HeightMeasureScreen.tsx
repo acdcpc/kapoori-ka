@@ -120,6 +120,17 @@ let _consecutiveFails = 0;
 type ModelPhase = 'idle' | 'resolving_assets' | 'downloading_assets' | 'loading_detector' | 'loading_landmark' | 'verifying' | 'ready' | 'error';
 
 // ─────────────────────────────────────────────────────────
+// ── Worklet-safe orientation helper (module scope) ──
+// Must be at module scope so the worklet can reference it without
+// capturing a component-local closure variable (which worklets can't do).
+function _toOrientation(s: string): '0deg' | '90deg' | '270deg' | '180deg' | undefined {
+  if (s === 'portrait') return '0deg';
+  if (s === 'landscape-left') return '90deg';
+  if (s === 'landscape-right') return '270deg';
+  if (s === 'landscape') return '180deg';
+  return undefined;
+}
+
 export default function HeightMeasureScreen() {
   const { language } = useContext(LanguageContext);
   const n = language === 'ne';
@@ -523,31 +534,30 @@ export default function HeightMeasureScreen() {
     runAtTargetFps(8, () => {
       try {
         // Stage 1: Detector — resize on worklet, inference on JS thread
-        const detInput = resize.resize(frame, {
+        var detInput = resize.resize(frame, {
           scale: { width: 224, height: 224 },
           pixelFormat: 'rgb', dataType: 'float32',
         });
-        if (detInput?.length) {
-          runDetectorJS(new Float32Array(detInput).buffer as ArrayBuffer, frame.width, frame.height);
+        if (detInput && detInput.length) {
+          var detCopy = new Float32Array(detInput);
+          runDetectorJS(detCopy.buffer, frame.width, frame.height);
         }
 
         // Stage 2: Landmark — use crop from detector, resize on worklet, inference on JS thread
-        const crop = _gCropRes;
+        var crop = _gCropRes;
         if (!crop || crop.cw < 50 || crop.ch < 50) return;
 
-        const rotation = (frame as any).orientation === 'portrait' ? '0deg'
-          : (frame as any).orientation === 'landscape-left' ? '90deg'
-          : (frame as any).orientation === 'landscape-right' ? '270deg'
-          : '0deg';
+        var rotation = _toOrientation(String(frame.orientation || ''));
 
-        const lmInput = resize.resize(frame, {
+        var lmInput = resize.resize(frame, {
           crop: { x: Math.round(crop.cx), y: Math.round(crop.cy), width: Math.round(crop.cw), height: Math.round(crop.ch) },
           scale: { width: 256, height: 256 },
           pixelFormat: 'rgb', dataType: 'float32',
-          rotation,
+          rotation: rotation,
         });
-        if (lmInput?.length) {
-          runLandmarkJS(new Float32Array(lmInput).buffer as ArrayBuffer, frame.width, frame.height);
+        if (lmInput && lmInput.length) {
+          var lmCopy = new Float32Array(lmInput);
+          runLandmarkJS(lmCopy.buffer, frame.width, frame.height);
         }
       } catch {
         _consecutiveFails += 1;
