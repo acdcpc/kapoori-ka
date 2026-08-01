@@ -37,7 +37,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const { language } = useContext(LanguageContext);
   const t = translations[language];
   const isNe = language === 'ne';
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
@@ -89,7 +89,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
         .from('milestones')
         .upsert({
           child_id: child.id,
-          user_id: useAuth().user?.uid || '',
+          user_id: user?.uid || '',
           milestone_id: milestoneId,
           status,
           age_at_update: ageMonths,

@@ -37,6 +37,15 @@ import {
 } from '../ai/heightEstimator';
 
 
+// ── Module-level model references (worklet-safe) ──
+// TFLite Nitro HybridObjects cannot be captured in worklet closures —
+// rnWorklets' deep-wrap during setFrameProcessor causes SIGSEGV in
+// libNitroTflite.so. Instead, store models at module scope and access
+// them from runOnJS callbacks that execute on the Hermes main thread.
+let _gDetModel: any = null;
+let _gLmModel: any = null;
+let _gCropRes: { cx: number; cy: number; cw: number; ch: number; score: number } | null = null;
+
 // ── Layout ──
 const { width: SW, height: SH } = Dimensions.get('window');
 const BOX_H = SH * 0.7;
@@ -265,13 +274,13 @@ export default function HeightMeasureScreen() {
           });
 
         const detModel = await loadWithTimeout(detUrl);
-        detModelRef.current = detModel;
+        detModelRef.current = detModel; _gDetModel = detModel; // module-level ref for worklet-safe access
         console.log('[HEIGHT] ✅ Detector loaded');
 
         setModelPhase('loading_landmark');
         console.log('[HEIGHT] ═══ STEP 2b: Loading landmark ═══');
         const lmModel = await loadWithTimeout(lmUrl);
-        lmModelRef.current = lmModel;
+        lmModelRef.current = lmModel; _gLmModel = lmModel; // module-level ref for worklet-safe access
         console.log('[HEIGHT] ✅ Landmark loaded');
 
         // Skip warm-up runSync(): on Samsung A24 (Mediatek Helio G99, CPU-only delegate),
@@ -450,6 +459,54 @@ export default function HeightMeasureScreen() {
     };
   }, [setDiag, onResult]);
 
+  // ── TFLite inference callbacks (run on JS thread via createRunOnJS) ──
+  // These access _gDetModel / _gLmModel (module-level) — NOT the worklet
+  // closure's detModel/lmModel. This avoids rnWorklets trying to deep-wrap
+  // Nitro HybridObjects, which causes SIGSEGV (see module-level comment above).
+  const runDetectorJS = useMemo(
+    () => Worklets.createRunOnJS((detBuf: ArrayBuffer, fw: number, fh: number) => {
+      const m = _gDetModel;
+      if (!m || !detBuf) return;
+      try {
+        const copy = new Float32Array(detBuf);
+        const out = m.runSync([copy]);
+        if (!out?.[0]) { _gCropRes = null; return; }
+        const raw = new Float32Array(out[0] as unknown as ArrayBuffer);
+        const detections = parseDetections(raw);
+        if (!detections.length) { _gCropRes = null; return; }
+        const best = detections[0];
+        const { bbox, score } = best;
+        const margin = 0.15;
+        const cx0 = Math.max(0, (bbox.x - bbox.w * margin) * fw);
+        const cy0 = Math.max(0, (bbox.y - bbox.h * margin) * fh);
+        _gCropRes = {
+          cx: cx0, cy: cy0,
+          cw: Math.min(fw - cx0, bbox.w * (1 + margin * 2) * fw),
+          ch: Math.min(fh - cy0, bbox.h * (1 + margin * 2) * fh),
+          score,
+        };
+      } catch { _gCropRes = null; }
+    }),
+    [] // stable: only accesses module-level vars
+  );
+
+  const runLandmarkJS = useMemo(
+    () => Worklets.createRunOnJS((lmBuf: ArrayBuffer, fw: number, fh: number) => {
+      const m = _gLmModel;
+      if (!m || !lmBuf) return;
+      try {
+        const copy = new Float32Array(lmBuf);
+        const out = m.runSync([copy]);
+        if (!out?.[0]) return;
+        const raw = new Float32Array(out[0] as unknown as ArrayBuffer);
+        const crop = _gCropRes;
+        const landmarks = parseLandmarks(raw, fw, fh, crop?.cx ?? 0, crop?.cy ?? 0, crop?.cw ?? 1, crop?.ch ?? 1);
+        onResult(landmarks, crop?.score ?? 0.5);
+      } catch {}
+    }),
+    [onResult]
+  );
+
   // ── TWO-STAGE FRAME PROCESSOR ──
   // runOnJSImpl is included defensively: it's stable today (see above), but
   // if onResult ever gains a real dependency again in the future, this
@@ -457,7 +514,7 @@ export default function HeightMeasureScreen() {
   // going stale a second time.
   const fp = useFrameProcessor((frame) => {
     'worklet';
-    if (!detModel || !lmModel || !resize) return;
+    if (!resize) return;
 
     _frameCnt += 1;
     if (_frameCnt === 1) runOnJSImpl.setDiagJS('frame_1');
@@ -465,42 +522,18 @@ export default function HeightMeasureScreen() {
 
     runAtTargetFps(8, () => {
       try {
+        // Stage 1: Detector — resize on worklet, inference on JS thread
         const detInput = resize.resize(frame, {
           scale: { width: 224, height: 224 },
           pixelFormat: 'rgb', dataType: 'float32',
         });
-        if (!detInput || detInput.length === 0) return;
-
-        // Copy the resize output before passing to runSync: TFLite may
-        // take ownership of the underlying ArrayBuffer (zero-copy transfer
-        // to native), detaching it on the JS side. The resize plugin's
-        // internal buffer pool may recycle the same buffer for the next
-        // frame's lmInput call, which would then throw "ArrayBuffer is
-        // detached". Always give runSync its own copy.
-        const detInputCopy = new Float32Array(detInput);
-        const detOut = detModel.runSync([detInputCopy]);
-        if (!detOut || !detOut[0]) return;
-        const detRaw = new Float32Array(detOut[0] as unknown as ArrayBuffer);
-
-        const detections = parseDetections(detRaw);
-        if (detections.length === 0) return;
-
-        if (_detCnt === 0) {
-          _detCnt += 1;
-          _consecutiveFails = 0;
-          runOnJSImpl.setDiagJS('det_ok');
+        if (detInput?.length) {
+          runDetectorJS(new Float32Array(detInput).buffer as ArrayBuffer, frame.width, frame.height);
         }
 
-        const best = detections[0];
-        const { bbox, score } = best;
-
-        const margin = 0.15;
-        const cx = Math.max(0, bbox.x - bbox.w * margin) * frame.width;
-        const cy = Math.max(0, bbox.y - bbox.h * margin) * frame.height;
-        const cw = Math.min(frame.width - cx, bbox.w * (1 + margin * 2) * frame.width);
-        const ch = Math.min(frame.height - cy, bbox.h * (1 + margin * 2) * frame.height);
-
-        if (cw < 50 || ch < 50) return;
+        // Stage 2: Landmark — use crop from detector, resize on worklet, inference on JS thread
+        const crop = _gCropRes;
+        if (!crop || crop.cw < 50 || crop.ch < 50) return;
 
         const rotation = (frame as any).orientation === 'portrait' ? '0deg'
           : (frame as any).orientation === 'landscape-left' ? '90deg'
@@ -508,39 +541,22 @@ export default function HeightMeasureScreen() {
           : '0deg';
 
         const lmInput = resize.resize(frame, {
-          crop: { x: Math.round(cx), y: Math.round(cy), width: Math.round(cw), height: Math.round(ch) },
+          crop: { x: Math.round(crop.cx), y: Math.round(crop.cy), width: Math.round(crop.cw), height: Math.round(crop.ch) },
           scale: { width: 256, height: 256 },
           pixelFormat: 'rgb', dataType: 'float32',
           rotation,
         });
-        if (!lmInput || lmInput.length === 0) return;
-
-        // Same buffer-ownership concern as detInput above. The `lmInput`
-        // may share an internal buffer pool with detInput from the same
-        // resize plugin instance. Copy to a fresh ArrayBuffer.
-        const lmInputCopy = new Float32Array(lmInput);
-        const lmOut = lmModel.runSync([lmInputCopy]);
-        if (!lmOut || !lmOut[0]) return;
-
-        if (!_lmLogged) {
-          _lmLogged = true;
-          runOnJSImpl.setDiagJS('lm_ok');
+        if (lmInput?.length) {
+          runLandmarkJS(new Float32Array(lmInput).buffer as ArrayBuffer, frame.width, frame.height);
         }
-
-        const lmRaw = new Float32Array(lmOut[0] as unknown as ArrayBuffer);
-        const landmarks = parseLandmarks(lmRaw, frame.width, frame.height, cx, cy, cw, ch);
-        runOnJSImpl.onResultJS(landmarks, score);
       } catch {
-        // Consecutive-failure counter: if every frame fails for 5+ seconds
-        // (~40 frames at 8fps), surface the error to the user instead of
-        // leaving them stuck on "Finding child..." forever.
         _consecutiveFails += 1;
         if (_consecutiveFails >= 40) {
           runOnJSImpl.setDiagJS('frame_error');
         }
       }
     });
-  }, [detModel, lmModel, resize, runOnJSImpl]);
+  }, [resize, runOnJSImpl, runDetectorJS, runLandmarkJS]);
 
   // ── Actions ──
   const capture = useCallback(() => {
