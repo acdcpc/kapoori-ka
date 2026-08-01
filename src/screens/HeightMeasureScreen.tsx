@@ -615,7 +615,7 @@ export default function HeightMeasureScreen() {
     <SafeAreaView style={S.ct}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={S.preview}>
-        <Camera style={StyleSheet.absoluteFill} device={device} isActive frameProcessor={fp} fps={30} />
+        <Camera style={StyleSheet.absoluteFill} device={device} isActive frameProcessor={fp} />
         <View style={[S.box, { top: BOX_TOP, left: BOX_L, width: BOX_W, height: BOX_H, borderColor: ms.childInBox && ms.tiltOk ? '#4CAF50' : '#FF9800' }]}>
           <View style={[S.rl, S.rlT]}><Text style={S.rlL}>{n ? 'टाउको' : 'Head'}</Text></View>
           <View style={[S.rl, S.rlB]}><Text style={S.rlL}>{n ? 'खुट्टा' : 'Feet'}</Text></View>
