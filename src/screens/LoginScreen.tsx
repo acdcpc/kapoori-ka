@@ -45,7 +45,8 @@ export default function LoginScreen() {
     setAuthError(null);
     if (!email || !password) { setAuthError(isNe ? 'कृपया इमेल र पासवर्ड दुवै भर्नुहोस्' : 'Please enter both email and password'); return; }
     if (!validateEmail(email)) { setAuthError(isNe ? 'कृपया वैध इमेल ठेगाना प्रविष्ट गर्नुहोस्' : 'Please enter a valid email address'); return; }
-    if (password.length < 6) { setAuthError(isNe ? 'पासवर्ड कम्तिमा ६ characters को हुनुपर्छ' : 'Password must be at least 6 characters'); return; }
+    if (password.length < 8) { setAuthError(isNe ? 'पासवर्ड कम्तिमा ८ characters को हुनुपर्छ' : 'Password must be at least 8 characters'); return; }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) { setAuthError(isNe ? 'पासवर्डमा कम्तिमा एक अक्षर र एक अंक हुनुपर्छ' : 'Password must contain at least one letter and one number'); return; }
     setLocalLoading(true);
     try {
       if (isRegistering) {
