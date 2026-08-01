@@ -262,6 +262,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   };
 
+
+/** Parse hash fragment params from a redirect URL (e.g. com.kapoori.ka://auth/callback#access_token=...&refresh_token=...) */
+function parseUrlParams(url: string): URLSearchParams {
+  const hashIdx = url.indexOf('#');
+  if (hashIdx === -1) return new URLSearchParams('');
+  const fragment = url.substring(hashIdx + 1);
+  // Remove leading '#' if present, then split on '&'
+  const clean = fragment.startsWith('#') ? fragment.substring(1) : fragment;
+  return new URLSearchParams(clean);
+}
+
   const signInWithGoogle = async () => {
     setError(null); setLoading(true);
     try {
@@ -303,7 +314,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AuthContext] Browser result type:', result.type);
 
       if (result.type === 'success') {
-        // Session is picked up by onAuthStateChange listener automatically
+        // Bug fix: after Google redirect, extract session tokens from the URL
+        // WebBrowser.openAuthSessionAsync returns the redirect URL with tokens
+        // but onAuthStateChange won't fire — we must set the session manually
+        if (result.url) {
+          const params = parseUrlParams(result.url);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+          if (access_token && refresh_token) {
+            console.log('[AuthContext] Extracted session tokens, setting session...');
+            await supabase.auth.setSession({ access_token, refresh_token });
+          } else {
+            console.log('[AuthContext] No tokens in redirect URL, checking session...');
+            await supabase.auth.getSession();
+          }
+        }
         console.log('[AuthContext] Google sign-in browser returned success');
       } else if (result.type === 'cancel') {
         console.log('[AuthContext] Google sign-in cancelled by user');
