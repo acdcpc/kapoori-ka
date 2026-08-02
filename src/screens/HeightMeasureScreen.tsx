@@ -123,6 +123,11 @@ type ModelPhase = 'idle' | 'resolving_assets' | 'downloading_assets' | 'loading_
 // ── Worklet-safe orientation helper (module scope) ──
 // Must be at module scope so the worklet can reference it without
 // capturing a component-local closure variable (which worklets can't do).
+// ── Worklet-safe cast helpers (module scope) ──
+// Called from within worklet closures to avoid TS-specific syntax.
+function _asArrayBuffer(v: any): ArrayBuffer { return v; }
+function _asLang(s: string): 'en' | 'ne' { return s as 'en' | 'ne'; }
+
 function _toOrientation(s: string): '0deg' | '90deg' | '270deg' | '180deg' | undefined {
   if (s === 'portrait') return '0deg';
   if (s === 'landscape-left') return '90deg';
@@ -412,7 +417,7 @@ export default function HeightMeasureScreen() {
 
     setMs({
       canMeasure: inBox && currentTilt.isUpright && r.confidence >= 0.4,
-      statusMessage: getMeasureStatusMessage(r, currentTilt, currentLanguage as 'en' | 'ne'),
+      statusMessage: getMeasureStatusMessage(r, currentTilt, _asLang(currentLanguage)),
       tiltOk: currentTilt.isUpright, landmarksVisible: vis, childInBox: inBox,
       estimatedHeightCm: r.heightCm, confidence: r.confidence,
     });
@@ -480,9 +485,10 @@ export default function HeightMeasureScreen() {
       if (!m || !detBuf) return;
       try {
         const copy = new Float32Array(detBuf);
-        const out = m.runSync([copy]);
-        if (!out?.[0]) { _gCropRes = null; return; }
-        const raw = new Float32Array(out[0] as unknown as ArrayBuffer);
+        var out = m.runSync([copy]);
+        var out0 = (out && out[0]) ? out[0] : null;
+        if (!out0) { _gCropRes = null; return; }
+        var raw = new Float32Array(_asArrayBuffer(out0));
         const detections = parseDetections(raw);
         if (!detections.length) { _gCropRes = null; return; }
         const best = detections[0];
@@ -507,12 +513,18 @@ export default function HeightMeasureScreen() {
       if (!m || !lmBuf) return;
       try {
         const copy = new Float32Array(lmBuf);
-        const out = m.runSync([copy]);
-        if (!out?.[0]) return;
-        const raw = new Float32Array(out[0] as unknown as ArrayBuffer);
-        const crop = _gCropRes;
-        const landmarks = parseLandmarks(raw, fw, fh, crop?.cx ?? 0, crop?.cy ?? 0, crop?.cw ?? 1, crop?.ch ?? 1);
-        onResult(landmarks, crop?.score ?? 0.5);
+        var out = m.runSync([copy]);
+        var out0 = (out && out[0]) ? out[0] : null;
+        if (!out0) return;
+        var raw = new Float32Array(_asArrayBuffer(out0));
+        var crop = _gCropRes;
+        var cCx = (crop && crop.cx !== undefined) ? crop.cx : 0;
+        var cCy = (crop && crop.cy !== undefined) ? crop.cy : 0;
+        var cCw = (crop && crop.cw !== undefined) ? crop.cw : 1;
+        var cCh = (crop && crop.ch !== undefined) ? crop.ch : 1;
+        var cScore = (crop && crop.score !== undefined) ? crop.score : 0.5;
+        var landmarks = parseLandmarks(raw, fw, fh, cCx, cCy, cCw, cCh);
+        onResult(landmarks, cScore);
       } catch {}
     }),
     [onResult]
