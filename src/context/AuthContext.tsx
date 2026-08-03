@@ -276,10 +276,7 @@ function parseUrlParams(url: string): URLSearchParams {
   const signInWithGoogle = async () => {
     setError(null); setLoading(true);
     try {
-      const redirectTo = makeRedirectUri({
-        scheme: 'com.kapoori.ka',
-        path: 'auth/callback',
-      });
+      const redirectTo = 'com.kapoori.ka://auth/callback';
       console.log('[AuthContext] Google sign-in redirect URL:', redirectTo);
 
       const { data, error: e } = await supabase.auth.signInWithOAuth({
