@@ -213,6 +213,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       }
 
       await loadRecords();
+      await recalcDependentDates(vaccine.id, givenDate);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
     } catch (e: any) {
@@ -220,6 +221,70 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       Alert.alert('Error', 'Could not save.');
     }
   };
+
+  // Recalculate dependent vaccine dates after a status change.
+  // 6-week → 10-week (+28 days) → 14-week (+28 days)
+  const recalcDependentDates = async (vaccineId: string, newGivenDate: string) => {
+    // Map of vaccine groups by age
+    const sixWeekIds = ['penta1', 'opv1', 'pcv1', 'rota1'];
+    const tenWeekIds = ['penta2', 'opv2', 'pcv2', 'rota2'];
+    const fourteenWeekIds = ['penta3', 'opv3', 'fipv1'];
+
+    const isSixWeek = sixWeekIds.includes(vaccineId);
+    const isTenWeek = tenWeekIds.includes(vaccineId);
+
+    if (!isSixWeek && !isTenWeek) return; // No dependents to recalculate
+
+    const baseDate = dayjs(newGivenDate);
+    const tenWeekDate = baseDate.add(28, 'day').format('YYYY-MM-DD');
+    const fourteenWeekDate = baseDate.add(56, 'day').format('YYYY-MM-DD');
+
+    try {
+      // Update 10-week vaccines (derived from 6-week date)
+      if (isSixWeek) {
+        for (const vid of tenWeekIds) {
+          await supabase.from('vaccinations')
+            .upsert({
+              child_id: child.id,
+              user_id: user?.uid || '',
+              vaccine_name: vid,
+              scheduled_date: tenWeekDate,
+            }, { onConflict: 'child_id, vaccine_name' });
+        }
+        // Also update 14-week (derived from 6-week + 56 days)
+        for (const vid of fourteenWeekIds) {
+          await supabase.from('vaccinations')
+            .upsert({
+              child_id: child.id,
+              user_id: user?.uid || '',
+              vaccine_name: vid,
+              scheduled_date: fourteenWeekDate,
+            }, { onConflict: 'child_id, vaccine_name' });
+        }
+      }
+
+      // Update 14-week vaccines (derived from 10-week date)
+      if (isTenWeek) {
+        const tenWeekBase = dayjs(newGivenDate);
+        const fromTenWeek14 = tenWeekBase.add(28, 'day').format('YYYY-MM-DD');
+        for (const vid of fourteenWeekIds) {
+          await supabase.from('vaccinations')
+            .upsert({
+              child_id: child.id,
+              user_id: user?.uid || '',
+              vaccine_name: vid,
+              scheduled_date: fromTenWeek14,
+            }, { onConflict: 'child_id, vaccine_name' });
+        }
+      }
+
+      // Reload to reflect new dates
+      await loadRecords();
+    } catch (e: any) {
+      console.error('Recalc dependent dates error:', e?.message || e);
+    }
+  };
+
 
   if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
 
