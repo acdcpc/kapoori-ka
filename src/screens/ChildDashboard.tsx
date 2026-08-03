@@ -4,6 +4,8 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Onboarding from '../components/Onboarding';
 
@@ -114,6 +116,66 @@ export default function ChildDashboard({ route, navigation }: Props) {
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
   ];
 
+  const handleChangePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(isNe ? 'अनुमति अस्वीकृत' : 'Permission denied',
+          isNe ? 'क्यामेरा अनुमति चाहिन्छ।' : 'Camera permission is needed.');
+        return;
+      }
+      Alert.alert(
+        isNe ? 'फोटो थप्नुहोस्' : 'Add Photo',
+        isNe ? 'क्यामेरा वा ग्यालरी प्रयोग गर्नुहोस्।' : 'Use camera or choose from gallery.',
+        [
+          { text: isNe ? 'क्यामेरा' : 'Camera', onPress: () => pickAndUpload('camera') },
+          { text: isNe ? 'ग्यालरी' : 'Gallery', onPress: () => pickAndUpload('gallery') },
+          { text: isNe ? 'रद्द गर्नुहोस्' : 'Cancel', style: 'cancel' },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not open picker.');
+    }
+  };
+
+  async function pickAndUpload(source: 'camera' | 'gallery') {
+    try {
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const FileSystem = require('expo-file-system');
+      const destDir = FileSystem.documentDirectory + 'child-photos/';
+      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+      const path = destDir + `child-${child.id}-${Date.now()}.jpg`;
+
+      const manip = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 512 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      await FileSystem.copyAsync({ from: manip.uri, to: path });
+
+      const base64 = await FileSystem.readAsStringAsync(path, { encoding: FileSystem.EncodingType.Base64 });
+      const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
+      const bucket = supabase.storage.from('child-photos');
+      const uploadErr = await bucket.upload(storagePath, decodeURIComponent(typeof atob === 'function' ? atob(base64) : ''), { upsert: true, contentType: 'image/jpeg' });
+
+      // Use expo-file-system upload if supabase storage blocks base64
+      const { data: urlData } = bucket.getPublicUrl(storagePath);
+
+      await supabase.from('children').update({ photo_uri: urlData.publicUrl }).eq('id', child.id);
+      child.photoUri = urlData.publicUrl;
+
+      // Force re-render
+      navigation.setParams({ child: { ...child, photoUri: urlData.publicUrl } });
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not upload photo.');
+    }
+  };
+
   const handleDelete = () => {
     Alert.alert(
       isNe ? 'बच्चाको डेटा मेटाउने?' : "Delete child's data?",
@@ -163,14 +225,24 @@ export default function ChildDashboard({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Avatar — 64×64 circle with initials */}
-        <View style={styles.avatarCircle}>
+        {/* Avatar — 64×64 circle, tap to change photo */}
+        <TouchableOpacity onPress={handleChangePhoto} style={styles.avatarCircle}>
           {child.photoUri ? (
-            <Image source={{ uri: child.photoUri }} style={styles.avatarPhoto} />
+            <>
+              <Image source={{ uri: child.photoUri }} style={styles.avatarPhoto} />
+              <View style={styles.avatarEditOverlay}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            </>
           ) : (
-            <Text style={styles.avatarInitials}>{initials}</Text>
+            <View style={styles.avatarPlaceholderWrap}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+              <View style={styles.avatarEditOverlay}>
+                <Ionicons name="camera-outline" size={16} color="#7A6E65" />
+              </View>
+            </View>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Name & info */}
         <Text style={styles.childName}>{displayName}</Text>
@@ -273,4 +345,12 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 16, color: '#C4956A', fontWeight: '600' },
   subBanner: { margin: 15, backgroundColor: '#E8602C', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
   subBannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  avatarEditOverlay: {
+    position: 'absolute', bottom: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12,
+    width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarPlaceholderWrap: {
+    width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
+  },
 });
