@@ -56,6 +56,14 @@ export default {
       "expo-web-browser",
       "expo-notifications",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "cmakeVersion": "3.26.5"
+          }
+        }
+      ],
+      [
         "react-native-fast-tflite",
         {
           "enableAndroidGpuLibraries": true
