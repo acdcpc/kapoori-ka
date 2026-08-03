@@ -18,13 +18,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  useCameraDevice, useCameraPermission, useFrameProcessor,
-  Camera, runAtTargetFps,
+  useCameraDevice, useCameraPermission, useFrameOutput,
+  Camera,
 } from 'react-native-vision-camera';
 
 import { Asset } from 'expo-asset';
-import { useResizePlugin } from 'vision-camera-resize-plugin';
-import { Worklets } from 'react-native-worklets-core';
+import { useResizer } from 'react-native-vision-camera-resizer';
+import { runOnJS } from 'react-native-worklets';
 import { Accelerometer } from 'expo-sensors';
 import { LanguageContext } from '../context/LanguageContext';
 import type { PoseLandmark, TiltState, MeasureState } from '../ai/PoseTypes';
@@ -45,6 +45,7 @@ import {
 let _gDetModel: any = null;
 let _gLmModel: any = null;
 let _gCropRes: { cx: number; cy: number; cw: number; ch: number; score: number } | null = null;
+var _glmCropBuf: ArrayBuffer | null = null;
 
 // ── Layout ──
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -134,6 +135,39 @@ function _toOrientation(s: string): '0deg' | '90deg' | '270deg' | '180deg' | und
   if (s === 'landscape-right') return '270deg';
   if (s === 'landscape') return '180deg';
   return undefined;
+}
+
+
+// V5: Manual crop + bilinear resize for landmark stage
+// (V5 resizer lacks per-call crop; we do it in JS)
+function _extractCropResize(
+  buf: ArrayBuffer, srcW: number, srcH: number,
+  cx: number, cy: number, cw: number, ch: number,
+  outW: number, outH: number
+): ArrayBuffer {
+  const src = new Float32Array(buf);
+  const out = new Float32Array(outW * outH * 3);
+  const scaleX = cw / outW;
+  const scaleY = ch / outH;
+  for (let y = 0; y < outH; y++) {
+    for (let x = 0; x < outW; x++) {
+      const sx = cx + x * scaleX;
+      const sy = cy + y * scaleY;
+      const sx0 = Math.floor(sx), sy0 = Math.floor(sy);
+      const sx1 = Math.min(sx0 + 1, srcW - 1), sy1 = Math.min(sy0 + 1, srcH - 1);
+      const fx = sx - sx0, fy = sy - sy0;
+      for (let c = 0; c < 3; c++) {
+        const base = (y * outW + x) * 3 + c;
+        const s00 = src[(sy0 * srcW + sx0) * 3 + c];
+        const s10 = src[(sy0 * srcW + sx1) * 3 + c];
+        const s01 = src[(sy1 * srcW + sx0) * 3 + c];
+        const s11 = src[(sy1 * srcW + sx1) * 3 + c];
+        out[base] = s00 * (1 - fx) * (1 - fy) + s10 * fx * (1 - fy)
+                  + s01 * (1 - fx) * fy + s11 * fx * fy;
+      }
+    }
+  }
+  return out.buffer;
 }
 
 export default function HeightMeasureScreen() {
@@ -321,21 +355,15 @@ export default function HeightMeasureScreen() {
   const detModel = modelPhase === 'ready' ? detModelRef.current : undefined;
   const lmModel = modelPhase === 'ready' ? lmModelRef.current : undefined;
 
-  // ── Resize plugin ──
-  const [resizeReady, setResizeReady] = useState(false);
-  const resizeRef = useRef<ReturnType<typeof useResizePlugin> | null>(null);
-  useEffect(() => {
-    if (!modelsReady) return;
-    try {
-      const plugin = require('vision-camera-resize-plugin');
-      resizeRef.current = plugin.createResizePlugin();
-      setResizeReady(true);
-      console.log('[HEIGHT] ✅ Resize plugin initialised');
-    } catch (e: any) {
-      console.error('[HEIGHT] ❌ Resize plugin failed:', e?.message);
-    }
-  }, [modelsReady]);
-  const resize = resizeRef.current;
+  // ── Resizer (V5) ──
+  // Detector: full frame → 224×224 RGB float32
+  const detectorResizer = useResizer({
+    width: 224, height: 224,
+    channelOrder: 'rgb',
+    dataType: 'float32',
+    pixelLayout: 'planar',
+    scaleMode: 'cover',
+  });
 
   // ── Tilt ──
   const [tilt, setTilt] = useState<TiltState>({ pitchDeg: 0, rollDeg: 0, isUpright: true });
@@ -459,19 +487,11 @@ export default function HeightMeasureScreen() {
   }, [modelsLoading, modelPhase, detUrl, lmUrl]);
 
   
-  // ── createRunOnJS bindings: stable worklet→JS callbacks ──
-  // Using react-native-worklets-core's documented API instead of the
-  // undocumented `runOnJS` global (which Metro incorrectly resolves at
-  // module scope, causing "ReferenceError: Property 'runOnJS' doesn't exist").
-  // Both setDiag (a useState setter) and onResult (now built with an empty
-  // dependency array, see above) have stable identities across renders, so
-  // this useMemo genuinely only runs once per mount — it will NOT churn
-  // every time tilt/language change, which is what previously caused the
-  // frame processor to freeze on a stale callback.
+  // ── runOnJS bindings: stable worklet→JS callbacks (V5) ──
   const runOnJSImpl = useMemo(() => {
     return {
-      setDiagJS: Worklets.createRunOnJS(setDiag),
-      onResultJS: Worklets.createRunOnJS(onResult),
+      setDiagJS: runOnJS(setDiag),
+      onResultJS: runOnJS(onResult),
     };
   }, [setDiag, onResult]);
 
@@ -480,7 +500,7 @@ export default function HeightMeasureScreen() {
   // closure's detModel/lmModel. This avoids rnWorklets trying to deep-wrap
   // Nitro HybridObjects, which causes SIGSEGV (see module-level comment above).
   const runDetectorJS = useMemo(
-    () => Worklets.createRunOnJS((detBuf: ArrayBuffer, fw: number, fh: number) => {
+    () => runOnJS((detBuf: ArrayBuffer, fullBuf: ArrayBuffer, fw: number, fh: number) => {
       const m = _gDetModel;
       if (!m || !detBuf) return;
       try {
@@ -502,14 +522,21 @@ export default function HeightMeasureScreen() {
           ch: Math.min(fh - cy0, bbox.h * (1 + margin * 2) * fh),
           score,
         };
-      } catch { _gCropRes = null; }
+        // V5: Extract landmark crop from full frame buffer (manual JS crop+resize)
+        if (fullBuf && _gCropRes.cw > 50 && _gCropRes.ch > 50) {
+          _glmCropBuf = _extractCropResize(fullBuf, fw, fh, cx0, cy0, _gCropRes.cw, _gCropRes.ch, 256, 256);
+        } else {
+          _glmCropBuf = null;
+        }
+      } catch { _gCropRes = null; _glmCropBuf = null; }
     }),
     [] // stable: only accesses module-level vars
   );
 
   const runLandmarkJS = useMemo(
-    () => Worklets.createRunOnJS((lmBuf: ArrayBuffer, fw: number, fh: number) => {
+    () => runOnJS(() => {
       const m = _gLmModel;
+      var lmBuf = _glmCropBuf;
       if (!m || !lmBuf) return;
       try {
         const copy = new Float32Array(lmBuf);
@@ -523,62 +550,55 @@ export default function HeightMeasureScreen() {
         var cCw = (crop && crop.cw !== undefined) ? crop.cw : 1;
         var cCh = (crop && crop.ch !== undefined) ? crop.ch : 1;
         var cScore = (crop && crop.score !== undefined) ? crop.score : 0.5;
-        var landmarks = parseLandmarks(raw, fw, fh, cCx, cCy, cCw, cCh);
+        var landmarks = parseLandmarks(raw, 256, 256, 0, 0, 1, 1);
         onResult(landmarks, cScore);
       } catch {}
     }),
     [onResult]
   );
 
-  // ── TWO-STAGE FRAME PROCESSOR ──
-  // runOnJSImpl is included defensively: it's stable today (see above), but
-  // if onResult ever gains a real dependency again in the future, this
-  // ensures the frame processor gets rebuilt to match rather than silently
-  // going stale a second time.
-  const fp = useFrameProcessor((frame) => {
-    'worklet';
-    if (!resize) return;
+  // ── TWO-STAGE FRAME PROCESSOR (V5: useFrameOutput) ──
+  // V5 changes:
+  // - useFrameProcessor → useFrameOutput with onFrame callback
+  // - runAtTargetFps → removed (FPS managed at session level)
+  // - V4 resize plugin per-call crop → V5 resizer + manual JS crop
+  // - Mandatory frame.dispose() and resized.dispose()
+  const frameOutput = useFrameOutput({
+    pixelFormat: 'rgb',
+    onFrame(frame) {
+      'worklet';
 
-    _frameCnt += 1;
-    if (_frameCnt === 1) runOnJSImpl.setDiagJS('frame_1');
-    if (_frameCnt === 30) runOnJSImpl.setDiagJS('frame_30');
+      _frameCnt += 1;
+      if (_frameCnt === 1) runOnJSImpl.setDiagJS('frame_1');
+      if (_frameCnt === 30) runOnJSImpl.setDiagJS('frame_30');
 
-    runAtTargetFps(8, () => {
+      // Throttle to ~8 FPS
+      if (_frameCnt % 4 !== 0) { frame.dispose(); return; }
+
       try {
-        // Stage 1: Detector — resize on worklet, inference on JS thread
-        var detInput = resize.resize(frame, {
-          scale: { width: 224, height: 224 },
-          pixelFormat: 'rgb', dataType: 'float32',
-        });
-        if (detInput && detInput.length) {
-          var detCopy = new Float32Array(detInput);
-          runDetectorJS(detCopy.buffer, frame.width, frame.height);
+        // Stage 1: Detector — GPU resize to 224×224 RGB, dispatch to JS thread
+        if (detectorResizer.state === 'ready' && detectorResizer.resizer) {
+          var detResized = detectorResizer.resizer.resize(frame);
+          var detBuf = detResized.getPixelBuffer();
+          var fullBuf = frame.getPixelBuffer();
+          var fw = frame.width, fh = frame.height;
+          runDetectorJS(detBuf, fullBuf, fw, fh);
+          detResized.dispose();
         }
 
-        // Stage 2: Landmark — use crop from detector, resize on worklet, inference on JS thread
-        var crop = _gCropRes;
-        if (!crop || crop.cw < 50 || crop.ch < 50) return;
-
-        var rotation = _toOrientation(String(frame.orientation || ''));
-
-        var lmInput = resize.resize(frame, {
-          crop: { x: Math.round(crop.cx), y: Math.round(crop.cy), width: Math.round(crop.cw), height: Math.round(crop.ch) },
-          scale: { width: 256, height: 256 },
-          pixelFormat: 'rgb', dataType: 'float32',
-          rotation: rotation,
-        });
-        if (lmInput && lmInput.length) {
-          var lmCopy = new Float32Array(lmInput);
-          runLandmarkJS(lmCopy.buffer, frame.width, frame.height);
-        }
+        // Stage 2: Landmark — run on JS thread with pre-extracted crop buffer
+        runLandmarkJS();
       } catch {
         _consecutiveFails += 1;
         if (_consecutiveFails >= 40) {
           runOnJSImpl.setDiagJS('frame_error');
         }
       }
-    });
-  }, [resize, runOnJSImpl, runDetectorJS, runLandmarkJS]);
+
+      // MANDATORY in V5: dispose the frame
+      frame.dispose();
+    },
+  });
 
   // ── Actions ──
   const capture = useCallback(() => {
@@ -653,7 +673,7 @@ export default function HeightMeasureScreen() {
     <SafeAreaView style={S.ct}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={S.preview}>
-        <Camera style={StyleSheet.absoluteFill} device={device} isActive frameProcessor={fp} />
+        <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[frameOutput]} />
         <View style={[S.box, { top: BOX_TOP, left: BOX_L, width: BOX_W, height: BOX_H, borderColor: ms.childInBox && ms.tiltOk ? '#4CAF50' : '#FF9800' }]}>
           <View style={[S.rl, S.rlT]}><Text style={S.rlL}>{n ? 'टाउको' : 'Head'}</Text></View>
           <View style={[S.rl, S.rlB]}><Text style={S.rlL}>{n ? 'खुट्टा' : 'Feet'}</Text></View>

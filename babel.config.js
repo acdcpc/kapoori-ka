@@ -3,7 +3,8 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      'react-native-worklets-core/plugin',
+      // V5: react-native-worklets (SWMansion) replaces react-native-worklets-core (Margelo)
+      'react-native-worklets/plugin',
     ],
   };
 };

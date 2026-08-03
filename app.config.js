@@ -53,14 +53,6 @@ export default {
       "expo-font",
       "expo-splash-screen",
       "expo-sharing",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "Kapoori Ka needs camera access to measure your child's height.",
-          "enableMicrophonePermission": false,
-          "enableCodeScanner": false
-        }
-      ],
       "expo-web-browser",
       "expo-notifications",
       [
