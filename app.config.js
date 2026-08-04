@@ -59,7 +59,10 @@ export default {
         "expo-build-properties",
         {
           "android": {
-            "cmakeVersion": "3.26.5"
+            "cmakeVersion": "3.26.5",
+            "minSdkVersion": 26,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
           }
         }
       ],
