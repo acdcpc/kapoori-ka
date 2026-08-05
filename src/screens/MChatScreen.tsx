@@ -144,6 +144,9 @@ export default function MChatScreen({ route, navigation }: Props) {
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const isAppropriateAge = ageMonths >= 16 && ageMonths <= 30;
+  const isExtendedAge = ageMonths > 30 && ageMonths <= 60;
+  const showExtendedNotice = isExtendedAge;
+  const canScreen = ageMonths >= 16 && ageMonths <= 60;
 
   const calculateScore = () => {
     let totalScore = 0;
@@ -155,7 +158,12 @@ export default function MChatScreen({ route, navigation }: Props) {
         else { if (response === false) { totalScore += 1; concernList.push(q.id); } }
       }
     });
-    return { totalScore, concernList };
+    // M-CHAT-R/F critical items: q2, q5, q7, q9, q14, q15, q16, q18, q20
+    const criticalItems = ['q2', 'q5', 'q7', 'q9', 'q14', 'q15', 'q16', 'q18', 'q20'];
+    const criticalFails = concernList.filter(id => criticalItems.includes(id)).length;
+    // If any critical item is failed, score is at least 3 (medium risk)
+    const effectiveScore = criticalFails > 0 ? Math.max(totalScore, 3) : totalScore;
+    return { totalScore, effectiveScore, concernList, criticalFails };
   };
 
   const handleSubmit = async () => {
@@ -163,15 +171,35 @@ export default function MChatScreen({ route, navigation }: Props) {
       Alert.alert(isNe ? 'कृपया सबै प्रश्नहरूको उत्तर दिनुहोस्' : 'Please complete all questions', isNe ? 'नतिजा प्राप्त गर्नका लागि कृपया सबै २० प्रश्नहरूको उत्तर दिनुहोस्।' : 'Please answer all 20 questions to get the result.');
       return;
     }
-    const { totalScore, concernList } = calculateScore();
-    setScore(totalScore); setConcerns(concernList); setShowResultModal(true); setIsReviewMode(true);
+    const { totalScore, effectiveScore, concernList, criticalFails } = calculateScore();
+    setScore(effectiveScore); setConcerns(concernList); setShowResultModal(true); setIsReviewMode(true);
     try {
             if (!user) return;
       const { error: sbError } = await supabase
         .from('autism_screenings')
-        .insert({ child_id: child.id, user_id: user.uid, date: dayjs().format('YYYY-MM-DD'), age_months: ageMonths, score: totalScore, responses, created_at: new Date().toISOString() });
+        .insert({ child_id: child.id, user_id: user.uid, date: dayjs().format('YYYY-MM-DD'), age_months: ageMonths, score: effectiveScore, responses, created_at: new Date().toISOString() });
       if (sbError) console.error('Save screening error:', sbError);
     } catch (error) { console.error('Save screening error:', error); }
+  };
+
+  const getExtendedAgeNotice = () => {
+    if (!showExtendedNotice) return null;
+    return (
+      <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 14, marginBottom: 16,
+        borderLeftWidth: 4, borderLeftColor: '#F5A623', }}>
+        <Ionicons name="information-circle" size={20} color="#F5A623" style={{ marginBottom: 6 }} />
+        <Text style={{ fontSize: 13, color: '#92400E', lineHeight: 19, fontWeight: '600', marginBottom: 4 }}>
+          {isNe
+            ? 'M-CHAT-R/F १६ देखि ३० महिनाका बच्चाहरूको लागि चिकित्सकीय रूपमा प्रमाणित गरिएको छ। तपाईंको बच्चा यो उमेर दायरा बाहिर छ।'
+            : 'The M-CHAT-R/F is clinically validated for children aged 16 to 30 months. Your child is outside this age range.'}
+        </Text>
+        <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+          {isNe
+            ? 'यो स्क्रिनिङ सन्दर्भको रूपमा उपयोगी हुन सक्छ, तर कृपया पूर्ण विकासात्मक मूल्याङ्कनको लागि स्वास्थ्य सेवा प्रदायकसँग परामर्श गर्नुहोस्।'
+            : 'This screening may still be useful as a reference, but please consult a healthcare provider for a full developmental assessment.'}
+        </Text>
+      </View>
+    );
   };
 
   const getResultMessage = () => {
@@ -181,6 +209,7 @@ export default function MChatScreen({ route, navigation }: Props) {
   };
 
   const result = getResultMessage();
+  const showDisclaimerOnResult = showExtendedNotice || (score >= 3);
 
   return (
     <PremiumGuard feature="autism_screening" >
@@ -212,6 +241,7 @@ export default function MChatScreen({ route, navigation }: Props) {
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <Text style={styles.intro}>{isNe ? 'कृपया आफ्नो बच्चाको व्यवहार बारे तलका प्रश्नहरूको उत्तर दिनुहोस्।' : "Please answer the following questions about your child's behavior."}</Text>
+            {showExtendedNotice && getExtendedAgeNotice()}
             {MCHAT_QUESTIONS.map((q, index) => {
               const isConcern = concerns.includes(q.id);
               const showHighlights = isReviewMode && isConcern;
