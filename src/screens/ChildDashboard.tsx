@@ -158,13 +158,20 @@ export default function ChildDashboard({ route, navigation }: Props) {
       );
       await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      const base64 = await FileSystem.readAsStringAsync(path, { encoding: FileSystem.EncodingType.Base64 });
+      // Upload to Supabase Storage using the FileSystem upload helper
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
-      const bucket = supabase.storage.from('child-photos');
-      const uploadErr = await bucket.upload(storagePath, decodeURIComponent(typeof atob === 'function' ? atob(base64) : ''), { upsert: true, contentType: 'image/jpeg' });
-
-      // Use expo-file-system upload if supabase storage blocks base64
-      const { data: urlData } = bucket.getPublicUrl(storagePath);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('child-photos')
+        .upload(storagePath, {
+          uri: path,
+          type: 'image/jpeg',
+        } as any, { upsert: true });
+      if (uploadError && !uploadError.message?.includes('already exists')) {
+        throw uploadError;
+      }
+      const { data: urlData } = supabase.storage
+        .from('child-photos')
+        .getPublicUrl(storagePath);
 
       await supabase.from('children').update({ photo_uri: urlData.publicUrl }).eq('id', child.id);
       child.photoUri = urlData.publicUrl;
