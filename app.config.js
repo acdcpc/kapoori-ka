@@ -55,23 +55,6 @@ export default {
       "expo-sharing",
       "expo-web-browser",
       "expo-notifications",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "cmakeVersion": "3.26.5",
-            "minSdkVersion": 26,
-            "compileSdkVersion": 36,
-            "targetSdkVersion": 36
-          }
-        }
-      ],
-      [
-        "react-native-fast-tflite",
-        {
-          "enableAndroidGpuLibraries": true
-        }
-      ]
     ],
     extra: {
       eas: {

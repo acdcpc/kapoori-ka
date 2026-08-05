@@ -108,8 +108,6 @@ export default function ChildDashboard({ route, navigation }: Props) {
 
   const menuItems = [
     { title: t.growthChart,    icon: '📈', color: '#E8602C', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
-    { title: isNe ? 'उचाइ नाप' : 'Height Measure', icon: '📏', color: '#795548', screen: 'HeightMeasure' as const, desc: isNe ? 'क्यामेराबाट उचाइ नाप्नुहोस्' : 'Measure height with camera', premium: true },
-    { title: t.immunization,   icon: '💉', color: '#3D8B5E', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र रिमाइन्डर' : 'Vaccine schedule & reminders', premium: true },
     { title: t.milestones,     icon: '🧠', color: '#6B21A8', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
     { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#3D8B5E', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: '#C0392B', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
@@ -279,9 +277,6 @@ export default function ChildDashboard({ route, navigation }: Props) {
             onPress={() => {
               if (item.screen === 'Nutrition') {
                 navigation.navigate('Nutrition', { child });
-              } else if (item.screen === 'HeightMeasure') {
-                navigation.navigate('HeightMeasure', { child });
-              } else {
                 navigation.navigate(item.screen, { child });
               }
             }}
