@@ -21,19 +21,24 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| 👶 Child Profiles | ✅ | Add and manage multiple children with birth details |
-| 📈 WHO Growth Charts | ✅ | Height-for-age (WHO HFA table, interpolated) with z-scores |
-| 💉 Immunization | ✅ | Nepal vaccine schedule with Bikram Sambat dates |
-| 🧠 Developmental Milestones | ⭐ Premium | 100+ WHO milestones across 5 domains |
-| 🧩 M-CHAT Autism Screening | ⭐ Premium | 20-question M-CHAT-R/F screening |
-| 🥗 Nutrition Guide | ⭐ Premium | Age-specific feeding guides (0–60 months) |
-| 📏 AI Height Measurement | 🔄 Beta | On-device BlazePose (39 landmarks) |
-| 📄 PDF Reports | ⭐ Premium | Export growth reports as PDF |
-| 🔔 Vaccine Reminders | ✅ | Push notifications at 7-day, 2-day, and day-of |
-| 🌐 Bilingual (नेपाली / English) | ✅ | Full Nepali and English UI |
-| ☁️ Cloud Sync | ✅ | Supabase real-time data sync |
+| 👶 Child Profiles | ✅ | Add and manage multiple children with birth details and photos |
+| 📈 WHO Growth Charts | ✅ | Weight-for-age and height-for-age charts based on WHO Child Growth Standards |
+| 💉 Immunization Schedule | ✅ | Nepal National Immunization Program (NIP) schedule with BS/AD calendar |
+| 🧠 Developmental Milestones | ⭐ Premium | 100+ milestones across motor, language, cognitive, and social domains |
+| 🧩 M-CHAT Autism Screening | ⭐ Premium | 20-question M-CHAT-R/F screening (validated tool, Nepali translation) |
+| 📄 PDF Reports | ⭐ Premium | Export growth reports as PDF documents |
+| 🖼️ Photo Upload | ✅ | Camera/gallery profile photo for each child |
+| 🔔 Vaccine Reminders | ✅ | Push notifications for upcoming vaccines |
+| 🌐 Bilingual (नेपाली / English) | ✅ | Full UI in both languages with BS calendar support |
+| ☁️ Cloud Sync | ✅ | Supabase real-time data sync across devices |
 
 > ⭐ = Premium features unlocked via activation code
+
+### Planned Features
+
+| Feature | Status |
+|---------|--------|
+| 📏 AI Height Measurement | 🔄 Post-launch — previously in beta, removed for stabilizing |
 
 ---
 
@@ -43,18 +48,14 @@
 ┌─────────────────────────────────────┐
 │     React Native (Expo SDK 56)      │
 │  ┌─────────┐  ┌──────────────────┐  │
-│  │  Screens│  │  AI / ML Pipeline │  │
-│  │ (15)    │  │  BlazePose TFLite │  │
+│  │ Screens │  │  Premium System   │  │
+│  │ (12)    │  │  Activation Codes  │  │
 │  └─────────┘  └──────────────────┘  │
 │  ┌─────────┐  ┌──────────────────┐  │
-│  │ Supabase│  │  Premium System   │  │
-│  │ Auth    │  │  Activation Codes │  │
-│  │ Postgres│  └──────────────────┘  │
-│  └─────────┘                        │
-│  ┌─────────┐                        │
-│  │ Firebase│ ← Analytics, Crashlytics,  │
-│  │ FCM     │     Push, Cloud Functions │
-│  └─────────┘                        │
+│  │ Supabase│  │  Firebase         │  │
+│  │ Auth    │  │  Analytics, FCM,   │  │
+│  │ Postgres│  │  Crashlytics       │  │
+│  └─────────┘  └──────────────────┘  │
 └─────────────────────────────────────┘
 ```
 
@@ -64,198 +65,152 @@
 |-------|-----------|
 | Framework | React Native 0.85.3 / Expo SDK 56 |
 | Language | TypeScript |
-| Auth | Supabase Auth (email, anonymous, Google OAuth) |
-| Database | Supabase Postgres (7 tables, RLS) |
-| Storage | Supabase Storage (child-photos, pdf-reports) |
-| ML | TensorFlow Lite (BlazePose, on-device) |
-| Camera | react-native-vision-camera |
+| Auth | **Supabase Auth** (email, anonymous, Google OAuth) |
+| Database | **Supabase Postgres** (7 tables, RLS enabled) |
+| Storage | **Supabase Storage** (child-photos, pdf-reports) |
 | Charts | Victory Native |
 | Navigation | React Navigation |
 | Analytics | Firebase Analytics |
-| Push | Firebase Cloud Messaging |
+| Crash Reporting | Firebase Crashlytics |
+| Push | Firebase Cloud Messaging (FCM) |
 | Functions | Firebase Cloud Functions (redeemCode) |
+
+### Not in Use (Removed)
+
+| Package | Reason Removed |
+|---------|---------------|
+| Firebase Auth | Migrated to Supabase Auth |
+| Firebase Firestore | Migrated to Supabase Postgres |
+| Firebase Storage | Migrated to Supabase Storage |
+| react-native-vision-camera | Height Measurement removed |
+| react-native-fast-tflite | Height Measurement removed |
+| react-native-worklets | Height Measurement removed |
+
+---
+
+## 🛠️ Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```env
+# App
+APP_NAME=कपूरी क (Kapoori Ka)
+APP_VERSION=1.0.0
+APP_ENV=development
+
+# Supabase (Required)
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=***
+
+# Firebase (Analytics, Crashlytics, FCM)
+EXPO_PUBLIC_FIREBASE_API_KEY=***
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_PROJECT.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_SENDER_ID
+EXPO_PUBLIC_FIREBASE_APP_ID=1:XXXX:web:XXXX
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXX
+
+# OAuth Client IDs
+EXPO_PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY=YOUR_KEY
+EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
+EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
+EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
+```
 
 ---
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
+- Node.js 18+
+- pnpm (recommended) or npm
+- Expo CLI (`npx expo`)
+- Supabase project ([supabase.com](https://supabase.com))
+- Firebase project ([console.firebase.google.com](https://console.firebase.google.com))
 
-- **Node.js** ≥ 18
-- **pnpm** (package manager)
-- **EAS CLI** (`npm install -g eas-cli`)
-- **Expo account** — [expo.dev](https://expo.dev)
-- **Supabase project** — free tier works
+### Local Development
 
-### 1. Clone & Install
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/acdcpc/kapoori-ka.git
+   cd kapoori-ka
+   ```
 
-```bash
-git clone https://github.com/acdcpc/kapoori-ka.git
-cd kapoori-ka
-pnpm install
-```
+2. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
 
-### 2. Environment Setup
+3. **Set up environment:**
+   ```bash
+   cp .env.example .env
+   # Fill in your Supabase URL, anon key, and Firebase credentials
+   ```
 
-Copy the env template and fill in your credentials:
+4. **Set up Supabase:**
+   - Create a new Supabase project
+   - Enable Google OAuth provider in Authentication → Providers
+   - Add redirect URL: `com.kapoori.ka://auth/callback`
+   - Enable anonymous sign-ins
+   - Enable email confirmation
+   - Run the database migration (create tables with RLS policies)
 
-```bash
-cp .env.example .env
-```
+5. **Start the development server:**
+   ```bash
+   npx expo start
+   ```
 
-Required env vars:
+6. **Run on Android:**
+   ```bash
+   npx expo start --android
+   ```
 
-```bash
-# Supabase (Auth + Data + Storage)
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# Firebase (Analytics + Crashlytics + FCM + Cloud Functions only)
-EXPO_PUBLIC_FIREBASE_API_KEY=***
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=***
-EXPO_PUBLIC_FIREBASE_APP_ID=***
-EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=***
-```
-
-For EAS builds, push secrets via:
-```bash
-eas env:push --environment preview
-```
-
-### 3. Supabase Setup
-
-Create a Supabase project, then in the **SQL Editor** run the full schema SQL. See [`SUPABASE_SCHEMA.md`](./SUPABASE_SCHEMA.md) for the complete DDL.
-
-In the **Dashboard** → Authentication → Settings:
-- Turn OFF "Confirm email" 
-- Turn ON "Allow anonymous sign-ins"
-
-In **Dashboard** → Authentication → Providers → Google:
-- Enable Google provider
-- Add redirect URL: `com.kapoori.ka://auth/callback`
-
-### 4. Build Preview APK
+### Building for Production
 
 ```bash
-eas build --platform android --profile preview
+# Install EAS CLI globally
+npm install -g eas-cli
+
+# Login to Expo
+eas login
+
+# Build preview APK (standalone, no Metro needed)
+eas build --profile preview --platform android
 ```
 
 ---
 
-## 📂 Project Structure
+## 🔒 Security
 
-```
-kapoori-ka/
-├── App.tsx                    # Root: AuthProvider + Navigation
-├── firebase.ts                # Firebase init (Analytics/Crashlytics/FCM)
-├── app.config.js              # Expo config
-├── src/
-│   ├── lib/
-│   │   └── supabase.ts        # Supabase client (Auth + Data + Storage)
-│   ├── screens/               # 15 screen components
-│   │   ├── HomeScreen.tsx     # Child list + onboarding
-│   │   ├── ChildDashboard.tsx # Per-child health dashboard
-│   │   ├── AddChildScreen.tsx # Add/edit child profiles
-│   │   ├── HeightMeasureScreen.tsx   # AI height (BlazePose)
-│   │   ├── GrowthChartScreen.tsx     # WHO growth charts
-│   │   ├── ImmunizationScreen.tsx    # Vaccine tracking
-│   │   ├── MilestoneScreen.tsx       # Development milestones
-│   │   ├── MChatScreen.tsx           # M-CHAT autism screening
-│   │   ├── NutritionScreen.tsx       # Feeding guides
-│   │   ├── PDFReportScreen.tsx       # PDF export
-│   │   ├── LoginScreen.tsx           # Auth screen
-│   │   └── ...
-│   ├── ai/                    # ML pipeline
-│   │   ├── PoseTypes.ts       # 39-landmark types
-│   │   ├── BlazePoseEngine.ts # TFLite parsing
-│   │   └── heightEstimator.ts # Height calc + smoothing
-│   ├── components/            # Shared UI (PremiumGuard, InfoBubble, Onboarding)
-│   ├── context/               # AuthContext (Supabase), LanguageContext
-│   ├── types/                 # TypeScript definitions
-│   ├── data/                  # WHO tables, milestones, vaccines
-│   └── utils/                 # Calculations, notifications, etc.
-├── functions/                 # Firebase Cloud Functions (redeemCode)
-├── assets/models/             # TFLite models (BlazePose)
-├── .github/workflows/         # CI (daily Supabase ping)
-└── scripts/                   # Dev helper scripts
-```
+- **Row-Level Security (RLS)** enabled on all Supabase tables — users can only access their own data
+- **Email confirmation** required for all new accounts
+- **HTTPS/TLS** for all data transmission
+- **Session tokens** stored in `expo-secure-store` (Android Keystore encrypted)
+- **Google OAuth** with exact redirect URI (no wildcards)
+- **Supabase Anon Key** is intentionally public-facing but protected by RLS
+- **All secrets** excluded from git history via `.gitignore`
 
 ---
 
-## 🤖 AI Height Measurement
+## ⚠️ Known Limitations
 
-Two-stage BlazePose pipeline running entirely on-device:
-
-1. **Detector** (224×224) → finds the person in frame
-2. **Landmarker** (256×256, stride=5) → 39 body landmarks
-3. **Height Estimator** → nose-to-ankle pixels × real-world scale
-4. **EMA Smoothing** → median filter + jitter tracking
-5. **Lock** → 16 consecutive confident frames → measurement
-
-> **Model files:** `assets/models/blazepose_detector_fp16.tflite` + `blazepose_landmark_lite_fp16.tflite`
-
-See [`HEIGHT_MEASURE_SETUP.md`](./HEIGHT_MEASURE_SETUP.md) and [`PROJECT_HANDOVER.md`](./PROJECT_HANDOVER.md).
+| Limitation | Mitigation |
+|-----------|------------|
+| Supabase free tier auto-pauses after 7 days of inactivity | Daily ping workflow (`.github/workflows/supabase-ping.yml`) at 03:00 UTC |
+| Height Measurement feature not available | Planned for post-launch reimplementation |
+| Firebase Auth/firebase.ts still present for analytics init | Fully migrated to Supabase for auth; Firebase used only for Analytics/Crashlytics/FCM |
 
 ---
 
-## 🔐 Security
+## 📄 License
 
-- ✅ Supabase Auth with AsyncStorage persistence
-- ✅ Postgres Row-Level Security (RLS) on all 7 tables
-- ✅ Google OAuth via Supabase provider
-- ✅ Anonymous/guest access with RLS-gated read/write
-- ✅ No hardcoded secrets (all env-based, gitignored)
+MIT — See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🧪 Testing
+## 📧 Contact
 
-```bash
-# TypeScript
-npx tsc --noEmit
-
-# AI engine tests
-node src/ai/__tests__/run_parse_tests.mjs
-
-# Android debugging
-adb logcat -v threadtime | grep -E "AndroidRuntime|FATAL"
-```
-
----
-
-## 📝 Documentation
-
-| File | Purpose |
-|------|---------|
-| [`PROJECT_HANDOVER.md`](./PROJECT_HANDOVER.md) | Complete handover (bugs, decisions, TODO) |
-| [`SUPABASE_SCHEMA.md`](./SUPABASE_SCHEMA.md) | Database schema + RLS policies |
-| [`HEIGHT_MEASURE_SETUP.md`](./HEIGHT_MEASURE_SETUP.md) | AI height measurement setup |
-| [`PRODUCTION_DEPLOYMENT_GUIDE.md`](./PRODUCTION_DEPLOYMENT_GUIDE.md) | Play Store / App Store checklist |
-
----
-
-## 🚢 Deployment
-
-| Checklist | Status |
-|-----------|--------|
-| Supabase RLS + GRANT policies | ✅ |
-| Supabase daily ping (anti-pause) | ✅ |
-| Google Sign-In (APK) | 🔄 Testing |
-| Privacy policy URL | ⏳ Pending |
-| Play Store screenshots | ⏳ Pending |
-
----
-
-## 🙏 Acknowledgments
-
-- **WHO** — Growth reference standards
-- **CDC** — M-CHAT-R/F autism screening
-- **Nepal Government** — National immunization schedule
-- **Google MediaPipe** — BlazePose models
-
----
-
-> **Made with ❤️ for Nepali parents everywhere.**
+- **Developer:** Prakash Thapa
+- **Email:** kapoori.ka@gmail.com
+- **GitHub:** [acdcpc/kapoori-ka](https://github.com/acdcpc/kapoori-ka)
