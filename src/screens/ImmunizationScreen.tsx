@@ -163,7 +163,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadRecords(); }, []);
+  useEffect(() => { loadRecords().then(() => syncDobBasedDates()); }, []);
   useEffect(() => {
     return () => { Speech.stop(); };
   }, []);
@@ -214,6 +214,8 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
       await loadRecords();
       await recalcDependentDates(vaccine.id, givenDate);
+      // Sync DOB-based dates after any status change
+      await syncDobBasedDates();
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
     } catch (e: any) {
@@ -224,6 +226,35 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   // Recalculate dependent vaccine dates after a status change.
   // 6-week → 10-week (+28 days) → 14-week (+28 days)
+
+  // Sync 9-month, 12-month, 15-month vaccine dates from DOB.
+  // These are always DOB-based, not derived from the 6/10/14-week chain.
+  const syncDobBasedDates = async () => {
+    if (!child?.dateOfBirth) return;
+    const dob = dayjs(child.dateOfBirth);
+    const dobBased = {
+      mr1: dob.add(274, 'day').format('YYYY-MM-DD'),       // 9 months
+      pcv3: dob.add(274, 'day').format('YYYY-MM-DD'),       // 9 months
+      fipv2: dob.add(274, 'day').format('YYYY-MM-DD'),      // 9 months
+      je: dob.add(365, 'day').format('YYYY-MM-DD'),          // 12 months
+      mr2: dob.add(456, 'day').format('YYYY-MM-DD'),         // 15 months
+      typhoid: dob.add(456, 'day').format('YYYY-MM-DD'),     // 15 months
+    };
+    try {
+      for (const [vid, date] of Object.entries(dobBased)) {
+        await supabase.from('vaccinations')
+          .upsert({
+            child_id: child.id,
+            user_id: user?.uid || '',
+            vaccine_name: vid,
+            scheduled_date: date,
+          }, { onConflict: 'child_id, vaccine_name' });
+      }
+    } catch (e: any) {
+      console.error('syncDobBasedDates error:', e?.message || e);
+    }
+  };
+
   const recalcDependentDates = async (vaccineId: string, newGivenDate: string) => {
     // Map of vaccine groups by age
     const sixWeekIds = ['penta1', 'opv1', 'pcv1', 'rota1'];
@@ -278,8 +309,9 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         }
       }
 
-      // Reload to reflect new dates
+      // Reload and sync DOB-based dates to reflect changes
       await loadRecords();
+      await syncDobBasedDates();
     } catch (e: any) {
       console.error('Recalc dependent dates error:', e?.message || e);
     }
