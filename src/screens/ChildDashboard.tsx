@@ -2,6 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -144,7 +145,6 @@ export default function ChildDashboard({ route, navigation }: Props) {
 
       if (result.canceled || !result.assets?.[0]) return;
 
-      const FileSystem = require('expo-file-system');
       const destDir = FileSystem.documentDirectory + 'child-photos/';
       await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
       const path = destDir + `child-${child.id}-${Date.now()}.jpg`;
@@ -274,12 +274,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
           <TouchableOpacity
             key={item.screen}
             style={styles.menuItem}
-            onPress={() => {
-              if (item.screen === 'Nutrition') {
-                navigation.navigate('Nutrition', { child });
-                navigation.navigate(item.screen, { child });
-              }
-            }}
+            onPress={() => navigation.navigate(item.screen as any, { child })}
           >
             <View style={[styles.menuIconBox, { backgroundColor: item.color + '26' }]}>
               <Text style={[styles.menuIcon, { color: item.color }]}>{item.icon}</Text>
