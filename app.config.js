@@ -55,6 +55,13 @@ export default {
       "expo-sharing",
       "expo-web-browser",
       "expo-notifications",
+      ["expo-build-properties", {
+        "android": {
+          "minSdkVersion": 26,
+          "compileSdkVersion": 36,
+          "targetSdkVersion": 36
+        }
+      }],
     ],
     extra: {
       eas: {
