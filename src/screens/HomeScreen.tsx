@@ -202,17 +202,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <Text style={styles.headerSubtitle}>Kapoori Ka</Text>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.langToggle}>
-            <TouchableOpacity style={[styles.langBtn, language === 'ne' && styles.langBtnActive]} onPress={() => setLanguage('ne')}>
-              <Text style={[styles.langBtnText, language === 'ne' && styles.langBtnTextActive]}>नेपाली</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.langBtn, language === 'en' && styles.langBtnActive]} onPress={() => setLanguage('en')}>
-              <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>English</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(s => !s)}>
-              <Ionicons name="settings-outline" size={22} color="#7A6E65" />
+              <Ionicons name={showSettings ? "settings" : "settings-outline"} size={22} color="#7A6E65" />
+              <Text style={styles.settingsBtnLabel}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -327,9 +320,7 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: 'flex-end' },
   langToggle: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, borderColor: '#EDE0D4', padding: 2, marginBottom: 6 },
   langBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 18 },
-  langBtnActive: { backgroundColor: '#E8602C' },
   langBtnText: { fontSize: 12, fontWeight: '600', color: '#7A6E65' },
-  langBtnTextActive: { color: '#fff' },
   headerIcons: { flexDirection: 'row', gap: 8 },
 
   // Missed vaccine banner
@@ -340,10 +331,17 @@ const styles = StyleSheet.create({
   missedBannerMore: { fontSize: 11, color: '#991B1B', textAlign: 'center', marginTop: 4, fontWeight: '600' },
 
   aboutBtn: { padding: 4 },
-  settingsBtn: { padding: 4 },
+  settingsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
+  settingsBtnLabel: { fontSize: 13, color: '#7A6E65', fontWeight: '500' },
   settingsPanel: { backgroundColor: '#FDF8F2', borderTopWidth: 1, borderTopColor: '#EDE0D4', padding: 16, paddingTop: 8 },
   settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#EDE0D4', alignSelf: 'center', marginBottom: 12 },
   settingsTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
+  settingsSectionLabel: { fontSize: 11, fontWeight: '700', color: '#B8A58E', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: 6, paddingHorizontal: 2 },
+  langToggleInline: { flexDirection: 'row', gap: 4 },
+  langBtnSmall: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#ddd' },
+  langBtnSmallActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
+  langBtnSmallText: { fontSize: 12, color: '#666' },
+  langBtnSmallTextActive: { color: '#fff', fontWeight: '600' },
   settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F7ECD6', gap: 10 },
   settingsLabel: { flex: 1, fontSize: 14, color: '#1A1A2E' },
   settingsValue: { fontSize: 13, color: '#7A6E65' },
