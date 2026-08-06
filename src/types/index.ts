@@ -59,6 +59,7 @@ export interface VaccineScheduleItem {
   ageInDays: number;
   description: string;
   descriptionNepali: string;
+  isSupplement?: boolean;
 }
 
 // ── Module 2 Types ──────────────────────────────────────────────

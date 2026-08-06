@@ -25,6 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Immunization'>;
 interface NIPEntry {
   id: string; name: string; nameNe: string; ageLabel: string; ageLabelNe: string;
   ageInDays: number; diseases: string; diseasesNe: string; route: string; routeNe: string; dose: string; doseNe: string;
+  isSupplement?: boolean;
 }
 
 const NIP_SCHEDULE: NIPEntry[] = [
@@ -46,6 +47,17 @@ const NIP_SCHEDULE: NIPEntry[] = [
   { id:'je', ageInDays:365, ageLabel:'12 Months', ageLabelNe:'१२ महिना', name:'JE', nameNe:'जेई (दिमागी ज्वरो)', diseases:'Encephalitis', diseasesNe:'दिमागी ज्वरो', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml', doseNe:'०.५ मिली' },
   { id:'mr2', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'MR 2', nameNe:'एमआर २', diseases:'Measles', diseasesNe:'दादुरा-रुबेला', route:'SC', routeNe:'छालामुनि', dose:'0.5 ml', doseNe:'०.५ मिली' },
   { id:'typhoid', ageInDays:456, ageLabel:'15 Months', ageLabelNe:'१५ महिना', name:'Typhoid', nameNe:'टाइफाइड', diseases:'Typhoid', diseasesNe:'टाइफाइड ज्वरो', route:'IM', routeNe:'मांसपेशीमा', dose:'0.5 ml', doseNe:'०.५ मिली' },
+  // Vitamin A Supplementation — Nepal NIP 2024, MoHP, GoN
+  { id:'vitA-6m',  ageInDays:183,  ageLabel:'6 Months',  ageLabelNe:'६ महिना',  name:'Vitamin A (1st)',  nameNe:'भिटामिन ए (पहिलो)',  diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'100,000 IU', doseNe:'१ लाख IU', isSupplement:true },
+  { id:'vitA-12m', ageInDays:365,  ageLabel:'12 Months', ageLabelNe:'१२ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-18m', ageInDays:548,  ageLabel:'18 Months', ageLabelNe:'१८ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-24m', ageInDays:730,  ageLabel:'24 Months', ageLabelNe:'२४ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-30m', ageInDays:913,  ageLabel:'30 Months', ageLabelNe:'३० महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-36m', ageInDays:1095, ageLabel:'36 Months', ageLabelNe:'३६ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-42m', ageInDays:1278, ageLabel:'42 Months', ageLabelNe:'४२ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-48m', ageInDays:1461, ageLabel:'48 Months', ageLabelNe:'४८ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-54m', ageInDays:1643, ageLabel:'54 Months', ageLabelNe:'५४ महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
+  { id:'vitA-60m', ageInDays:1826, ageLabel:'60 Months', ageLabelNe:'६० महिना', name:'Vitamin A', nameNe:'भिटामिन ए', diseases:'Night blindness prevention', diseasesNe:'रतन्धो रोकथाम', route:'Oral', routeNe:'मुखबाट', dose:'200,000 IU', doseNe:'२ लाख IU', isSupplement:true },
 ];
 
 const AGE_GROUPS = [
@@ -61,6 +73,7 @@ const AGE_GROUPS = [
 type VaccineStatus = 'given' | 'due' | 'upcoming' | 'missed';
 
 interface ComputedVaccine extends NIPEntry {
+  isSupplement?: boolean;
   scheduledDate: string; status: VaccineStatus; daysUntilDue: number;
 }
 
@@ -76,7 +89,7 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
     else if (daysUntilDue < 0) status = 'missed';
     else if (daysUntilDue <= 14) status = 'due';
     else status = 'upcoming';
-    return { ...v, scheduledDate: scheduledDate.format('YYYY-MM-DD'), status, daysUntilDue };
+    return { ...v, scheduledDate: scheduledDate.format('YYYY-MM-DD'), status, daysUntilDue, isSupplement: v.isSupplement || false };
   });
 }
 
@@ -371,14 +384,9 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
           </View>
 
           <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
-            {childAgeMonths >= 16 && (
-              <View style={styles.noMoreCard}>
-                <Text style={styles.noMoreText}>{isNe ? '१५ महिनापछि कुनै राष्ट्रिय खोप छैन' : 'No more national vaccines after 15 months'}</Text>
-              </View>
-            )}
 
             {AGE_GROUPS.map(group => {
-              const vaccines = computed.filter(v => v.ageLabel === group.label);
+              const vaccines = computed.filter(v => v.ageLabel === group.label && !v.isSupplement);
               const filtered = vaccines.filter(v => {
                 if (trackerFilter === 'upcoming') return v.status === 'upcoming' || v.status === 'due';
                 if (trackerFilter === 'missed') return v.status === 'missed';
