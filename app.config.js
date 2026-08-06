@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   expo: {
     name: process.env.APP_NAME || "कपूरी क (Kapoori Ka)",
-    slug: "kapoori-ka",
+    slug: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
     scheme: "com.kapoori.ka",
     version: process.env.APP_VERSION || "1.0.0",
     orientation: "portrait",
