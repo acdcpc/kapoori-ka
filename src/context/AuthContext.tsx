@@ -361,12 +361,22 @@ function parseUrlParams(url: string): URLSearchParams {
     return result.data;
   };
 
-  const sendPasswordReset = async (_email?: string) => {
-    console.log('[AuthContext] Password reset not yet ported from Firebase');
+  const sendPasswordReset = async (email?: string) => {
+    if (!email) throw new Error('Email is required');
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'com.kapoori.ka://reset-password',
+    });
+    if (e) throw new Error(e.message);
   };
 
-  const resendVerificationEmail = async (_email?: string) => {
-    console.log('[AuthContext] Verification email not yet ported from Firebase');
+  const resendVerificationEmail = async (email?: string) => {
+    const targetEmail = email || user?.email;
+    if (!targetEmail) throw new Error('No email available for verification');
+    const { error: e } = await supabase.auth.resend({
+      type: 'signup',
+      email: targetEmail,
+    });
+    if (e) throw new Error(e.message);
   };
 
   const refreshUserData = async () => {
