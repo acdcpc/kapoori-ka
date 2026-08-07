@@ -42,8 +42,7 @@
 
     table {
       width: 100%; background: #fff; border-radius: 14px; overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      font-size: 13px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-size: 13px;
     }
     th {
       background: #E8602C; color: #fff; padding: 12px 10px;
@@ -86,6 +85,20 @@
 
     .loading { text-align: center; padding: 40px; color: #999; }
     .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+    .login-box {
+      background: #fff; border-radius: 14px; padding: 40px; text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .login-box h2 { color: #E8602C; margin-bottom: 16px; }
+    .login-box input {
+      width: 100%; max-width: 320px; padding: 12px; margin-bottom: 10px;
+      border: 2px solid #EDE0D4; border-radius: 10px; font-size: 14px;
+    }
+    .login-box button {
+      width: 100%; max-width: 320px; padding: 14px; background: #E8602C;
+      color: #fff; border: none; border-radius: 10px; font-size: 16px;
+      font-weight: 700; cursor: pointer;
+    }
 
     .reject-reason { margin-top: 10px; }
     .reject-reason textarea {
@@ -111,10 +124,10 @@
     </div>
 
     <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="Search by name, email, or transaction ID..." oninput="filterRows()">
+      <input type="text" id="searchInput" placeholder="Search by name, email, or transaction ID..." oninput="renderTable()">
     </div>
 
-    <div id="tableContainer">
+    <div id="mainContent">
       <div class="loading">Loading...</div>
     </div>
 
@@ -139,82 +152,54 @@
     </div>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    const supabase = createClient('https://tgnzucqjebnisgrxjfjg.supabase.co', 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs');
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAlGNIXCGRsyilNFsSr62Xx4vDJls-rra0",
-      authDomain: "kapoori-ka.firebaseapp.com",
-      projectId: "kapoori-ka",
-      storageBucket: "kapoori-ka.appspot.com",
-      messagingSenderId: "391729474242",
-      appId: "1:391729474242:web:9c0636ca3e6b7c3503865b"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    window._auth = auth;
-    window._db = db;
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    let currentTab = 'pending';
-    let allPayments = [];
-    let rejectPaymentId = null;
+    var supabase = window.supabase.createClient(
+      'https://tgnzucqjebnisgrxjfjg.supabase.co',
+      'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs'
+    );
 
-    // Auth
-    supabase.auth.onAuthStateChange((_event, session) => {
-    const user = session?.user;
+    var currentTab = 'pending';
+    var allPayments = [];
+    var rejectPaymentId = null;
+    var adminEmails = ['thisisprakashthapa@gmail.com', 'prakashcreativethapa@gmail.com'];
+
+    // ---- Auth ----
+    supabase.auth.onAuthStateChange(function(_event, session) {
+      var user = session ? session.user : null;
+      var main = document.getElementById('mainContent');
+
       if (!user) {
-        // Show login
-        document.getElementById('tableContainer').innerHTML = `
-          <div style="background:#fff;border-radius:14px;padding:40px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-            <h2 style="color:#E8602C;margin-bottom:16px;">Admin Login</h2>
-            <div style="max-width:320px;margin:0 auto;">
-              <input id="loginEmail" type="email" placeholder="Email"
-                style="width:100%;padding:12px;margin-bottom:10px;border:2px solid #EDE0D4;border-radius:10px;font-size:14px;">
-              <input id="loginPassword" type="password" placeholder="Password"
-                style="width:100%;padding:12px;margin-bottom:10px;border:2px solid #EDE0D4;border-radius:10px;font-size:14px;">
-              <button onclick="doLogin()"
-                style="width:100%;padding:14px;background:#E8602C;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">
-                Sign In
-              </button>
-            </div>
-          </div>`;
+        main.innerHTML = '<div class="login-box">' +
+          '<h2>Admin Login</h2>' +
+          '<div style="max-width:320px;margin:0 auto;">' +
+          '<input id="loginEmail" type="email" placeholder="Email">' +
+          '<input id="loginPassword" type="password" placeholder="Password">' +
+          '<button onclick="doLogin()">Sign In</button>' +
+          '</div></div>';
         return;
       }
 
-      // Verify admin claim
-      const idTokenResult = await user.getIdTokenResult();
-      if (!idTokenResult.claims.admin) {
-        document.getElementById('tableContainer').innerHTML = `
-          <div style="background:#FFEBEE;border-radius:14px;padding:40px;text-align:center;">
-            <p style="color:#C62828;font-size:16px;">⛔ Not authorized. Admin access required.</p>
-            <button onclick="signOut()" style="margin-top:16px;padding:10px 20px;background:#E8602C;color:#fff;border:none;border-radius:10px;cursor:pointer;">Sign Out</button>
-          </div>`;
+      // Check admin authorization
+      if (adminEmails.indexOf(user.email) === -1) {
+        main.innerHTML = '<div style="background:#FFEBEE;border-radius:14px;padding:40px;text-align:center;">' +
+          '<p style="color:#C62828;font-size:16px;">' +
+          '\u26d4 Not authorized. Admin access required.</p>' +
+          '<button onclick="signOut()" style="margin-top:16px;padding:10px 20px;background:#E8602C;color:#fff;border:none;border-radius:10px;cursor:pointer;">Sign Out</button>' +
+          '</div>';
         return;
       }
 
-      document.getElementById('userInfo').textContent = `Signed in as: ${user.email}`;
+      document.getElementById('userInfo').textContent = 'Signed in as: ' + user.email;
       loadPayments();
     });
 
     window.doLogin = async function() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value.trim();
-      if (!email || !password) {
-        alert('Please enter email and password.');
-        return;
-      }
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      } catch (err) {
-        alert('Login failed: ' + err.message);
-      }
+      var email = document.getElementById('loginEmail').value.trim();
+      var password = document.getElementById('loginPassword').value.trim();
+      if (!email || !password) { alert('Please enter email and password.'); return; }
+      var { error } = await supabase.auth.signInWithPassword({ email: email, password: password });
+      if (error) { alert('Login failed: ' + error.message); }
     };
 
     window.signOut = function() {
@@ -223,131 +208,105 @@
 
     window.switchTab = function(tab) {
       currentTab = tab;
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab').forEach(t => {
-        if (t.textContent.toLowerCase().startsWith(tab)) t.classList.add('active');
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.tab').forEach(function(t) {
+        if (t.textContent.toLowerCase().indexOf(tab) === 0) t.classList.add('active');
       });
-      filterRows();
+      renderTable();
     };
 
+    // ---- Data Loading ----
     async function loadPayments() {
-      const container = document.getElementById('tableContainer');
-      container.innerHTML = '<div class="loading">Loading payments...</div>';
+      var main = document.getElementById('mainContent');
+      main.innerHTML = '<div class="loading">Loading payments...</div>';
 
-      try {
-        const q = query(collection(window._db, 'payments'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        allPayments = [];
-        snap.forEach(doc => {
-          allPayments.push({ id: doc.id, ...doc.data() });
-        });
-      } catch (err) {
-        container.innerHTML = `<div class="loading" style="color:red;">Error: ${err.message}</div>`;
+      var { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        main.innerHTML = '<div class="loading" style="color:red;">Error: ' + error.message + '</div>';
         return;
       }
-
-      renderTable();
-    }
-
-    function filterRows() {
+      allPayments = data || [];
       renderTable();
     }
 
     function renderTable() {
-      const container = document.getElementById('tableContainer');
-      const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+      var main = document.getElementById('mainContent');
+      var search = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').toLowerCase();
 
-      let filtered = allPayments;
-      if (currentTab !== 'all') {
-        filtered = filtered.filter(p => p.status === currentTab);
-      }
+      var filtered = allPayments.filter(function(p) { return p.status === currentTab; });
       if (search) {
-        filtered = filtered.filter(p =>
-          (p.name || '').toLowerCase().includes(search) ||
-          (p.email || '').toLowerCase().includes(search) ||
-          (p.paymentId || '').toLowerCase().includes(search)
-        );
+        filtered = filtered.filter(function(p) {
+          return (p.email || '').toLowerCase().indexOf(search) !== -1 ||
+            (p.transaction_id || '').toLowerCase().indexOf(search) !== -1;
+        });
       }
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty">No ${currentTab} payments found.</div>`;
+        main.innerHTML = '<div class="empty">No ' + currentTab + ' payments found.</div>';
         return;
       }
 
-      let html = `<table>
-        <thead><tr>
-          <th>Date</th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Method</th>
-          <th>Txn ID</th>
-          <th>Amount</th>
-          <th>Plan</th>
-          <th>Status</th>
-          <th>Screenshot</th>
-          <th>Actions</th>
-        </tr></thead><tbody>`;
+      var html = '<table><thead><tr>' +
+        '<th>Date</th><th>Email</th><th>Txn ID</th>' +
+        '<th>Amount</th><th>Status</th><th>Screenshot</th><th>Actions</th>' +
+        '</tr></thead><tbody>';
 
-      filtered.forEach(p => { p.displayId = p.id?.substring(0,8);
-        const date = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString() : '-';
-        const statusBadge = `<span class="badge badge-${p.status}">${p.status}</span>`;
-        const screenshot = p.screenshotUrl
-          ? `<img src="${p.screenshotUrl}" class="screenshot-thumb" onclick="window.open('${p.screenshotUrl}')">`
+      filtered.forEach(function(p) {
+        var date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '-';
+        var badge = '<span class="badge badge-' + p.status + '">' + p.status + '</span>';
+        var screenshot = p.screenshot_url
+          ? '<img src="' + p.screenshot_url + '" class="screenshot-thumb" onclick="window.open(\'' + p.screenshot_url + '\')">'
           : '-';
 
-        let actions = `<button class="action-btn btn-view" onclick="viewPayment('${p.id}')">View</button>`;
+        var actions = '<button class="action-btn btn-view" onclick="viewPayment(\'' + p.id + '\')">View</button>';
         if (p.status === 'pending') {
-          actions += ` <button class="action-btn btn-approve" onclick="approvePayment('${p.id}')">Approve</button>`;
-          actions += ` <button class="action-btn btn-reject" onclick="openReject('${p.id}')">Reject</button>`;
+          actions += ' <button class="action-btn btn-approve" onclick="approvePayment(\'' + p.id + '\')">Approve</button>';
+          actions += ' <button class="action-btn btn-reject" onclick="openReject(\'' + p.id + '\')">Reject</button>';
         }
 
-        html += `<tr>
-          <td>${date}</td>
-          <td>${p.name || '-'}</td>
-          <td>${p.email || '-'}</td>
-          <td>${p.paymentMethod || '-'}</td>
-          <td style="font-family:monospace;font-size:12px;">${p.paymentId || '-'}</td>
-          <td>NPR ${p.amount || 0}</td>
-          <td>${p.plan || 'yearly'}</td>
-          <td>${statusBadge}</td>
-          <td>${screenshot}</td>
-          <td>${actions}</td>
-        </tr>`;
+        html += '<tr>' +
+          '<td>' + date + '</td>' +
+          '<td>' + (p.email || '-') + '</td>' +
+          '<td style="font-family:monospace;font-size:12px;">' + (p.transaction_id || '-') + '</td>' +
+          '<td>NPR ' + (p.amount || 0) + '</td>' +
+          '<td>' + badge + '</td>' +
+          '<td>' + screenshot + '</td>' +
+          '<td>' + actions + '</td>' +
+          '</tr>';
       });
 
       html += '</tbody></table>';
-      container.innerHTML = html;
+      main.innerHTML = html;
     }
 
+    // ---- Payment Actions ----
     window.viewPayment = function(id) {
-      const p = allPayments.find(x => x.id === id);
+      var p = allPayments.find(function(x) { return x.id === id; });
       if (!p) return;
 
-      const date = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : '-';
-      const verified = p.verifiedAt?.toDate ? p.verifiedAt.toDate().toLocaleString() : '-';
+      var date = p.created_at ? new Date(p.created_at).toLocaleString() : '-';
+      var verified = p.verified_at ? new Date(p.verified_at).toLocaleString() : '-';
 
-      document.getElementById('modalContent').innerHTML = `
-        <h2>Payment Details</h2>
-        <p><strong>Name:</strong> ${p.name}</p>
-        <p><strong>Email:</strong> ${p.email}</p>
-        <p><strong>Mobile:</strong> ${p.mobile || '-'}</p>
-        <p><strong>Method:</strong> ${p.paymentMethod}</p>
-        <p><strong>Transaction ID:</strong> ${p.paymentId}</p>
-        <p><strong>Amount:</strong> NPR ${p.amount}</p>
-        <p><strong>Plan:</strong> ${p.plan}</p>
-        <p><strong>Status:</strong> ${p.status}</p>
-        <p><strong>Submitted:</strong> ${date}</p>
-        <p><strong>Verified:</strong> ${verified}</p>
-        <p><strong>Rejection Reason:</strong> ${p.rejectionReason || '-'}</p>
-        <p><strong>Notes:</strong> ${p.notes || '-'}</p>
-        ${p.screenshotUrl ? `<img src="${p.screenshotUrl}" alt="Screenshot">` : ''}
-        <div class="modal-actions">
-          ${p.status === 'pending' ? `
-            <button class="action-btn btn-approve" onclick="approvePayment('${p.id}')">Approve</button>
-            <button class="action-btn btn-reject" onclick="closeModal(); openReject('${p.id}')">Reject</button>
-          ` : ''}
-          <button class="action-btn btn-view" onclick="closeModal()">Close</button>
-        </div>`;
+      document.getElementById('modalContent').innerHTML =
+        '<h2>Payment Details</h2>' +
+        '<p><strong>Email:</strong> ' + (p.email || '-') + '</p>' +
+        '<p><strong>Transaction ID:</strong> ' + (p.transaction_id || '-') + '</p>' +
+        '<p><strong>Amount:</strong> NPR ' + (p.amount || 0) + '</p>' +
+        '<p><strong>Status:</strong> ' + (p.status || '-') + '</p>' +
+        '<p><strong>Submitted:</strong> ' + date + '</p>' +
+        '<p><strong>Verified:</strong> ' + verified + '</p>' +
+        (p.screenshot_url ? '<img src="' + p.screenshot_url + '" alt="Screenshot">' : '') +
+        '<div class="modal-actions">' +
+        (p.status === 'pending'
+          ? '<button class="action-btn btn-approve" onclick="approvePayment(\'' + p.id + '\')">Approve</button>' +
+            '<button class="action-btn btn-reject" onclick="closeModal(); openReject(\'' + p.id + '\')">Reject</button>'
+          : '') +
+        '<button class="action-btn btn-view" onclick="closeModal()">Close</button>' +
+        '</div>';
 
       document.getElementById('detailModal').classList.add('active');
     };
@@ -369,51 +328,83 @@
 
     window.confirmReject = async function() {
       if (!rejectPaymentId) return;
-      const reason = document.getElementById('rejectReason').value.trim();
-      if (!reason) {
-        alert('Please provide a reason for rejection.');
-        return;
-      }
+      var reason = document.getElementById('rejectReason').value.trim();
+      if (!reason) { alert('Please provide a reason.'); return; }
 
-      const btn = document.getElementById('confirmRejectBtn');
+      var btn = document.getElementById('confirmRejectBtn');
       btn.disabled = true;
       btn.textContent = 'Rejecting...';
 
-      try {
-        const rejectFn = window._rejectPaymentFn;
-        if (rejectFn) {
-          await rejectFn({ paymentId: rejectPaymentId, reason });
-          alert('Payment rejected.');
-          closeRejectModal();
-          loadPayments();
-        } else {
-          alert('Cloud Functions not available. Use Firebase console to reject.');
-        }
-      } catch (err) {
-        alert('Error: ' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Reject';
+      var { error } = await supabase
+        .from('payments')
+        .update({ status: 'rejected', rejection_reason: reason, verified_at: new Date().toISOString(), verified_by: supabase.auth.user() ? supabase.auth.user().id : null })
+        .eq('id', rejectPaymentId);
+
+      if (error) {
+        alert('Reject failed: ' + error.message);
+      } else {
+        alert('Payment rejected.');
+        closeRejectModal();
+        loadPayments();
       }
+      btn.disabled = false;
+      btn.textContent = 'Reject';
     };
 
     window.approvePayment = async function(id) {
-      if (!confirm('Approve this payment and activate premium for the user?')) return;
+      if (!confirm('Approve this payment and generate an activation code?')) return;
+
+      var code = generateCode();
+      var now = new Date().toISOString();
+      var email = '';
+
+      // Get payment record
+      var p = allPayments.find(function(x) { return x.id === id; });
+      if (p) email = p.email || '';
 
       try {
-        const approveFn = window._approvePaymentFn;
-        if (approveFn) {
-          await approveFn({ paymentId: id });
-          alert('Payment approved! Premium activated for the user.');
-          closeModal();
-          loadPayments();
-        } else {
-          alert('Cloud Functions not available. Use Firebase console to update manually.');
-        }
+        // 1. Insert activation code
+        var { error: codeErr } = await supabase
+          .from('activation_codes')
+          .insert({
+            code: code,
+            status: 'valid',
+            plan: 'yearly',
+            amount: p ? p.amount : 500,
+            original_transaction_id: p ? p.transaction_id : null
+          });
+
+        if (codeErr) throw new Error('Code creation failed: ' + codeErr.message);
+
+        // 2. Update payment to approved
+        var { error: updateErr } = await supabase
+          .from('payments')
+          .update({
+            status: 'approved',
+            verified_at: now,
+            verified_by: supabase.auth.user().id
+          })
+          .eq('id', id);
+
+        if (updateErr) throw new Error('Payment update failed: ' + updateErr.message);
+
+        alert('Payment approved!\n\nActivation Code: ' + code + '\n\nSend this code to: ' + email);
+        closeModal();
+        loadPayments();
       } catch (err) {
         alert('Error: ' + err.message);
       }
     };
+
+    function generateCode() {
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      var code = '';
+      for (var i = 0; i < 12; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      // Format: XXXX-XXXX-XXXX
+      return code.substring(0, 4) + '-' + code.substring(4, 8) + '-' + code.substring(8, 12);
+    }
   </script>
 </body>
 </html>

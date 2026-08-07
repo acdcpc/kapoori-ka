@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore'; // will be replaced in Phase 3
 
 export const FIRESTORE_COLLECTIONS = {
   USERS: 'users',
@@ -18,16 +17,16 @@ export interface UserProfile {
   displayName: string;
   photoURL: string | null;
   language: 'en' | 'ne';
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
   isAnonymous: boolean;
 }
 
 export interface PremiumInfo {
   active: boolean;
   plan: 'monthly' | 'yearly' | 'premium';
-  activatedAt?: Date | Timestamp;
-  expiresAt?: Date | Timestamp;
+  activatedAt?: Date;
+  expiresAt?: Date;
   verifiedBy?: string;
   paymentId?: string;
 }
@@ -35,8 +34,8 @@ export interface PremiumInfo {
 export interface Subscription {
   status: 'active' | 'expired' | 'cancelled' | 'free' | 'pending';
   plan: 'free' | 'monthly' | 'yearly' | 'premium';
-  startDate?: Date | Timestamp;
-  endDate?: Date | Timestamp;
+  startDate?: Date;
+  endDate?: Date;
   autoRenew: boolean;
   paymentMethod?: string;
   transactionId?: string;
@@ -57,8 +56,8 @@ export interface PaymentRecord {
   screenshotUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
   plan: 'monthly' | 'yearly';
-  createdAt: Date | Timestamp;
-  verifiedAt?: Date | Timestamp | null;
+  createdAt: Date;
+  verifiedAt?: Date | null;
   verifiedBy?: string | null;
   notes?: string;
   rejectionReason?: string | null;
@@ -70,7 +69,7 @@ export interface ActivationCode {
   plan: 'monthly' | 'yearly';
   amount: number;
   originalTransactionId?: string;
-  createdAt?: Date | Timestamp;
+  createdAt?: Date;
   usedBy?: string;
-  usedAt?: Date | Timestamp;
+  usedAt?: Date;
 }

@@ -70,7 +70,6 @@
       padding: 20px; text-align: center; margin-bottom: 16px;
     }
     .success-box h3 { color: #2E7D32; margin-bottom: 8px; }
-    .success-box p { color: #555; font-size: 14px; }
 
     .error-box {
       background: #FFEBEE; border: 2px solid #F44336; border-radius: 14px;
@@ -118,19 +117,19 @@
           </div>
         </div>
 
-        <h2>2. Pay via eSewa</h2>
-        <p>Scan the QR below with your eSewa app to pay the amount above.</p>
+        <h2>2. Pay via eSewa / Khalti</h2>
+        <p>Pay to our eSewa/Khalti merchant using the details below, then fill in the form.</p>
         <div class="qr-box">
           <img src="https://via.placeholder.com/400x400.png?text=eSewa+QR" alt="eSewa QR">
-          <p>Open eSewa → Scan QR → Pay NPR <span id="qrAmount">500</span></p>
+          <p>Amount: NPR <span id="qrAmount">500</span></p>
         </div>
 
         <h2>3. Payment Method</h2>
         <div class="payment-methods">
-          <div class="pm-btn selected" id="pmEsewa" onclick="selectPaymentMethod('eSewa', 'pmEsewa')">eSewa</div>
-          <div class="pm-btn" id="pmKhalti" onclick="selectPaymentMethod('Khalti', 'pmKhalti')">Khalti</div>
-          <div class="pm-btn" id="pmFonepay" onclick="selectPaymentMethod('Fonepay', 'pmFonepay')">Fonepay</div>
-          <div class="pm-btn" id="pmBank" onclick="selectPaymentMethod('Bank Transfer', 'pmBank')">Bank</div>
+          <div class="pm-btn selected" id="pmEsewa" onclick="selectMethod('eSewa')">eSewa</div>
+          <div class="pm-btn" id="pmKhalti" onclick="selectMethod('Khalti')">Khalti</div>
+          <div class="pm-btn" id="pmFonepay" onclick="selectMethod('Fonepay')">Fonepay</div>
+          <div class="pm-btn" id="pmBank" onclick="selectMethod('Bank Transfer')">Bank</div>
         </div>
 
         <h2>4. Your Details</h2>
@@ -141,7 +140,7 @@
         <div class="form-group">
           <label>Registered Email *</label>
           <input type="email" id="email" placeholder="you@example.com" required>
-          <small style="font-size:11px;color:#999">Use the same email as your Kapoori Ka account</small>
+          <small style="font-size:11px;color:#999">Same email as your Kapoori Ka account</small>
         </div>
         <div class="form-group">
           <label>Mobile Number (optional)</label>
@@ -150,7 +149,6 @@
         <div class="form-group">
           <label>Transaction ID *</label>
           <input type="text" id="txnId" placeholder="eSewa/Khalti Transaction ID" required>
-          <small style="font-size:11px;color:#999">From your eSewa/Khalti app after payment</small>
         </div>
         <div class="form-group">
           <label>Amount Paid (NPR) *</label>
@@ -180,158 +178,130 @@
       <div id="successView" style="display:none;">
         <div class="success-box">
           <h3>✅ Payment Submitted!</h3>
-          <p>
-            We've received your payment details. We will verify your transaction and send an
-            <strong>Activation Code</strong> to you via email or WhatsApp within a few hours.
-          </p>
+          <p>We've received your payment details. We'll verify your transaction and send an <strong>Activation Code</strong> via email or WhatsApp within a few hours.</p>
           <p>Enter the code in the Kapoori Ka app → Subscription → Redeem to activate Premium.</p>
         </div>
-
         <h3>Want faster confirmation?</h3>
-        <p>WhatsApp us your transaction ID directly:</p>
-        <a class="wa-link" href="https://wa.me/9779840516603?text=Hello%2C%20I%20just%20submitted%20a%20payment.%20Transaction%20ID%3A%20" target="_blank">
-          💬 WhatsApp Us
-        </a>
+        <p>WhatsApp us your transaction ID:</p>
+        <a class="wa-link" href="https://wa.me/9779840516603" target="_blank">💬 WhatsApp Us</a>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-    import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAlGNIXCGRsyilNFsSr62Xx4vDJls-rra0",
-      authDomain: "kapoori-ka.firebaseapp.com",
-      projectId: "kapoori-ka",
-      storageBucket: "kapoori-ka.appspot.com",
-      messagingSenderId: "391729474242",
-      appId: "1:391729474242:web:9c0636ca3e6b7c3503865b"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-
-    window._selectedPlan = 'yearly';
-    window._selectedMethod = 'eSewa';
-  </script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-    // Supabase init
-    const supabase = window.supabase.createClient('https://tgnzucqjebnisgrxjfjg.supabase.co', 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs');
+  <script>
+    // Supabase client — payment page uses anon key (no auth needed for payment submission)
+    var supabase = window.supabase.createClient(
+      'https://tgnzucqjebnisgrxjfjg.supabase.co',
+      'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs'
+    );
 
-    // Expose state and functions globally for inline onclick
-    let selectedPlan = 'yearly';
-    let selectedMethod = 'eSewa';
+    var selectedPlan = 'yearly';
+    var selectedMethod = 'eSewa';
 
-    window.selectPlan = function(plan) {
+    function selectPlan(plan) {
       selectedPlan = plan;
       document.getElementById('planMonthly').classList.toggle('selected', plan === 'monthly');
       document.getElementById('planYearly').classList.toggle('selected', plan === 'yearly');
       document.getElementById('qrAmount').textContent = plan === 'yearly' ? '500' : '100';
       document.getElementById('amount').value = plan === 'yearly' ? '500' : '100';
-    };
+    }
 
-    window.selectPaymentMethod = function(method, btnId) {
+    function selectMethod(method) {
       selectedMethod = method;
-      document.querySelectorAll('.pm-btn').forEach(b => b.classList.remove('selected'));
-      document.getElementById(btnId).classList.add('selected');
-    };
+      document.querySelectorAll('.pm-btn').forEach(function(b) { b.classList.remove('selected'); });
+    }
 
-    window.submitPayment = async function() {
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const mobile = document.getElementById('mobile').value.trim();
-      const txnId = document.getElementById('txnId').value.trim();
-      const amount = parseInt(document.getElementById('amount').value) || 0;
-      const remarks = document.getElementById('remarks').value.trim();
-      const screenshotFile = document.getElementById('screenshot').files[0];
+    window.selectPlan = selectPlan;
+    window.selectMethod = selectMethod;
 
-      // Validation
-      document.getElementById('errorBox').style.display = 'none';
+    async function submitPayment() {
+      var name = document.getElementById('name').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var mobile = document.getElementById('mobile').value.trim();
+      var txnId = document.getElementById('txnId').value.trim();
+      var amount = parseInt(document.getElementById('amount').value) || 0;
+      var remarks = document.getElementById('remarks').value.trim();
+      var screenshotFile = document.getElementById('screenshot').files[0];
+
+      var errorBox = document.getElementById('errorBox');
+      errorBox.style.display = 'none';
 
       if (!name || !email || !txnId || !amount) {
         showError('Please fill all required fields (Name, Email, Transaction ID, Amount).');
         return;
       }
-
       if (amount < 50) {
-        showError('Amount seems too low. Please enter the correct amount paid.');
+        showError('Amount seems too low. Please enter the correct amount.');
         return;
       }
 
-      // Block duplicate transaction IDs
+      // Check for duplicate transaction ID
       try {
-        const {{ data: existing, error: dupErr }} = await supabase
+        var { data: existing } = await supabase
           .from('payments')
           .select('id')
           .eq('transaction_id', txnId);
         if (existing && existing.length > 0) {
-          showError('This Transaction ID has already been submitted. Please check your ID and try again.');
+          showError('This Transaction ID has already been submitted.');
           return;
         }
       } catch (err) {
-        console.error('Dup check failed, proceeding:', err);
+        console.warn('Dup check skipped:', err);
       }
 
-      const submitBtn = document.getElementById('submitBtn');
-      const spinner = document.getElementById('spinner');
+      var submitBtn = document.getElementById('submitBtn');
+      var spinner = document.getElementById('spinner');
       submitBtn.disabled = true;
       spinner.classList.add('active');
 
       try {
-        let screenshotUrl = '';
+        var screenshotUrl = '';
 
-        // Upload screenshot if provided
         if (screenshotFile) {
-          const filePath = `public/${email.replace(/[.@]/g, '_')}_${txnId}_${Date.now()}`;
-          const {{ error: uploadErr }} = await supabase.storage
+          var filePath = 'public/' + email.replace(/[.@]/g, '_') + '_' + txnId + '_' + Date.now();
+          var { error: uploadErr } = await supabase.storage
             .from('payment-screenshots')
-            .upload(filePath, screenshotFile, {{ contentType: screenshotFile.type, upsert: true }});
+            .upload(filePath, screenshotFile, { contentType: screenshotFile.type, upsert: true });
           if (!uploadErr) {
-            const {{ data: urlData }} = supabase.storage.from('payment-screenshots').getPublicUrl(filePath);
+            var { data: urlData } = supabase.storage.from('payment-screenshots').getPublicUrl(filePath);
             screenshotUrl = urlData.publicUrl;
           }
         }
 
-        // Create payment record in Supabase
-        const paymentDoc = {{
-          email: email.toLowerCase(),
-          amount: String(amount),
-          transaction_id: txnId,
-          screenshot_url: screenshotUrl || null,
-          status: 'pending',
-        }};
-
-        const {{ error: insertErr }} = await supabase
+        var { error: insertErr } = await supabase
           .from('payments')
-          .insert(paymentDoc);
+          .insert({
+            email: email.toLowerCase(),
+            amount: amount,
+            transaction_id: txnId,
+            screenshot_url: screenshotUrl || null,
+            status: 'pending'
+          });
 
         if (insertErr) throw insertErr;
 
-        // Show success
         document.getElementById('formView').style.display = 'none';
         document.getElementById('successView').style.display = 'block';
       } catch (err) {
         console.error('Submit error:', err);
-        showError('Failed to submit. Please try again or WhatsApp us directly. Error: ' + err.message);
+        showError('Failed to submit: ' + err.message);
       } finally {
         submitBtn.disabled = false;
         spinner.classList.remove('active');
       }
-    };
-
-    function showError(msg) {
-      const box = document.getElementById('errorBox');
-      box.textContent = msg;
-      box.style.display = 'block';
-      setTimeout(() => { box.style.display = 'none'; }, 10000);
     }
 
-    // Sync initial values
+    function showError(msg) {
+      var box = document.getElementById('errorBox');
+      box.textContent = msg;
+      box.style.display = 'block';
+      setTimeout(function() { box.style.display = 'none'; }, 10000);
+    }
+
+    window.submitPayment = submitPayment;
+
+    // Init defaults
     document.getElementById('amount').value = '500';
     document.getElementById('qrAmount').textContent = '500';
   </script>
