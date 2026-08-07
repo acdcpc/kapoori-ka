@@ -43,6 +43,7 @@ export default function LoginScreen() {
 
   const handleEmailAction = async () => {
     setAuthError(null);
+    console.log('[LOGIN] handleEmailAction called', { isRegistering, email });
     if (!email || !password) { setAuthError(isNe ? 'कृपया इमेल र पासवर्ड दुवै भर्नुहोस्' : 'Please enter both email and password'); return; }
     if (!validateEmail(email)) { setAuthError(isNe ? 'कृपया वैध इमेल ठेगाना प्रविष्ट गर्नुहोस्' : 'Please enter a valid email address'); return; }
     if (password.length < 8) { setAuthError(isNe ? 'पासवर्ड कम्तिमा ८ characters को हुनुपर्छ' : 'Password must be at least 8 characters'); return; }
@@ -51,15 +52,19 @@ export default function LoginScreen() {
     try {
       if (isRegistering) {
         if (password !== confirmPassword) { setAuthError(isNe ? 'पासवर्ड मिलेन।' : 'Passwords do not match.'); setLocalLoading(false); return; }
+        console.log('[LOGIN] Calling signUpWithEmail...');
         const signUpResult = await signUpWithEmail(email, password);
-        // If signUp returned a session, email confirmation is disabled — user is logged in.
-        // If no session (only user), email confirmation is enabled — show verification message.
+        console.log('[LOGIN] signUpWithEmail returned:', JSON.stringify({ hasSession: !!signUpResult?.session, hasUser: !!signUpResult?.user }));
         if (!signUpResult?.session) {
           setVerificationSent(true);
           setPassword(''); setConfirmPassword('');
         }
       } else { await signInWithEmail(email, password); }
-    } catch (error: any) { setAuthError(getAuthErrorMessage(error, language)); }
+    } catch (error: any) {
+      const msg = (error instanceof Error ? error.message : String(error)) || (isNe ? 'प्रमाणीकरण त्रुटि।' : 'Authentication error.');
+      console.log('[LOGIN] handleEmailAction error:', msg);
+      setAuthError(getAuthErrorMessage(error, language) || msg);
+    }
     finally { setLocalLoading(false); }
   };
 
