@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Alert, ActivityIndicator, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -212,6 +213,7 @@ export default function MChatScreen({ route, navigation }: Props) {
   const showDisclaimerOnResult = showExtendedNotice || (score >= 3);
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <PremiumGuard feature="autism_screening" >
       <View style={styles.container}>
         <View style={styles.header}>
@@ -307,10 +309,12 @@ export default function MChatScreen({ route, navigation }: Props) {
         </Modal>
       </View>
     </PremiumGuard>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
   container: { flex: 1, backgroundColor: '#F7F1EB' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FDF8F2', shadowColor: '#C4956A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   backBtn: { padding: 4, marginRight: 16 },

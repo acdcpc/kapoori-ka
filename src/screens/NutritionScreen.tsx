@@ -1,6 +1,7 @@
 // src/screens/NutritionScreen.tsx - Enhanced with Tabs
 import React, { useContext, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LanguageContext } from '../context/LanguageContext';
 import { PremiumGuard } from '../components/PremiumGuard';
 import { Ionicons } from '@expo/vector-icons';
@@ -102,6 +103,7 @@ export default function NutritionScreen({ route, navigation }: Props) {
 
   return (
     <PremiumGuard feature="nutrition" >
+      <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Pill Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent}>
@@ -231,11 +233,13 @@ export default function NutritionScreen({ route, navigation }: Props) {
           )}
         </ScrollView>
       </View>
+      </SafeAreaView>
     </PremiumGuard>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
   container: { flex: 1, backgroundColor: '#F7F1EB' },
   tabScroll: { maxHeight: 52, backgroundColor: '#FDF8F2', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
   tabScrollContent: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },

@@ -7,6 +7,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
   ActivityIndicator, TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -99,6 +100,7 @@ export default function SubscriptionScreen() {
   }
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
       {/* Active Subscription Status */}
       {isActive && (
@@ -236,10 +238,12 @@ export default function SubscriptionScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
   container: { flex: 1, backgroundColor: '#FDF8F2' },
   statusCard: {
     flexDirection: 'row', alignItems: 'center',

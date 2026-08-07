@@ -5,6 +5,7 @@ import {
   StyleSheet, ScrollView, Alert, ActivityIndicator,
   Dimensions, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import {
   VictoryChart, VictoryLine, VictoryAxis, VictoryScatter,
@@ -437,6 +438,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
   container: { flex: 1, backgroundColor: '#F7F1EB' },
   tabContainer: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2', padding: 4 },
   pillTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 22, gap: 6 },

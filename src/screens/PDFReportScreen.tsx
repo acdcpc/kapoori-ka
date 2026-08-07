@@ -3,6 +3,7 @@ import React, { useState, useContext } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -176,6 +177,7 @@ export default function PDFReportScreen({ route }: Props) {
 
   return (
     <PremiumGuard feature="growth_report" >
+      <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Document Icon */}
         <Text style={styles.docIcon}>📋</Text>
@@ -208,11 +210,13 @@ export default function PDFReportScreen({ route }: Props) {
 
         <Text style={styles.note}>{isNe ? 'PDF तयार भएपछि शेयर गर्न सकिनेछ।' : 'The PDF will be generated and ready to share.'}</Text>
       </View>
+      </SafeAreaView>
     </PremiumGuard>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
   container: { flex: 1, padding: 20, backgroundColor: '#F7F1EB', alignItems: 'center', justifyContent: 'center' },
   docIcon: { fontSize: 56, textAlign: 'center', marginBottom: 16 },
   title: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', marginBottom: 8, textAlign: 'center' },
