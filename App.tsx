@@ -28,8 +28,7 @@ import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const navigationRef = useRef<any>(null);
+const navigationRef = { current: null as any };
 
 function Navigation() {
   const { user, loading, subscription } = useAuth();
