@@ -110,6 +110,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const menuItems = [
     { title: t.growthChart,    icon: '📈', color: '#E8602C', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
     { title: t.milestones,     icon: '🧠', color: '#6B21A8', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
+    { title: t.immunization,   icon: '💉', color: '#1565C0', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र सम्झनाहरू' : 'Vaccine schedule & reminders', premium: true },
     { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#3D8B5E', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: '#C0392B', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
