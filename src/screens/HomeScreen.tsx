@@ -292,6 +292,22 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Text style={styles.settingsLabel}>{isNe ? 'संस्करण' : 'Version'}</Text>
             <Text style={styles.settingsValue}>1.0.0</Text>
           </View>
+          <View style={styles.settingsRow}>
+            <Ionicons name="language-outline" size={18} color="#7A6E65" />
+            <Text style={styles.settingsLabel}>{isNe ? 'भाषा' : 'Language'}</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
+              <TouchableOpacity
+                onPress={() => setLanguage('en')}
+                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: language === 'en' ? '#E8602C' : '#EDE0D4' }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: language === 'en' ? '#fff' : '#666' }}>EN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setLanguage('ne')}
+                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: language === 'ne' ? '#E8602C' : '#EDE0D4' }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: language === 'ne' ? '#fff' : '#666' }}>ने</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
             <Ionicons name="information-circle-outline" size={18} color="#7A6E65" />
             <Text style={styles.settingsLabel}>{t.about}</Text>

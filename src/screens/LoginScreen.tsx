@@ -157,6 +157,13 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
+            {isRegistering && (
+              <Text style={styles.pwHint}>
+                <Ionicons name="information-circle-outline" size={14} color="#7A6E65" />
+                {' '}{isNe ? 'कम्तिमा ८ अक्षर, एक अक्षर र एक अंक आवश्यक' : 'Minimum 8 characters, at least one letter and one number'}
+              </Text>
+            )}
+
             {!isRegistering && (
               <TouchableOpacity style={styles.forgotBtn} onPress={() => { setAuthError(null); setResetEmail(email); setShowForgotPassword(true); }} disabled={isLoading}>
                 <Text style={styles.forgotText}>{isNe ? 'पासवर्ड बिर्सनुभयो?' : 'Forgot Password?'}</Text>
@@ -277,6 +284,7 @@ const styles = StyleSheet.create({
   verifyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
   verifyBannerText: { flex: 1, fontSize: 13, color: '#065F46', lineHeight: 18 },
   verifyResendText: { fontSize: 13, fontWeight: '700', color: '#E8602C' },
+  pwHint: { fontSize: 12, color: '#7A6E65', marginBottom: 8, lineHeight: 18 },
   errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#C0392B' },
   errorBannerText: { flex: 1, fontSize: 13, color: '#991B1B', lineHeight: 18 },
   form: { width: '100%' },
