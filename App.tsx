@@ -1,12 +1,13 @@
 // App.tsx
 import 'react-native-get-random-values';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LanguageContext } from './src/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
+import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
@@ -21,11 +22,14 @@ import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const navigationRef = useRef<any>(null);
 
 function Navigation() {
   const { user, loading, subscription } = useAuth();
@@ -42,7 +46,7 @@ function Navigation() {
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style="auto" />
       <Stack.Navigator
         screenOptions={{
@@ -98,6 +102,26 @@ export default function App() {
     };
     prepare();
   }, []);
+
+  // Deep link handler for password reset
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('[APP] Deep link received:', event.url);
+      if (event.url?.includes('reset-password')) {
+        navigationRef.current?.navigate('ResetPassword');
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then(url => {
+      console.log('[APP] Initial URL:', url);
+      if (url?.includes('reset-password')) {
+        setTimeout(() => navigationRef.current?.navigate('ResetPassword'), 500);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
 
   const handleSetLanguage = async (lang: 'en' | 'ne') => {
     setLanguage(lang);

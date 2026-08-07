@@ -14,4 +14,5 @@ export type RootStackParamList = {
   Subscription: undefined;
   About: undefined;
   Nutrition: { child?: Child; highlightAge?: number } | undefined;
+  ResetPassword: undefined;
 };
