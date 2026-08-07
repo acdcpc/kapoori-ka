@@ -251,7 +251,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const syncDobBasedDates = async () => {
     if (!child?.dateOfBirth) return;
     const dob = dayjs(child.dateOfBirth);
-    const dobBased = {
+    const dobBased: Record<string, string> = {
       mr1: dob.add(274, 'day').format('YYYY-MM-DD'),       // 9 months
       pcv3: dob.add(274, 'day').format('YYYY-MM-DD'),       // 9 months
       fipv2: dob.add(274, 'day').format('YYYY-MM-DD'),      // 9 months
@@ -260,14 +260,25 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       typhoid: dob.add(456, 'day').format('YYYY-MM-DD'),     // 15 months
     };
     try {
+      // Only insert if not already present — never overwrite user-set dates
       for (const [vid, date] of Object.entries(dobBased)) {
-        await supabase.from('vaccinations')
-          .upsert({
+        const { data: existing } = await supabase
+          .from('vaccinations')
+          .select('id, scheduled_date, given_date')
+          .eq('child_id', child.id)
+          .eq('vaccine_name', vid)
+          .maybeSingle();
+        
+        if (!existing) {
+          // No record exists → create with DOB-derived date
+          await supabase.from('vaccinations').insert({
             child_id: child.id,
             user_id: user?.uid || '',
             vaccine_name: vid,
             scheduled_date: date,
-          }, { onConflict: 'child_id, vaccine_name' });
+          });
+        }
+        // If record exists, leave the scheduled_date as-is (user may have customized it)
       }
     } catch (e: any) {
       console.error('syncDobBasedDates error:', e?.message || e);
@@ -291,40 +302,61 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
     try {
       // Update 10-week vaccines (derived from 6-week date)
+      // Only update scheduled_date — never overwrite given_date
       if (isSixWeek) {
         for (const vid of tenWeekIds) {
-          await supabase.from('vaccinations')
-            .upsert({
-              child_id: child.id,
-              user_id: user?.uid || '',
-              vaccine_name: vid,
-              scheduled_date: tenWeekDate,
-            }, { onConflict: 'child_id, vaccine_name' });
+          const { data: existing } = await supabase
+            .from('vaccinations')
+            .select('id')
+            .eq('child_id', child.id)
+            .eq('vaccine_name', vid)
+            .maybeSingle();
+          if (existing) {
+            await supabase.from('vaccinations')
+              .update({ scheduled_date: tenWeekDate })
+              .eq('id', existing.id);
+          } else {
+            await supabase.from('vaccinations')
+              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: tenWeekDate });
+          }
         }
         // Also update 14-week (derived from 6-week + 56 days)
         for (const vid of fourteenWeekIds) {
-          await supabase.from('vaccinations')
-            .upsert({
-              child_id: child.id,
-              user_id: user?.uid || '',
-              vaccine_name: vid,
-              scheduled_date: fourteenWeekDate,
-            }, { onConflict: 'child_id, vaccine_name' });
+          const { data: existing } = await supabase
+            .from('vaccinations')
+            .select('id')
+            .eq('child_id', child.id)
+            .eq('vaccine_name', vid)
+            .maybeSingle();
+          if (existing) {
+            await supabase.from('vaccinations')
+              .update({ scheduled_date: fourteenWeekDate })
+              .eq('id', existing.id);
+          } else {
+            await supabase.from('vaccinations')
+              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: fourteenWeekDate });
+          }
         }
       }
 
       // Update 14-week vaccines (derived from 10-week date)
       if (isTenWeek) {
-        const tenWeekBase = dayjs(newGivenDate);
-        const fromTenWeek14 = tenWeekBase.add(28, 'day').format('YYYY-MM-DD');
+        const fromTenWeek14 = dayjs(newGivenDate).add(28, 'day').format('YYYY-MM-DD');
         for (const vid of fourteenWeekIds) {
-          await supabase.from('vaccinations')
-            .upsert({
-              child_id: child.id,
-              user_id: user?.uid || '',
-              vaccine_name: vid,
-              scheduled_date: fromTenWeek14,
-            }, { onConflict: 'child_id, vaccine_name' });
+          const { data: existing } = await supabase
+            .from('vaccinations')
+            .select('id')
+            .eq('child_id', child.id)
+            .eq('vaccine_name', vid)
+            .maybeSingle();
+          if (existing) {
+            await supabase.from('vaccinations')
+              .update({ scheduled_date: fromTenWeek14 })
+              .eq('id', existing.id);
+          } else {
+            await supabase.from('vaccinations')
+              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: fromTenWeek14 });
+          }
         }
       }
 
