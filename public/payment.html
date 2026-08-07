@@ -218,7 +218,11 @@
     window._selectedMethod = 'eSewa';
   </script>
 
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    // Supabase init
+    const supabase = window.supabase.createClient('https://tgnzucqjebnisgrxjfjg.supabase.co', 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs');
+
     // Expose state and functions globally for inline onclick
     let selectedPlan = 'yearly';
     let selectedMethod = 'eSewa';
@@ -261,9 +265,11 @@
 
       // Block duplicate transaction IDs
       try {
-        const q = query(collection(db, 'payments'), where('paymentId', '==', txnId));
-        const existingSnap = await getDocs(q);
-        if (!existingSnap.empty) {
+        const {{ data: existing, error: dupErr }} = await supabase
+          .from('payments')
+          .select('id')
+          .eq('transaction_id', txnId);
+        if (existing && existing.length > 0) {
           showError('This Transaction ID has already been submitted. Please check your ID and try again.');
           return;
         }
@@ -281,32 +287,30 @@
 
         // Upload screenshot if provided
         if (screenshotFile) {
-          const storageRef = ref(storage, `payment-screenshots/${email.replace(/[.@]/g, '_')}/${txnId}`);
-          const snapshot = await uploadBytes(storageRef, screenshotFile);
-          screenshotUrl = await getDownloadURL(snapshot.ref);
+          const filePath = `public/${email.replace(/[.@]/g, '_')}_${txnId}_${Date.now()}`;
+          const {{ error: uploadErr }} = await supabase.storage
+            .from('payment-screenshots')
+            .upload(filePath, screenshotFile, {{ contentType: screenshotFile.type, upsert: true }});
+          if (!uploadErr) {
+            const {{ data: urlData }} = supabase.storage.from('payment-screenshots').getPublicUrl(filePath);
+            screenshotUrl = urlData.publicUrl;
+          }
         }
 
-        // Create payment document
-        const paymentDoc = {
-          name,
+        // Create payment record in Supabase
+        const paymentDoc = {{
           email: email.toLowerCase(),
-          userId: '',  // filled by admin after verifying email match
-          paymentMethod: selectedMethod,
-          paymentId: txnId,
-          amount,
-          currency: 'NPR',
-          plan: selectedPlan,
-          screenshotUrl: screenshotUrl || null,
-          mobile: mobile || null,
-          notes: remarks || null,
+          amount: String(amount),
+          transaction_id: txnId,
+          screenshot_url: screenshotUrl || null,
           status: 'pending',
-          createdAt: serverTimestamp(),
-          verifiedAt: null,
-          verifiedBy: null,
-          rejectionReason: null,
-        };
+        }};
 
-        await addDoc(collection(db, 'payments'), paymentDoc);
+        const {{ error: insertErr }} = await supabase
+          .from('payments')
+          .insert(paymentDoc);
+
+        if (insertErr) throw insertErr;
 
         // Show success
         document.getElementById('formView').style.display = 'none';

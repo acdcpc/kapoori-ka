@@ -140,9 +140,8 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-    import { getFirestore, collection, query, where, orderBy, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const supabase = createClient('https://tgnzucqjebnisgrxjfjg.supabase.co', 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs');
 
     const firebaseConfig = {
       apiKey: "AIzaSyAlGNIXCGRsyilNFsSr62Xx4vDJls-rra0",
@@ -167,7 +166,8 @@
     let rejectPaymentId = null;
 
     // Auth
-    onAuthStateChanged(window._auth, async (user) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
+    const user = session?.user;
       if (!user) {
         // Show login
         document.getElementById('tableContainer').innerHTML = `
@@ -210,14 +210,15 @@
         return;
       }
       try {
-        await signInWithEmailAndPassword(window._auth, email, password);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       } catch (err) {
         alert('Login failed: ' + err.message);
       }
     };
 
     window.signOut = function() {
-      signOut(window._auth);
+      supabase.auth.signOut();
     };
 
     window.switchTab = function(tab) {
@@ -287,7 +288,7 @@
           <th>Actions</th>
         </tr></thead><tbody>`;
 
-      filtered.forEach(p => {
+      filtered.forEach(p => { p.displayId = p.id?.substring(0,8);
         const date = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString() : '-';
         const statusBadge = `<span class="badge badge-${p.status}">${p.status}</span>`;
         const screenshot = p.screenshotUrl

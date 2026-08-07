@@ -34,15 +34,58 @@ async function requireAdmin(context) {
 // USER-FACING: Redeem Activation Code
 // ────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────
+// RATE LIMITER: Max 5 failed attempts per 15 min per user
+// ────────────────────────────────────────────────────────────
+
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED_ATTEMPTS = 5;
+
+async function checkRateLimit(uid) {
+  const attemptsRef = db.collection('rate_limits').doc(uid);
+  const snap = await attemptsRef.get();
+  const now = Date.now();
+
+  if (snap.exists) {
+    const data = snap.data();
+    const windowStart = data.windowStart || 0;
+    if (now - windowStart > RATE_LIMIT_WINDOW_MS) {
+      // Window expired — reset
+      await attemptsRef.set({ count: 1, windowStart: now });
+      return;
+    }
+    if (data.count >= MAX_FAILED_ATTEMPTS) {
+      const retrySec = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - windowStart)) / 1000);
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        `Too many attempts. Please wait ${retrySec} seconds before trying again.`
+      );
+    }
+    await attemptsRef.update({ count: admin.firestore.FieldValue.increment(1) });
+  } else {
+    await attemptsRef.set({ count: 1, windowStart: now });
+  }
+}
+
+async function clearRateLimit(uid) {
+  await db.collection('rate_limits').doc(uid).delete();
+}
+
 exports.redeemActivationCode = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in to redeem a code.');
   }
 
-  const code = (data.code || '').toString().trim().toUpperCase();
-  if (!code) {
-    throw new functions.https.HttpsError('invalid-argument', 'Please provide an activation code.');
+  const uid = context.auth.uid;
+  const code = (data.code || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  
+  // Strict alphanumeric validation
+  if (!code || code.length < 6 || code.length > 32) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid activation code format.');
   }
+
+  // Rate limiting
+  await checkRateLimit(uid);
 
   const codeRef = db.collection('activation_codes').doc(code);
   const codeSnap = await codeRef.get();
@@ -53,10 +96,12 @@ exports.redeemActivationCode = functions.https.onCall(async (data, context) => {
 
   const codeData = codeSnap.data();
   if (codeData.status !== 'valid') {
+    // Failed attempt — rate limit already counted
     throw new functions.https.HttpsError('already-claimed', 'This code has already been used.');
   }
 
-  const uid = context.auth.uid;
+  // Clear rate limit on success
+  await clearRateLimit(uid);
   const plan = codeData.plan || 'yearly';
   const durationDays = plan === 'yearly' ? 365 : 30;
 

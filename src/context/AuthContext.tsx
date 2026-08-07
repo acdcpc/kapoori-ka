@@ -10,8 +10,6 @@ import React, { createContext, useState, useEffect, useCallback, useRef, useCont
 import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { functions } from '../../firebase';
-import { httpsCallable } from 'firebase/functions';
 import { supabase } from '../lib/supabase';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -356,9 +354,19 @@ function parseUrlParams(url: string): URLSearchParams {
   };
 
   const redeemCode = async (code: string) => {
-    const fn = httpsCallable(functions, 'redeemCode');
-    const result = await fn({ code });
-    return result.data;
+    const trimmedCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (trimmedCode.length < 6 || trimmedCode.length > 32) {
+      throw new Error('Invalid activation code format');
+    }
+    // Call Supabase RPC function (replaces Firebase Cloud Function)
+    const { data, error: rpcError } = await supabase.rpc('redeem_activation_code', {
+      p_code: trimmedCode,
+    });
+    if (rpcError) throw new Error(rpcError.message);
+    if (data?.error) throw new Error(data.error);
+    // Refresh user data to pick up new subscription
+    await refreshUserData();
+    return data;
   };
 
   const sendPasswordReset = async (email?: string) => {

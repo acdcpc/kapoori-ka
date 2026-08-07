@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';

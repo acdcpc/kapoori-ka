@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -57,6 +58,7 @@ export default function ConsultationScreen({ navigation }: any) {
   }
 
   return (
+    <SafeAreaView style={{flex:1,backgroundColor:'#FDF8F2'}}>
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
@@ -96,6 +98,7 @@ export default function ConsultationScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
