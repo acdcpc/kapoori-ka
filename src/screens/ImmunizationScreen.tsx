@@ -194,6 +194,11 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   }, [vaccineRecords.length, isPremium]);
 
   const handleSetStatus = (vaccine: ComputedVaccine, status: 'given' | 'missed') => {
+    // Premium gate: free users cannot set status for upcoming/missed vaccines
+    if (!isPremium && (vaccine.status === 'upcoming' || vaccine.status === 'missed')) {
+      setShowPremiumModal(true);
+      return;
+    }
     if (status === 'given') {
       setPendingVaccine(vaccine); setShowDatePicker(true); setSelectedADDate(dayjs().format('YYYY-MM-DD'));
       if (isNe) { try { const bs = new NepaliDate(new Date()); setBsYear(bs.getYear()); setBsMonth(bs.getMonth() + 1); setBsDay(bs.getDay()); } catch {} }
@@ -490,6 +495,9 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
             </Text>
             <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%' }]} onPress={() => setShowPremiumModal(false)}>
               <Text style={styles.modalConfirmBtnText}>{isNe ? 'बुझें' : 'Got it'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%', backgroundColor: '#E8602C', marginTop: 10 }]} onPress={() => { setShowPremiumModal(false); }}>
+              <Text style={[styles.modalConfirmBtnText, { color: '#fff' }]}>{isNe ? 'प्रिमियम लिनुहोस्' : 'Upgrade to Premium'}</Text>
             </TouchableOpacity>
           </View>
         </View>
