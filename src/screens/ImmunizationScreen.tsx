@@ -239,7 +239,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       setTimeout(() => setShowConfetti(false), 2000);
     } catch (e: any) {
       console.error('Save vaccine error:', e?.message || e);
-      Alert.alert('Error', 'Could not save.');
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', (e?.message) || (isNe ? 'सुरक्षित गर्न सकिएन।' : 'Could not save.'));
     }
   };
 
@@ -365,6 +365,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       await syncDobBasedDates();
     } catch (e: any) {
       console.error('Recalc dependent dates error:', e?.message || e);
+      // Non-critical — dates were saved, just chain update failed
     }
   };
 
