@@ -233,39 +233,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUpWithEmail = async (email: string, password: string) => {
     setError(null); setLoading(true);
-    console.log('[AUTH] signUpWithEmail called:', { email });
-    const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: email.split('@')[0] } } });
-    console.log('[AUTH] signUp raw response:', JSON.stringify({ hasUser: !!data?.user, hasSession: !!data?.session, errorCode: e?.code, errorMsg: e?.message }));
-    
-    if (e) {
-      console.log('[AUTH] signUp error:', e.code, e.message);
-      setError(e.message || 'Registration failed');
+    try {
+      console.log('[AUTH] signUpWithEmail called:', { email });
+      const { data, error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: email.split('@')[0] } } });
+      console.log('[AUTH] signUp raw response:', JSON.stringify({ hasUser: !!data?.user, hasSession: !!data?.session, errorCode: e?.code, errorMsg: e?.message }));
+      
+      if (e) {
+        console.log('[AUTH] signUp error:', e.code, e.message);
+        setError(e.message || 'Registration failed');
+        // Preserve original error object so getAuthErrorMessage can match on Supabase error codes
+        throw e;
+      }
+      
+      if (!data?.user) {
+        // No user returned and no error — unexpected state
+        const msg = 'Registration failed: no response from server.';
+        console.log('[AUTH] signUp returned no user and no error');
+        setError(msg);
+        throw new Error(msg);
+      }
+      
+      if (data.session?.user) {
+        // Email confirmation is disabled → user is logged in immediately
+        console.log('[AUTH] signUp: email confirmation OFF, session active');
+        const au = toAppUser(data.session.user);
+        setUser(prev => isSameUser(prev, au) ? prev : au);
+        if (!initializedRef.current) { initializedRef.current = true; initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous); }
+      } else {
+        // data.user exists but data.session is null → email confirmation is enabled
+        console.log('[AUTH] signUp: email confirmation ON, user created — verification required');
+      }
+      
+      return data;
+    } finally {
       setLoading(false);
-      // Preserve original error object so getAuthErrorMessage can match on Supabase error codes
-      throw e;
     }
-    
-    if (!data?.user) {
-      // No user returned and no error — unexpected state
-      const msg = 'Registration failed: no response from server.';
-      console.log('[AUTH] signUp returned no user and no error');
-      setError(msg); setLoading(false);
-      throw new Error(msg);
-    }
-    
-    if (data.session?.user) {
-      // Email confirmation is disabled → user is logged in immediately
-      console.log('[AUTH] signUp: email confirmation OFF, session active');
-      const au = toAppUser(data.session.user);
-      setUser(prev => isSameUser(prev, au) ? prev : au);
-      if (!initializedRef.current) { initializedRef.current = true; initProfile(au.uid, au.email, au.displayName, au.photoURL, au.isAnonymous); }
-    } else {
-      // data.user exists but data.session is null → email confirmation is enabled
-      console.log('[AUTH] signUp: email confirmation ON, user created — verification required');
-    }
-    
-    setLoading(false);
-    return data;
   };
 
   const signInAsGuest = async () => {
