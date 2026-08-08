@@ -78,10 +78,14 @@ interface ComputedVaccine extends NIPEntry {
   scheduledDate: string; status: VaccineStatus; daysUntilDue: number;
 }
 
-function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<string>): ComputedVaccine[] {
+function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<string>, records: VaccineRecord[]): ComputedVaccine[] {
   const today = dayjs().startOf('day');
+  const recordMap = new Map(records.map(r => [r.vaccineName, r]));
   return NIP_SCHEDULE.map(v => {
-    const scheduledDate = dayjs(dob).add(v.ageInDays, 'day').startOf('day');
+    const record = recordMap.get(v.id);
+    const scheduledDate = record?.scheduledDate
+      ? dayjs(record.scheduledDate).startOf('day')
+      : dayjs(dob).add(v.ageInDays, 'day').startOf('day');
     const daysUntilDue = scheduledDate.diff(today, 'day');
     const isGiven = givenIds.has(v.id), isMissed = missedIds.has(v.id);
     let status: VaccineStatus;
@@ -187,7 +191,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       const givenIds2 = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
       const missedIds2 = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
       const childName = child.name || (language === 'ne' ? 'तपाईंको बच्चा' : 'Your Child');
-      scheduleVaccineReminders(childName, computeSchedule(child.dateOfBirth, givenIds2, missedIds2), language).catch((err: any) => {
+      scheduleVaccineReminders(childName, computeSchedule(child.dateOfBirth, givenIds2, missedIds2, vaccineRecords), language).catch((err: any) => {
         console.error('Failed to schedule vaccine reminders:', err?.message || err);
       });
     }
@@ -374,7 +378,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const givenIds = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
   const missedIds = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
-  const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds);
+  const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds, vaccineRecords);
   const childAgeMonths = dayjs().diff(dayjs(child.dateOfBirth), 'month');
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
   return (
