@@ -157,15 +157,19 @@ export default function ChildDashboard({ route, navigation }: Props) {
       );
       await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      // Upload to Supabase Storage using the FileSystem upload helper
+      // Upload to Supabase Storage with explicit contentType
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
+      const response = await fetch(manip.uri);
+      const blob = await response.blob();
+      const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
+      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('child-photos')
-        .upload(storagePath, {
-          uri: path,
-          type: 'image/jpeg',
-        } as any, { upsert: true });
-      if (uploadError && !uploadError.message?.includes('already exists')) {
+        .upload(storagePath, blob, {
+          contentType: mimeType,
+          upsert: true,
+        });
+      if (uploadError) {
         throw uploadError;
       }
       const { data: urlData } = supabase.storage
@@ -209,7 +213,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
 
   // Child initials (first 2 chars)
   const displayName = child.nameNepali && isNe ? child.nameNepali : child.name;
-  const initials = displayName ? displayName.slice(0, 2) : '👶';
+  const initials = displayName ? displayName.slice(0, 2) : '';
 
   return (
     <SafeAreaView style={styles.safeArea}>
