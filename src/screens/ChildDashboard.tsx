@@ -157,12 +157,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
       );
       await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      // Upload to Supabase Storage with explicit contentType
+      // Upload to Supabase Storage — use arrayBuffer + explicit Blob type
+      // (React Native fetch().blob() defaults to text/plain on Android)
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
-      const response = await fetch(manip.uri);
-      const blob = await response.blob();
       const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
       const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      const response = await fetch(manip.uri);
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: mimeType });
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('child-photos')
         .upload(storagePath, blob, {
