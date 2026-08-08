@@ -241,7 +241,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[AUTH] signUp error:', e.code, e.message);
       setError(e.message || 'Registration failed');
       setLoading(false);
-      throw new Error(e.message || 'Registration failed. Please try again.');
+      // Preserve original error object so getAuthErrorMessage can match on Supabase error codes
+      throw e;
     }
     
     if (!data?.user) {

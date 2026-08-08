@@ -73,6 +73,30 @@ const errorMap: Record<string, { en: string; ne: string }> = {
     ne: 'यो लिङ्कको म्याद सकियो। कृपया नयाँ अनुरोध गर्नुहोस्।',
   },
   // Supabase Auth errors
+  'user_already_exists': {
+    en: 'An account with this email already exists. Please login instead.',
+    ne: 'यो इमेलमा पहिले नै खाता छ। कृपया लगइन गर्नुहोस्।',
+  },
+  'User already registered': {
+    en: 'An account with this email already exists. Please login instead.',
+    ne: 'यो इमेलमा पहिले नै खाता छ। कृपया लगइन गर्नुहोस्।',
+  },
+  'Unable to validate email address': {
+    en: 'Please enter a valid email address.',
+    ne: 'कृपया मान्य इमेल ठेगाना राख्नुहोस्।',
+  },
+  'Password should be at least 6 characters': {
+    en: 'Password must be at least 8 characters with one letter and one number.',
+    ne: 'पासवर्ड कम्तिमा ८ अक्षरको हुनुपर्छ, जसमा एक अक्षर र एक अंक हुनुपर्छ।',
+  },
+  'weak_password': {
+    en: 'Password must be at least 8 characters with one letter and one number.',
+    ne: 'पासवर्ड कम्तिमा ८ अक्षरको हुनुपर्छ, जसमा एक अक्षर र एक अंक हुनुपर्छ।',
+  },
+  'validation_failed': {
+    en: 'Please check your email and password and try again.',
+    ne: 'कृपया आफ्नो इमेल र पासवर्ड जाँच गरेर पुन: प्रयास गर्नुहोस्।',
+  },
   'email_not_confirmed': {
     en: 'Please verify your email before logging in. Check your inbox for a confirmation link.',
     ne: 'कृपया लगइन गर्नु अघि आफ्नो इमेल भेरिफाइ गर्नुहोस्। आफ्नो इनबक्समा भेरिफिकेसन लिङ्क जाँच गर्नुहोस्।',
@@ -84,14 +108,6 @@ const errorMap: Record<string, { en: string; ne: string }> = {
   'Invalid login credentials': {
     en: 'Incorrect email or password. Please try again.',
     ne: 'गलत इमेल वा पासवर्ड। कृपया पुन: प्रयास गर्नुहोस्।',
-  },
-  'User already registered': {
-    en: 'This email is already registered. Please login instead.',
-    ne: 'यो इमेल पहिले नै दर्ता भएको छ। कृपया लगइन गर्नुहोस्।',
-  },
-  'Password should be at least 6 characters': {
-    en: 'Password must be at least 6 characters.',
-    ne: 'पासवर्ड कम्तिमा ६ characters को हुनुपर्छ।',
   },
   'For security purposes, you can only request this after': {
     en: 'Too many attempts. Please wait a moment and try again.',
