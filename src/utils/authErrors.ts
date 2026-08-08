@@ -127,16 +127,26 @@ export function getAuthErrorMessage(error: unknown, language: Language): string 
 
   if (!error) return defaultMsg;
 
-  // Firebase errors have a `code` property
+  // Check error.code first (Supabase: user_already_exists, weak_password, etc.)
   const code = (error as any)?.code;
   if (code && errorMap[code]) {
     return language === 'ne' ? errorMap[code].ne : errorMap[code].en;
   }
 
-  // Fallback: try to extract meaningful text from message
+  // Also check error.message as key (Supabase: 'Unable to validate email address', 'Password should be at least 6 characters')
   const msg = (error as any)?.message;
   if (typeof msg === 'string') {
-    // Strip "Firebase: " prefix
+    // Try exact message match in errorMap
+    if (errorMap[msg]) {
+      return language === 'ne' ? errorMap[msg].ne : errorMap[msg].en;
+    }
+    // Try partial match for long messages (e.g. 'For security purposes, you can only request this after...')
+    for (const key of Object.keys(errorMap)) {
+      if (key.length > 20 && msg.startsWith(key.substring(0, 30))) {
+        return language === 'ne' ? errorMap[key].ne : errorMap[key].en;
+      }
+    }
+    // Fallback: show the raw message, stripping Firebase prefix
     return msg.replace(/^Firebase:\s*/i, '');
   }
 

@@ -298,7 +298,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
     const baseDate = dayjs(newGivenDate);
     const tenWeekDate = baseDate.add(28, 'day').format('YYYY-MM-DD');
-    const fourteenWeekDate = baseDate.add(56, 'day').format('YYYY-MM-DD');
+    const fourteenWeekDate = dayjs(tenWeekDate).add(28, 'day').format('YYYY-MM-DD');
 
     try {
       // Update 10-week vaccines (derived from 6-week date)
