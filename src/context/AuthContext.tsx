@@ -104,19 +104,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const now = nowISO();
     if (!p) {
-      // Create profile + subscription
-      supabase.from('profiles').insert({
+      // Create profile + subscription — use upsert to prevent race condition
+      // when initProfile is called multiple times in quick succession
+      supabase.from('profiles').upsert({
         user_id: uid, email: email || null,
         display_name: displayName || 'User',
         photo_url: photoURL || null,
         language: 'ne', created_at: now, updated_at: now,
         is_anonymous: isAnonymous || false,
-      }).then(r => r.error && console.error('Insert profile:', r.error));
+      }, { onConflict: 'user_id' }).then(r => r.error && console.error('Insert profile:', r.error));
 
-      supabase.from('subscriptions').insert({
+      supabase.from('subscriptions').upsert({
         user_id: uid, status: 'free', plan: 'free', auto_renew: false,
         price: 0, consultations_remaining: 0, created_at: now, updated_at: now,
-      }).then(r => r.error && console.error('Insert sub:', r.error));
+      }, { onConflict: 'user_id' }).then(r => r.error && console.error('Insert sub:', r.error));
 
       setUserProfile({
         uid, email: email || null, displayName: displayName || 'User',

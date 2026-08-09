@@ -139,12 +139,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
   };
 
   async function pickAndUpload(source: 'camera' | 'gallery') {
+    console.log('[PHOTO] pickAndUpload called:', source);
     try {
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
 
-      if (result.canceled || !result.assets?.[0]) return;
+      if (result.canceled || !result.assets?.[0]) { console.log('[PHOTO] cancelled or no assets'); return; }
+      console.log('[PHOTO] image selected, uri:', result.assets[0].uri?.substring(0, 50));
 
       const destDir = FileSystem.documentDirectory + 'child-photos/';
       await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
@@ -162,15 +164,18 @@ export default function ChildDashboard({ route, navigation }: Props) {
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
       const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
       const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      console.log('[PHOTO] fetching for upload, mimeType:', mimeType);
       const response = await fetch(manip.uri);
       const arrayBuffer = await response.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: mimeType });
+      console.log('[PHOTO] blob created, size:', blob.size, 'type:', blob.type);
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('child-photos')
         .upload(storagePath, blob, {
           contentType: mimeType,
           upsert: true,
         });
+      console.log('[PHOTO] upload result — error:', uploadError?.message || 'none');
       if (uploadError) {
         throw uploadError;
       }
@@ -178,12 +183,15 @@ export default function ChildDashboard({ route, navigation }: Props) {
         .from('child-photos')
         .getPublicUrl(storagePath);
 
+      console.log('[PHOTO] public url:', urlData.publicUrl?.substring(0, 60));
       await supabase.from('children').update({ photo_uri: urlData.publicUrl }).eq('id', child.id);
       child.photoUri = urlData.publicUrl;
 
       // Force re-render
       navigation.setParams({ child: { ...child, photoUri: urlData.publicUrl } });
+      console.log('[PHOTO] upload complete');
     } catch (e: any) {
+      console.error('[PHOTO] upload error:', e?.message || e);
       Alert.alert('Error', e?.message || 'Could not upload photo.');
     }
   };

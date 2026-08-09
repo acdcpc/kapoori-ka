@@ -162,6 +162,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         .select('*')
         .eq('child_id', child.id);
       if (sbError) throw sbError;
+      console.log('[IMMUN] loadRecords got', data?.length || 0, 'records');
       const loaded: VaccineRecord[] = (data || []).map((d: any) => ({
         id: d.id,
         childId: d.child_id,
@@ -235,6 +236,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         await supabase.from('vaccinations').insert(record);
       }
 
+      console.log('[IMMUN] saved', vaccine.id, 'as', status, 'on', givenDate);
       await loadRecords();
       await recalcDependentDates(vaccine.id, givenDate);
       // Sync DOB-based dates after any status change
