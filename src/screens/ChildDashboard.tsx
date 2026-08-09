@@ -159,26 +159,42 @@ export default function ChildDashboard({ route, navigation }: Props) {
       );
       await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      // Upload to Supabase Storage — use arrayBuffer + explicit Blob type
-      // (React Native fetch().blob() defaults to text/plain on Android)
+      // Upload to Supabase Storage via FormData (React Native safe — no ArrayBuffer→Blob)
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
       const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
       const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-      console.log('[PHOTO] fetching for upload, mimeType:', mimeType);
-      const response = await fetch(manip.uri);
-      const arrayBuffer = await response.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: mimeType });
-      console.log('[PHOTO] blob created, size:', blob.size, 'type:', blob.type);
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('child-photos')
-        .upload(storagePath, blob, {
-          contentType: mimeType,
-          upsert: true,
-        });
-      console.log('[PHOTO] upload result — error:', uploadError?.message || 'none');
-      if (uploadError) {
-        throw uploadError;
+      console.log('[PHOTO] uploading via FormData, mimeType:', mimeType);
+
+      // Use FormData with React Native file object — properly sets MIME type
+      const formData = new FormData();
+      formData.append('file', {
+        uri: manip.uri,
+        type: mimeType,
+        name: 'photo.' + ext,
+      } as any);
+
+      // Get auth token for the raw Storage API
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/${storagePath}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
+          'Authorization': `Bearer ${token}`,
+          'x-upsert': 'true',
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errBody = await uploadRes.text();
+        console.error('[PHOTO] upload failed:', uploadRes.status, errBody);
+        throw new Error(errBody || `Upload failed (${uploadRes.status})`);
       }
+      console.log('[PHOTO] upload succeeded, status:', uploadRes.status);
       const { data: urlData } = supabase.storage
         .from('child-photos')
         .getPublicUrl(storagePath);
