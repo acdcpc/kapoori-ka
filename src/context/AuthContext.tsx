@@ -395,9 +395,7 @@ function parseUrlParams(url: string): URLSearchParams {
 
   const sendPasswordReset = async (email?: string) => {
     if (!email) throw new Error('Email is required');
-    const { error: e } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'com.kapoori.ka://reset-password',
-    });
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email);
     if (e) throw new Error(e.message);
   };
 

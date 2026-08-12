@@ -242,7 +242,7 @@ export default function LoginScreen() {
               <>
                 <Ionicons name="checkmark-circle" size={48} color="#3D8B5E" />
                 <Text style={styles.modalTitle}>{isNe ? 'इमेल पठाइयो!' : 'Email Sent!'}</Text>
-                <Text style={styles.modalText}>{isNe ? 'पासवर्ड रिसेट लिङ्क तपाईंको इमेलमा पठाइएको छ।' : 'A password reset link has been sent to your email.'}</Text>
+                <Text style={styles.modalText}>{isNe ? 'रिसेट लिङ्क तपाईंको इमेलमा पठाइएको छ। कृपया ब्राउजरमा पासवर्ड परिवर्तन गरी एपमा फर्केर नयाँ पासवर्डले लगइन गर्नुहोस्।' : 'Check your email to reset your password in your browser. Then return to the app and sign in with your new password.'}</Text>
                 <TouchableOpacity style={styles.modalBtn} onPress={() => { setShowForgotPassword(false); setResetSent(false); setAuthError(null); }}>
                   <Text style={styles.modalBtnText}>OK</Text>
                 </TouchableOpacity>
