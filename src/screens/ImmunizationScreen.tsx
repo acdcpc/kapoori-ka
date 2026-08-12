@@ -75,7 +75,7 @@ type VaccineStatus = 'given' | 'due' | 'upcoming' | 'missed';
 
 interface ComputedVaccine extends NIPEntry {
   isSupplement?: boolean;
-  scheduledDate: string; status: VaccineStatus; daysUntilDue: number;
+  scheduledDate: string; givenDate?: string; status: VaccineStatus; daysUntilDue: number;
 }
 
 function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<string>, records: VaccineRecord[]): ComputedVaccine[] {
@@ -94,7 +94,7 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
     else if (daysUntilDue < 0) status = 'missed';
     else if (daysUntilDue <= 14) status = 'due';
     else status = 'upcoming';
-    return { ...v, scheduledDate: scheduledDate.format('YYYY-MM-DD'), status, daysUntilDue, isSupplement: v.isSupplement || false };
+    return { ...v, scheduledDate: scheduledDate.format('YYYY-MM-DD'), givenDate: record?.givenDate, status, daysUntilDue, isSupplement: v.isSupplement || false };
   });
 }
 
@@ -163,6 +163,11 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         .eq('child_id', child.id);
       if (sbError) throw sbError;
       console.log('[IMMUN] loadRecords got', data?.length || 0, 'records');
+      if (data?.length) {
+        data.slice(0, 3).forEach((d: any) => {
+          console.log('[IMMUN] DB record:', { name: d.vaccine_name, given: d.is_given, givenDate: d.given_date, scheduledDate: d.scheduled_date });
+        });
+      }
       const loaded: VaccineRecord[] = (data || []).map((d: any) => ({
         id: d.id,
         childId: d.child_id,
@@ -211,13 +216,15 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   };
 
   const confirmSetStatus = async (vaccine: ComputedVaccine, status: 'given' | 'missed', givenDate: string) => {
+    console.log('[IMMUN] confirmSetStatus called:', { vaccineId: vaccine.id, status, givenDate, scheduledDate: vaccine.scheduledDate, userId: user?.uid?.substring(0, 8), childId: child.id });
     try {
-      const { data: existing } = await supabase
+      const { data: existing, error: checkErr } = await supabase
         .from('vaccinations')
         .select('id')
         .eq('child_id', child.id)
         .eq('vaccine_name', vaccine.id)
         .maybeSingle();
+      console.log('[IMMUN] existing record check:', { existing: existing?.id, error: checkErr?.message });
 
       const record = {
         child_id: child.id,
@@ -229,11 +236,16 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         is_given: status === 'given',
         is_missed: status === 'missed',
       };
+      console.log('[IMMUN] record to save:', JSON.stringify(record));
 
       if (existing) {
-        await supabase.from('vaccinations').update(record).eq('id', existing.id);
+        const { error: updErr } = await supabase.from('vaccinations').update(record).eq('id', existing.id);
+        console.log('[IMMUN] update result:', { error: updErr?.message, code: (updErr as any)?.code });
+        if (updErr) throw updErr;
       } else {
-        await supabase.from('vaccinations').insert(record);
+        const { error: insErr } = await supabase.from('vaccinations').insert(record);
+        console.log('[IMMUN] insert result:', { error: insErr?.message, code: (insErr as any)?.code });
+        if (insErr) throw insErr;
       }
 
       console.log('[IMMUN] saved', vaccine.id, 'as', status, 'on', givenDate);
@@ -244,7 +256,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
     } catch (e: any) {
-      console.error('Save vaccine error:', e?.message || e);
+      console.error('[IMMUN] Save vaccine error:', e?.message || e, 'code:', e?.code);
       Alert.alert(isNe ? 'त्रुटि' : 'Error', (e?.message) || (isNe ? 'सुरक्षित गर्न सकिएन।' : 'Could not save.'));
     }
   };
@@ -473,7 +485,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                                 </TouchableOpacity>
                               </View>
                               <Text style={styles.vaccineSubtitle}>{isNe ? v.diseasesNe : v.diseases} · {isNe ? v.routeNe : v.route} · {isNe ? v.doseNe : v.dose}</Text>
-                              <Text style={styles.vaccineDate}>{isNe ? formatDateNe(v.scheduledDate) : v.scheduledDate}</Text>
+                              <Text style={styles.vaccineDate}>{isNe ? formatDateNe(v.status === 'given' && v.givenDate ? v.givenDate : v.scheduledDate) : (v.status === 'given' && v.givenDate ? v.givenDate : v.scheduledDate)}</Text>
                             </View>
                             <View style={[styles.statusPill, { backgroundColor: pill.bg }]}>
                               <Text style={[styles.statusPillText, { color: pill.text }]}>{isNe ? pill.labelNe : pill.labelEn}</Text>
