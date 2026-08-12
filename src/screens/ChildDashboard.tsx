@@ -159,42 +159,34 @@ export default function ChildDashboard({ route, navigation }: Props) {
       );
       await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      // Upload to Supabase Storage via FormData (React Native safe — no ArrayBuffer→Blob)
+      // Upload to Supabase Storage via FileSystem.uploadAsync (native multipart — works on Hermes)
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
       const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
       const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-      console.log('[PHOTO] uploading via FormData, mimeType:', mimeType);
+      console.log('[PHOTO] uploading via FileSystem.uploadAsync, mimeType:', mimeType);
 
-      // Use FormData with React Native file object — properly sets MIME type
-      const formData = new FormData();
-      formData.append('file', {
-        uri: manip.uri,
-        type: mimeType,
-        name: 'photo.' + ext,
-      } as any);
-
-      // Get auth token for the raw Storage API
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error('Not authenticated');
 
       const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/${storagePath}`;
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'POST',
+      console.log('[PHOTO] uploadUrl:', uploadUrl.substring(0, 80));
+
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, manip.uri, {
+        httpMethod: 'POST',
         headers: {
           'apikey': 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
           'Authorization': `Bearer ${token}`,
           'x-upsert': 'true',
+          'Content-Type': mimeType,
         },
-        body: formData,
       });
 
-      if (!uploadRes.ok) {
-        const errBody = await uploadRes.text();
-        console.error('[PHOTO] upload failed:', uploadRes.status, errBody);
-        throw new Error(errBody || `Upload failed (${uploadRes.status})`);
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        console.error('[PHOTO] upload failed:', uploadResult.status, uploadResult.body);
+        throw new Error(uploadResult.body || `Upload failed (${uploadResult.status})`);
       }
-      console.log('[PHOTO] upload succeeded, status:', uploadRes.status);
+      console.log('[PHOTO] upload succeeded, status:', uploadResult.status);
       const { data: urlData } = supabase.storage
         .from('child-photos')
         .getPublicUrl(storagePath);
