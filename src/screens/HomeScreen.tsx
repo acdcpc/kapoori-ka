@@ -203,6 +203,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={22} color="#C0392B" />
+              <Text style={styles.logoutBtnLabel}>{isNe ? 'लग आउट' : 'Logout'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(s => !s)}>
               <Ionicons name={showSettings ? "settings" : "settings-outline"} size={22} color="#7A6E65" />
               <Text style={styles.settingsBtnLabel}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
@@ -239,12 +243,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <ActivityIndicator size="large" color="#E8602C" style={styles.loader} />
       ) : children.length === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyState}>
-          <Text style={styles.emptyIcon}>👶</Text>
           <Text style={styles.emptyText}>{t.noChildren}</Text>
           <Text style={styles.hintText}>{isNe ? 'तलको ⊕ बटन थिचेर आफ्नो बच्चाको प्रोफाइल बनाउनुहोस्।' : "Tap the ⊕ button below to create your child's profile."}</Text>
           <View style={styles.fabPointer}>
             <Text style={styles.fabPointerTitle}>{isNe ? 'यहाँ थिच्नुहोस्' : 'Tap here to add child'}</Text>
-            <Text style={styles.fabPointerArrow}>↓</Text>
+            <Text style={styles.fabPointerArrow}>↘</Text>
           </View>
           <View style={styles.featurePreview}>
             {[
@@ -295,16 +298,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.settingsRow}>
             <Ionicons name="language-outline" size={18} color="#7A6E65" />
             <Text style={styles.settingsLabel}>{isNe ? 'भाषा' : 'Language'}</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>
               <TouchableOpacity
                 onPress={() => setLanguage('en')}
-                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: language === 'en' ? '#E8602C' : '#EDE0D4' }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: language === 'en' ? '#fff' : '#666' }}>EN</Text>
+                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'en' ? '#E8602C' : '#EDE0D4' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'en' ? '#fff' : '#5B4A3A' }}>English</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setLanguage('ne')}
-                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: language === 'ne' ? '#E8602C' : '#EDE0D4' }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: language === 'ne' ? '#fff' : '#666' }}>ने</Text>
+                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'ne' ? '#E8602C' : '#EDE0D4' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'ne' ? '#fff' : '#5B4A3A' }}>नेपाली</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -349,6 +352,8 @@ const styles = StyleSheet.create({
   aboutBtn: { padding: 4 },
   settingsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
   settingsBtnLabel: { fontSize: 13, color: '#7A6E65', fontWeight: '500' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4, borderWidth: 1, borderColor: '#F3C1B8', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
+  logoutBtnLabel: { fontSize: 13, color: '#C0392B', fontWeight: '600' },
   settingsPanel: { backgroundColor: '#FDF8F2', borderTopWidth: 1, borderTopColor: '#EDE0D4', padding: 16, paddingTop: 8 },
   settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#EDE0D4', alignSelf: 'center', marginBottom: 12 },
   settingsTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
@@ -394,10 +399,9 @@ const styles = StyleSheet.create({
   childArrow: { fontSize: 22, color: '#C4956A', fontWeight: '600' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', padding: 40, paddingBottom: 160 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
   emptyText: { fontSize: 16, color: '#7A6E65', textAlign: 'center', lineHeight: 24 },
   hintText: { fontSize: 13, color: '#E8602C', textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
-  fabPointer: { backgroundColor: '#E8602C18', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, alignItems: 'center', marginBottom: 8 },
+  fabPointer: { backgroundColor: '#E8602C18', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, alignItems: 'center', marginBottom: 8, alignSelf: 'flex-end', marginRight: 20 },
   fabPointerTitle: { fontWeight: '700', fontSize: 13, color: '#E8602C', textAlign: 'center' },
   fabPointerArrow: { fontSize: 20, color: '#E8602C', textAlign: 'center', marginTop: 2 },
   featurePreview: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 20, gap: 10 },
