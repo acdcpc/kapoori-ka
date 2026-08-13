@@ -297,6 +297,9 @@
           actions += ' <button class="action-btn btn-approve" onclick="approvePayment(\'' + p.id + '\')">Approve</button>';
           actions += ' <button class="action-btn btn-reject" onclick="openReject(\'' + p.id + '\')">Reject</button>';
         }
+        if (p.status === 'approved') {
+          actions += ' <button class="action-btn btn-approve" onclick="regenerateCode(\'' + p.id + '\')">New Code</button>';
+        }
 
         html += '<tr>' +
           '<td>' + date + '</td>' +
@@ -336,7 +339,9 @@
         (p.status === 'pending'
           ? '<button class="action-btn btn-approve" onclick="approvePayment(\'' + p.id + '\')">Approve</button>' +
             '<button class="action-btn btn-reject" onclick="closeModal(); openReject(\'' + p.id + '\')">Reject</button>'
-          : '') +
+          : (p.status === 'approved'
+            ? '<button class="action-btn btn-approve" onclick="closeModal(); regenerateCode(\'' + p.id + '\')">New Code</button>'
+            : '')) +
         '<button class="action-btn btn-view" onclick="closeModal()">Close</button>' +
         '</div>';
 
@@ -430,6 +435,46 @@
         };
         closeModal();
         loadPayments();
+        showApproveModal();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    };
+
+    window.regenerateCode = async function(id) {
+      var p = allPayments.find(function(x) { return x.id === id; });
+      if (!p) return;
+      if (!confirm('Generate a new activation code for ' + (p.email || 'this customer') + '? Any previous code will be voided.')) return;
+
+      var code = generateCode();
+      var normalized = code.replace(/[^A-Z0-9]/g, '').toUpperCase();
+      var codeHash = await sha256Hex(normalized);
+
+      try {
+        // 1. Void previous codes for this transaction (SECURITY DEFINER RPC)
+        var { error: voidErr } = await supabase.rpc('admin_void_codes', { p_original_transaction_id: p.transaction_id || null });
+        if (voidErr) throw new Error('Void old code failed: ' + voidErr.message);
+
+        // 2. Insert the new code
+        var { error: codeErr } = await supabase
+          .from('activation_codes')
+          .insert({
+            code_hash: codeHash,
+            status: 'valid',
+            plan: 'yearly',
+            amount: p.amount,
+            original_transaction_id: p.transaction_id || null
+          });
+        if (codeErr) throw new Error('Code creation failed: ' + codeErr.message);
+
+        // 3. Show the new code
+        approveResult = {
+          code: code,
+          name: p.name || '',
+          email: p.email || '',
+          mobile: p.mobile || ''
+        };
+        closeModal();
         showApproveModal();
       } catch (err) {
         alert('Error: ' + err.message);
