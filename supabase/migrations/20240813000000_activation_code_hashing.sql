@@ -4,7 +4,7 @@
 -- ============================================================================
 
 -- SHA-256 requires pgcrypto
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- 1. Add the hash column (idempotent)
 ALTER TABLE public.activation_codes ADD COLUMN IF NOT EXISTS code_hash TEXT;
@@ -17,7 +17,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'activation_codes' AND column_name = 'code'
   ) THEN
-    EXECUTE 'UPDATE public.activation_codes SET code_hash = encode(digest(code, ''sha256''), ''hex'') WHERE code_hash IS NULL AND code IS NOT NULL';
+    EXECUTE 'UPDATE public.activation_codes SET code_hash = encode(extensions.digest(code, ''sha256''), ''hex'') WHERE code_hash IS NULL AND code IS NOT NULL';
     -- Orphaned rows (no plaintext to hash) can never be redeemed — remove them
     EXECUTE 'DELETE FROM public.activation_codes WHERE code_hash IS NULL';
     EXECUTE 'ALTER TABLE public.activation_codes DROP CONSTRAINT IF EXISTS activation_codes_pkey';
@@ -52,7 +52,7 @@ BEGIN
   IF length(v_code) < 6 OR length(v_code) > 32 THEN
     RETURN jsonb_build_object('error', 'Invalid code format.');
   END IF;
-  v_code_hash := encode(digest(v_code, 'sha256'), 'hex');
+  v_code_hash := encode(extensions.digest(v_code, 'sha256'), 'hex');
 
   -- Rate limiting: max 5 attempts per 15 minutes
   SELECT * INTO v_rate_record FROM public.rate_limits WHERE user_id = v_user_id;
@@ -79,11 +79,12 @@ BEGIN
 
   UPDATE public.activation_codes SET status = 'used', used_by = v_user_id, used_at = v_now WHERE code_hash = v_code_hash;
 
-  INSERT INTO public.subscriptions (user_id, status, plan, start_date, end_date, auto_renew, price, redeemed_code)
+  INSERT INTO public.subscriptions (user_id, status, plan, start_date, end_date, auto_renew, price)
     VALUES (v_user_id, 'active', v_plan, v_now, v_end_date, false,
-      CASE WHEN v_plan = 'yearly' THEN 'NPR 2000' ELSE 'NPR 200' END, v_code)
+      CASE WHEN v_plan = 'yearly' THEN 2000 ELSE 200 END)
     ON CONFLICT (user_id) DO UPDATE
-      SET status = 'active', plan = v_plan, start_date = v_now, end_date = v_end_date, redeemed_code = v_code;
+      SET status = 'active', plan = v_plan, start_date = v_now, end_date = v_end_date, auto_renew = false,
+          price = CASE WHEN v_plan = 'yearly' THEN 2000 ELSE 200 END;
 
   DELETE FROM public.rate_limits WHERE user_id = v_user_id;
 
