@@ -193,7 +193,8 @@
     // Supabase client — payment page uses anon key (no auth needed for payment submission)
     var supabase = window.supabase.createClient(
       'https://tgnzucqjebnisgrxjfjg.supabase.co',
-      'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs'
+      'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
+      { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
     var selectedPlan = 'yearly';
