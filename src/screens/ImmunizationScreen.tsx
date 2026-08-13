@@ -218,14 +218,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const confirmSetStatus = async (vaccine: ComputedVaccine, status: 'given' | 'missed', givenDate: string) => {
     console.log('[IMMUN] confirmSetStatus called:', { vaccineId: vaccine.id, status, givenDate, scheduledDate: vaccine.scheduledDate, userId: user?.uid?.substring(0, 8), childId: child.id });
     try {
-      const { data: existing, error: checkErr } = await supabase
-        .from('vaccinations')
-        .select('id')
-        .eq('child_id', child.id)
-        .eq('vaccine_name', vaccine.id)
-        .maybeSingle();
-      console.log('[IMMUN] existing record check:', { existing: existing?.id, error: checkErr?.message });
-
       const record = {
         child_id: child.id,
         user_id: user?.uid || '',
@@ -236,17 +228,14 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         is_given: status === 'given',
         is_missed: status === 'missed',
       };
-      console.log('[IMMUN] record to save:', JSON.stringify(record));
+      console.log('[IMMUN] record to upsert:', JSON.stringify(record));
 
-      if (existing) {
-        const { error: updErr } = await supabase.from('vaccinations').update(record).eq('id', existing.id);
-        console.log('[IMMUN] update result:', { error: updErr?.message, code: (updErr as any)?.code });
-        if (updErr) throw updErr;
-      } else {
-        const { error: insErr } = await supabase.from('vaccinations').insert(record);
-        console.log('[IMMUN] insert result:', { error: insErr?.message, code: (insErr as any)?.code });
-        if (insErr) throw insErr;
-      }
+      // Idempotent upsert keyed on (child_id, vaccine_name) — no select-then-write race
+      const { error: upErr } = await supabase
+        .from('vaccinations')
+        .upsert(record, { onConflict: 'child_id,vaccine_name' });
+      console.log('[IMMUN] upsert result:', { error: upErr?.message, code: (upErr as any)?.code });
+      if (upErr) throw upErr;
 
       console.log('[IMMUN] saved', vaccine.id, 'as', status, 'on', givenDate);
       await loadRecords();
