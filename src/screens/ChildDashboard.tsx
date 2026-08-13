@@ -169,7 +169,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
       const token = session?.access_token;
       if (!token) throw new Error('Not authenticated');
 
-      const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/${storagePath}`;
+      const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/child-photos/${storagePath}`;
       console.log('[PHOTO] uploadUrl:', uploadUrl.substring(0, 80));
 
       const uploadResult = await FileSystem.uploadAsync(uploadUrl, manip.uri, {
