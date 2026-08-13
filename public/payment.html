@@ -256,16 +256,16 @@
       spinner.classList.add('active');
 
       try {
-        var screenshotUrl = '';
+        var screenshotUrl = ''; // object path (admin panel generates a signed URL)
 
         if (screenshotFile) {
-          var filePath = 'public/' + email.replace(/[.@]/g, '_') + '_' + txnId + '_' + Date.now();
+          var ext = screenshotFile.type === 'image/png' ? '.png' : '.jpg';
+          var filePath = email.replace(/[.@]/g, '_') + '_' + txnId + '_' + Date.now() + ext;
           var { error: uploadErr } = await supabase.storage
             .from('payment-screenshots')
             .upload(filePath, screenshotFile, { contentType: screenshotFile.type, upsert: true });
           if (!uploadErr) {
-            var { data: urlData } = supabase.storage.from('payment-screenshots').getPublicUrl(filePath);
-            screenshotUrl = urlData.publicUrl;
+            screenshotUrl = filePath;
           }
         }
 

@@ -161,6 +161,7 @@
 
     var currentTab = 'pending';
     var allPayments = [];
+    var signedUrls = {};
     var rejectPaymentId = null;
     var adminEmails = ['thisispratha@gmail.com'];
     var currentUser = null;
@@ -232,6 +233,16 @@
         return;
       }
       allPayments = data || [];
+      signedUrls = {};
+      var withShots = allPayments.filter(function(p) { return p.screenshot_url; });
+      await Promise.all(withShots.map(async function(p) {
+        try {
+          var { data: sg, error: serr } = await supabase.storage
+            .from('payment-screenshots')
+            .createSignedUrl(p.screenshot_url, 3600);
+          if (!serr && sg) signedUrls[p.id] = sg.signedUrl;
+        } catch (e) { /* ignore */ }
+      }));
       renderTable();
     }
 
@@ -260,8 +271,9 @@
       filtered.forEach(function(p) {
         var date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '-';
         var badge = '<span class="badge badge-' + p.status + '">' + p.status + '</span>';
-        var screenshot = p.screenshot_url
-          ? '<img src="' + p.screenshot_url + '" class="screenshot-thumb" onclick="window.open(\'' + p.screenshot_url + '\')">'
+        var shotUrl = signedUrls[p.id] || null;
+        var screenshot = shotUrl
+          ? '<img src="' + shotUrl + '" class="screenshot-thumb" onclick="window.open(\'' + shotUrl + '\')">'
           : '-';
 
         var actions = '<button class="action-btn btn-view" onclick="viewPayment(\'' + p.id + '\')">View</button>';
@@ -301,7 +313,7 @@
         '<p><strong>Status:</strong> ' + (p.status || '-') + '</p>' +
         '<p><strong>Submitted:</strong> ' + date + '</p>' +
         '<p><strong>Verified:</strong> ' + verified + '</p>' +
-        (p.screenshot_url ? '<img src="' + p.screenshot_url + '" alt="Screenshot">' : '') +
+        (signedUrls[p.id] ? '<img src="' + signedUrls[p.id] + '" alt="Screenshot">' : '') +
         '<div class="modal-actions">' +
         (p.status === 'pending'
           ? '<button class="action-btn btn-approve" onclick="approvePayment(\'' + p.id + '\')">Approve</button>' +
