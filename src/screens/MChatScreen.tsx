@@ -223,7 +223,7 @@ export default function MChatScreen({ route, navigation }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={styles.headerTitle}>M-CHAT-R/F</Text><InfoBubble titleEn='About M-CHAT-R/F' titleNe='M-CHAT बारे' bodyEn='The Modified Checklist for Autism in Toddlers screens for autism risk.' bodyNe='The Modified Checklist for Autism in Toddlers screens for autism risk.' iconSize={16} /></View>
         </View>
 
-        {!isAppropriateAge ? (
+        {!canScreen ? (
           <View style={styles.centeredContent}>
             <View style={styles.warningBoxLarge}>
               <Text style={styles.warningEmoji}>👶</Text>
