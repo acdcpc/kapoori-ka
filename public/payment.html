@@ -273,7 +273,9 @@
         var { error: insertErr } = await supabase
           .from('payments')
           .insert({
+            name: name,
             email: email.toLowerCase(),
+            mobile: mobile,
             amount: amount,
             transaction_id: txnId,
             screenshot_url: screenshotUrl || null,

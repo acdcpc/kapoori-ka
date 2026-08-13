@@ -150,6 +150,21 @@
         </div>
       </div>
     </div>
+
+    <!-- Approve Result Modal -->
+    <div class="modal" id="approveModal" onclick="if(event.target === this) closeApproveModal()">
+      <div class="modal-content" style="text-align:center;">
+        <h2>✅ Payment Approved</h2>
+        <p style="color:#555;">Share this activation code with the customer:</p>
+        <div id="approveCodeBox" style="font-family:monospace;font-size:22px;font-weight:700;letter-spacing:3px;background:#FDF8F2;border:2px dashed #E8602C;padding:16px;border-radius:12px;margin:8px 0;"></div>
+        <p id="approveCustInfo" style="color:#777;font-size:13px;margin-bottom:4px;"></p>
+        <div class="modal-actions" style="justify-content:center;flex-wrap:wrap;">
+          <button class="action-btn" onclick="sendWhatsApp()" style="background:#25D366;color:#fff;">💬 Send via WhatsApp</button>
+          <button class="action-btn btn-view" onclick="copyCode()">Copy Code</button>
+          <button class="action-btn btn-reject" onclick="closeApproveModal()">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -163,6 +178,7 @@
     var allPayments = [];
     var signedUrls = {};
     var rejectPaymentId = null;
+    var approveResult = null;
     var adminEmails = ['thisispratha@gmail.com'];
     var currentUser = null;
 
@@ -307,7 +323,9 @@
 
       document.getElementById('modalContent').innerHTML =
         '<h2>Payment Details</h2>' +
+        '<p><strong>Name:</strong> ' + (p.name || '-') + '</p>' +
         '<p><strong>Email:</strong> ' + (p.email || '-') + '</p>' +
+        '<p><strong>Mobile:</strong> ' + (p.mobile || '-') + '</p>' +
         '<p><strong>Transaction ID:</strong> ' + (p.transaction_id || '-') + '</p>' +
         '<p><strong>Amount:</strong> NPR ' + (p.amount || 0) + '</p>' +
         '<p><strong>Status:</strong> ' + (p.status || '-') + '</p>' +
@@ -404,13 +422,69 @@
 
         if (updateErr) throw new Error('Payment update failed: ' + updateErr.message);
 
-        alert('Payment approved!\n\nActivation Code: ' + code + '\n\nSend this code to: ' + email);
+        approveResult = {
+          code: code,
+          name: p ? (p.name || '') : '',
+          email: email,
+          mobile: p ? (p.mobile || '') : ''
+        };
         closeModal();
         loadPayments();
+        showApproveModal();
       } catch (err) {
         alert('Error: ' + err.message);
       }
     };
+
+    function showApproveModal() {
+      if (!approveResult) return;
+      document.getElementById('approveCodeBox').textContent = approveResult.code;
+      var info = (approveResult.name ? approveResult.name + ' · ' : '') +
+        (approveResult.email || 'no email') +
+        (approveResult.mobile ? ' · ' + approveResult.mobile : '');
+      document.getElementById('approveCustInfo').textContent = info;
+      document.getElementById('approveModal').classList.add('active');
+    }
+
+    window.closeApproveModal = function() {
+      document.getElementById('approveModal').classList.remove('active');
+      approveResult = null;
+    };
+
+    function waNumber(raw) {
+      var d = (raw || '').replace(/\D/g, '');
+      if (d.length === 10) d = '977' + d; // Nepal local mobile -> international
+      return d;
+    }
+
+    window.sendWhatsApp = function() {
+      if (!approveResult) return;
+      var num = waNumber(approveResult.mobile);
+      if (!num) { alert('No mobile number on file for this customer. Copy the code and send it manually.'); return; }
+      var msg = 'Hi ' + (approveResult.name || 'there') + '! Thank you for your payment to Kapoori Ka. Your activation code is: ' +
+        approveResult.code + '. Open the app, tap Activate, and enter this code to unlock your premium plan. — Kapoori Ka Team';
+      window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank');
+    };
+
+    window.copyCode = function() {
+      if (!approveResult) return;
+      var text = approveResult.code;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { alert('Code copied!'); }, function() { fallbackCopy(text); });
+      } else {
+        fallbackCopy(text);
+      }
+    };
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Code copied!');
+    }
 
     async function sha256Hex(str) {
       if (!window.crypto || !window.crypto.subtle) {
