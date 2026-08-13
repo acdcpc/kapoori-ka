@@ -163,10 +163,12 @@
     var allPayments = [];
     var rejectPaymentId = null;
     var adminEmails = ['thisispratha@gmail.com'];
+    var currentUser = null;
 
     // ---- Auth ----
     supabase.auth.onAuthStateChange(function(_event, session) {
       var user = session ? session.user : null;
+      currentUser = user;
       var main = document.getElementById('mainContent');
 
       if (!user) {
@@ -337,7 +339,7 @@
 
       var { error } = await supabase
         .from('payments')
-        .update({ status: 'rejected', rejection_reason: reason, verified_at: new Date().toISOString(), verified_by: supabase.auth.user() ? supabase.auth.user().id : null })
+        .update({ status: 'rejected', rejection_reason: reason, verified_at: new Date().toISOString(), verified_by: currentUser ? currentUser.id : null })
         .eq('id', rejectPaymentId);
 
       if (error) {
@@ -384,7 +386,7 @@
           .update({
             status: 'approved',
             verified_at: now,
-            verified_by: supabase.auth.user().id
+            verified_by: currentUser.id
           })
           .eq('id', id);
 
