@@ -202,6 +202,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <Text style={styles.headerSubtitle}>Kapoori Ka</Text>
         </View>
         <View style={styles.headerRight}>
+          <View style={styles.langToggle}>
+            <TouchableOpacity style={[styles.langBtn, language === 'ne' && { backgroundColor: '#E8602C' }]} onPress={() => setLanguage('ne')}>
+              <Text style={[styles.langBtnText, language === 'ne' && { color: '#fff', fontWeight: '700' }]}>नेपाली</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.langBtn, language === 'en' && { backgroundColor: '#E8602C' }]} onPress={() => setLanguage('en')}>
+              <Text style={[styles.langBtnText, language === 'en' && { color: '#fff', fontWeight: '700' }]}>EN</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={22} color="#C0392B" />
