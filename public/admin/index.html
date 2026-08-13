@@ -355,7 +355,7 @@
       if (!confirm('Approve this payment and generate an activation code?')) return;
 
       var code = generateCode();
-      var normalized = code.replace(/-/g, '').toUpperCase();
+      var normalized = code.replace(/[^A-Z0-9]/g, '').toUpperCase();
       var codeHash = await sha256Hex(normalized);
       var now = new Date().toISOString();
       var email = '';
