@@ -194,7 +194,7 @@
     var supabase = window.supabase.createClient(
       'https://tgnzucqjebnisgrxjfjg.supabase.co',
       'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'kk-payment-anon' } }
     );
 
     var selectedPlan = 'yearly';
