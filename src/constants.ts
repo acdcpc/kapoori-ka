@@ -1,7 +1,7 @@
 // src/constants.ts
 // v2: Removed PAYMENT_WEB_URL and ESEWA_QR_URL — no payment links in-app (Google Play compliance).
 
-export const WHATSAPP_NUMBER = '+9779840516603';
+export const WHATSAPP_NUMBER = '+9779704533141';
 
 export const COLORS = {
   PRIMARY: '#E8602C',

@@ -2,7 +2,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, ScrollView,
 } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -107,7 +107,7 @@ export default function LoginScreen() {
 
       {/* ── BOTTOM CARD ── */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-        <View style={styles.bottomCard}>
+        <ScrollView style={styles.bottomCard} contentContainerStyle={styles.bottomCardContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {verificationSent && (
             <View style={styles.verifyBanner}>
               <Ionicons name="mail-outline" size={20} color="#065F46" />
@@ -232,7 +232,7 @@ export default function LoginScreen() {
             <Ionicons name="shield-checkmark" size={16} color="#7A6E65" />
             <Text style={styles.footerText}>{isNe ? 'तपाईंको डाटा सुरक्षित छ' : 'Your data is secure and private'}</Text>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <Modal visible={showForgotPassword} transparent animationType="fade" onRequestClose={() => { setShowForgotPassword(false); setResetSent(false); setAuthError(null); }}>
@@ -280,7 +280,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '800', color: '#1A1A2E', textAlign: 'center', letterSpacing: -0.3 },
   titleEnglish: { fontSize: 14, color: '#7A6E65', textAlign: 'center', marginBottom: 4 },
   subtitle: { fontSize: 12, fontStyle: 'italic', color: '#7A6E65', textAlign: 'center' },
-  bottomCard: { backgroundColor: '#FDF8F2', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 22, paddingBottom: 36, flex: 1 },
+  bottomCard: { backgroundColor: '#FDF8F2', borderTopLeftRadius: 28, borderTopRightRadius: 28, flex: 1 },
+  bottomCardContent: { paddingTop: 24, paddingHorizontal: 22, paddingBottom: 36 },
   verifyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
   verifyBannerText: { flex: 1, fontSize: 13, color: '#065F46', lineHeight: 18 },
   verifyResendText: { fontSize: 13, fontWeight: '700', color: '#E8602C' },
