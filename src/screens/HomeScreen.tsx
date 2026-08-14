@@ -319,6 +319,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </TouchableOpacity>
             </View>
           </View>
+          <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Subscription'); }}>
+            <Ionicons name="diamond-outline" size={18} color="#E8602C" />
+            <Text style={styles.settingsLabel}>{isNe ? 'प्रिमियम सदस्यता' : 'Premium Subscription'}</Text>
+            <Ionicons name="chevron-forward" size={16} color="#C4956A" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
             <Ionicons name="information-circle-outline" size={18} color="#7A6E65" />
             <Text style={styles.settingsLabel}>{t.about}</Text>
