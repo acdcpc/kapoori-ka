@@ -212,16 +212,6 @@ export default function SubscriptionScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Neutral compliance message — no links, no URLs, no payment instructions */}
-          <View style={styles.complianceNote}>
-            <Ionicons name="information-circle-outline" size={20} color="#C4956A" />
-            <Text style={styles.complianceText}>
-              {isNe
-                ? 'प्रिमियम हाल हाम्रो आधिकारिक माध्यमहरू मार्फत उपलब्ध छ।'
-                : 'Premium is currently available through our official channels.'}
-            </Text>
-          </View>
-
           {/* Activation Code Redemption (neutral — not a payment solicitation) */}
           <Text style={styles.sectionLabel}>
             {isNe ? '🔑 एक्टिभेसन कोड छ? सक्रिय गर्नुहोस्' : '🔑 Have an activation code? Redeem it'}
@@ -315,14 +305,6 @@ const styles = StyleSheet.create({
   priceAmount: { fontSize: 24, fontWeight: '800', color: '#333' },
   pricePeriod: { fontSize: 12, color: '#999', marginTop: 2 },
   priceSave: { fontSize: 12, color: '#4CAF50', fontWeight: '700', marginTop: 6 },
-
-  // Compliance note — no links, no URLs
-  complianceNote: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    marginHorizontal: 12, marginTop: 8, marginBottom: 4,
-    backgroundColor: '#F7F1EB', borderRadius: 12, padding: 14, gap: 8,
-  },
-  complianceText: { flex: 1, fontSize: 13, color: '#C4956A', lineHeight: 18 },
 
   // In-app payment button
   payBtn: {
