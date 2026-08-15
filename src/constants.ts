@@ -1,7 +1,10 @@
 // src/constants.ts
-// v2: Removed PAYMENT_WEB_URL and ESEWA_QR_URL — no payment links in-app (Google Play compliance).
+// v3: In-app payment via WebView (sideloaded APK, not Google Play).
 
 export const WHATSAPP_NUMBER = '+9779704533141';
+
+// Hosted payment page URL (Netlify — public/payment.html).
+export const PAYMENT_WEB_URL = 'https://kapoori-ka.netlify.app/payment.html';
 
 export const COLORS = {
   PRIMARY: '#E8602C',

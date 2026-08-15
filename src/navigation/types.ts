@@ -12,6 +12,7 @@ export type RootStackParamList = {
   MChat: { child: Child };
   PDFReport: { child: Child };
   Subscription: undefined;
+  Payment: undefined;
   About: undefined;
   Nutrition: { child?: Child; highlightAge?: number } | undefined;
   ResetPassword: undefined;
