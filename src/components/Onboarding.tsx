@@ -1,110 +1,205 @@
 // src/components/Onboarding.tsx
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 
-const { width, height } = Dimensions.get('window');
+const ONBOARDING_KEY = 'hasSeenOnboarding';
 
-const ONBOARDING_KEY = 'onboarding_step';
+type IoniconName = keyof typeof Ionicons.glyphMap;
 
-const STEPS = [
-  { messageEn: 'Tap here to add your child', messageNe: 'यहाँ थिचेर आफ्नो बच्चा थप्नुहोस्', top: height - 160, left: width - 80 },
-  { messageEn: 'Track your child growth chart here', messageNe: 'यहाँ बच्चाको वृद्धि चार्ट हेर्नुहोस्', top: 340, left: width / 2 - 120 },
-  { messageEn: 'Check your child health summary at a glance', messageNe: 'यहाँ बच्चाको स्वास्थ्य अवस्था हेर्नुहोस्', top: 130, left: width / 2 - 130 },
+interface Step {
+  icon: IoniconName;
+  color: string;
+  titleEn: string;
+  titleNe: string;
+  descEn: string;
+  descNe: string;
+}
+
+const STEPS: Step[] = [
+  {
+    icon: 'happy-outline',
+    color: '#E8602C',
+    titleEn: 'Welcome to Kapoori Ka!',
+    titleNe: 'कपूरी कामा स्वागत छ!',
+    descEn: "Add your child's profile and photo to get started.",
+    descNe: 'आफ्नो बच्चाको प्रोफाइल र फोटो थपेर सुरु गर्नुहोस्।',
+  },
+  {
+    icon: 'medkit-outline',
+    color: '#1E88E5',
+    titleEn: 'Immunization Tracker',
+    titleNe: 'खोप ट्र्याकर',
+    descEn: "Stay on track with Nepal's National Immunization Programme and never miss a vaccine.",
+    descNe: 'नेपालको राष्ट्रिय खोप कार्यक्रम अनुसार ट्र्याक राख्नुहोस् र कुनै पनि खोप नछुटाउनुहोस्।',
+  },
+  {
+    icon: 'sparkles-outline',
+    color: '#8E24AA',
+    titleEn: 'Milestones & M-CHAT',
+    titleNe: 'विकास चरण र M-CHAT',
+    descEn: 'Monitor developmental milestones and autism screening to ensure healthy growth.',
+    descNe: 'विकासका चरणहरू र अटिज्म जाँचको निगरानी गरी स्वस्थ वृद्धि सुनिश्चित गर्नुहोस्।',
+  },
+  {
+    icon: 'diamond-outline',
+    color: '#43A047',
+    titleEn: 'Settings & Premium',
+    titleNe: 'सेटिङ र प्रिमियम',
+    descEn: 'Manage your account, switch languages (Nepali/English), and unlock premium features via subscription codes.',
+    descNe: 'आफ्नो खाता व्यवस्थापन गर्नुहोस्, भाषा (नेपाली/अंग्रेजी) परिवर्तन गर्नुहोस्, र सदस्यता कोडद्वारा प्रिमियम सुविधाहरू अनलक गर्नुहोस्।',
+  },
 ];
 
 interface OnboardingProps {
   onComplete: () => void;
-  screen: 'home' | 'dashboard';
+  screen?: 'home' | 'dashboard';
 }
 
-export default function Onboarding({ onComplete, screen }: OnboardingProps) {
+export default function Onboarding({ onComplete }: OnboardingProps) {
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const [step, setStep] = useState(0);
-  const [initialized, setInitialized] = useState(false);
+  const [visible, setVisible] = useState(false);
 
-  // Resume from AsyncStorage on mount (survives force-quit)
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
-      const savedStep = val ? parseInt(val, 10) : 0;
-      if (isNaN(savedStep) || savedStep < 0) {
-        setStep(0);
-      } else if (savedStep >= 3) {
-        // Already completed previously
+    let mounted = true;
+    (async () => {
+      const seen = await AsyncStorage.getItem(ONBOARDING_KEY);
+      if (!mounted) return;
+      if (seen === 'true') {
         onComplete();
-        return;
       } else {
-        // Use max of saved position and screen-appropriate starting step
-        const screenStart = screen === 'home' ? 0 : 1;
-        setStep(Math.max(savedStep, screenStart));
+        setVisible(true);
       }
-      setInitialized(true);
-    });
+    })();
+    return () => { mounted = false; };
   }, []);
 
-  // Persist step on every change (survives force-quit)
-  const advanceStep = async (nextStep: number) => {
-    await AsyncStorage.setItem(ONBOARDING_KEY, String(nextStep));
-    setStep(nextStep);
-  };
-
-  const handleNext = async () => {
-    if (step < 2) {
-      await advanceStep(step + 1);
-    } else {
-      // Mark completed — distinct value from 'skipped'
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'completed');
-      onComplete();
-    }
-  };
-
-  const handleSkip = async () => {
-    // Distinguishable skip value
-    await AsyncStorage.setItem(ONBOARDING_KEY, 'skipped');
+  const finish = async () => {
+    try { await AsyncStorage.setItem(ONBOARDING_KEY, 'true'); } catch {}
     onComplete();
   };
 
-  if (!initialized) return null;
+  const handleNext = () => {
+    if (step < STEPS.length - 1) setStep(step + 1);
+    else finish();
+  };
 
   const current = STEPS[step];
-  if (!current) {
-    onComplete();
-    return null;
-  }
+  const isLast = step === STEPS.length - 1;
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      <View style={styles.dimBackground} />
-      <View style={[styles.spotlight, { top: current.top - 30, left: current.left - 30 }]}>
-        <View style={styles.spotlightInner} />
-      </View>
-      <View style={[styles.tooltip, { top: current.top + 40, left: Math.min(current.left - 12, width - 210) }]}>
-        <Text style={styles.tooltipText}>{isNe ? current.messageNe : current.messageEn}</Text>
-        <View style={styles.tooltipBtns}>
-          <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-            <Text style={styles.skipBtnText}>{isNe ? 'छोड्नुहोस्' : 'Skip'}</Text>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={finish}>
+      <View style={styles.overlay}>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={finish}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.skipText}>{isNe ? 'छोड्नुहोस्' : 'Skip'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleNext} style={styles.nextBtn}>
-            <Text style={styles.nextBtnText}>{step < 2 ? (isNe ? 'अर्को' : 'Next') : (isNe ? 'सकियो' : 'Done')}</Text>
+
+          <View style={[styles.iconCircle, { backgroundColor: current.color + '1A' }]}>
+            <Ionicons name={current.icon} size={58} color={current.color} />
+          </View>
+
+          <Text style={styles.title}>{isNe ? current.titleNe : current.titleEn}</Text>
+          <Text style={styles.desc}>{isNe ? current.descNe : current.descEn}</Text>
+
+          <View style={styles.dots}>
+            {STEPS.map((_, i) => (
+              <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.nextBtn, { backgroundColor: current.color }]}
+            onPress={handleNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.nextText}>
+              {isLast ? (isNe ? 'सुरु गर्नुहोस्' : 'Get Started') : (isNe ? 'अर्को' : 'Next')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, elevation: 999 },
-  dimBackground: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)' },
-  spotlight: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
-  spotlightInner: { width: 70, height: 70, borderRadius: 35, borderWidth: 3, borderColor: '#E8602C' },
-  tooltip: { position: 'absolute', backgroundColor: '#FDF8F2', borderRadius: 12, padding: 16, width: 220, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 10 },
-  tooltipText: { fontSize: 14, fontWeight: '600', color: '#1A1A2E', marginBottom: 12, lineHeight: 20 },
-  tooltipBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  skipBtn: { paddingVertical: 6, paddingHorizontal: 12 },
-  skipBtnText: { color: '#7A6E65', fontWeight: '600', fontSize: 13 },
-  nextBtn: { backgroundColor: '#E8602C', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20 },
-  nextBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FDF8F2',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  skipBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  skipText: { color: '#7A6E65', fontWeight: '600', fontSize: 14 },
+  iconCircle: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 18,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1A1A2E',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  desc: {
+    fontSize: 14.5,
+    color: '#5B4A3A',
+    textAlign: 'center',
+    lineHeight: 21,
+    minHeight: 63,
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 22,
+    marginBottom: 22,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EDE0D4',
+  },
+  dotActive: {
+    backgroundColor: '#E8602C',
+    width: 22,
+  },
+  nextBtn: {
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  nextText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

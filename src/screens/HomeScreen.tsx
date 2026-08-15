@@ -40,6 +40,13 @@ const HOW_TO_STEPS_NE = [
   { icon: '🥦', title: 'पोषण', desc: 'उमेर अनुसारको पोषण जान्नुहोस् र सर्वोत्तम पिठो बनाउने तरिका सिक्नुहोस्।' },
 ];
 
+function getGreeting(isNe: boolean): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return isNe ? 'शुभ प्रभात' : 'Good Morning';
+  if (hour >= 12 && hour < 17) return isNe ? 'शुभ दिन' : 'Good Afternoon';
+  return isNe ? 'शुभ रात्रि' : 'Good Evening';
+}
+
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user } = useAuth();
@@ -48,7 +55,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [missedChildren, setMissedChildren] = useState<{ child: Child; missedVax: { name: string; nameNe: string; ageLabel: string }[] }[]>([]);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -226,7 +233,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <TouchableOpacity style={styles.welcomeBanner} onPress={() => setShowGuide(!showGuide)} activeOpacity={0.85}>
         <View style={styles.welcomeRow}>
           <View style={styles.welcomeTextBox}>
-            <Text style={styles.welcomeTitle}>{isNe ? 'कपूरी क मा स्वागत छ!' : 'Welcome to Kapoori Ka!'}</Text>
+            <Text style={styles.welcomeTitle}>{getGreeting(isNe)}{user?.displayName ? ', ' + user.displayName : ''}</Text>
             <Text style={styles.welcomeSubtitle}>{isNe ? 'एप कसरी चलाउने? थिच्नुहोस्' : 'Tap to learn how to use the app'}</Text>
           </View>
           <Ionicons name={showGuide ? 'chevron-up' : 'chevron-down'} size={20} color="#E8602C" />
