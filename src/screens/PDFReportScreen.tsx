@@ -1,7 +1,7 @@
 // src/screens/PDFReportScreen.tsx
 import React, { useState, useContext } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
@@ -159,6 +159,12 @@ export default function PDFReportScreen({ route }: Props) {
           </table>
           <p class="center" style="margin-top:50px;color:#777;font-size:12px">Generated on ${dayjs().format('YYYY-MM-DD HH:mm')}</p>
         </body></html>`;
+
+      if (Platform.OS === 'web') {
+        // Web: open the browser print dialog (Save as PDF) — no native FileSystem/Sharing.
+        await Print.printAsync({ html: htmlContent });
+        return;
+      }
 
       const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
       const fileName = `Growth_Report_${child.name.replace(/\s+/g, '_')}_${dayjs().format('YYYYMMDD')}.pdf`;
