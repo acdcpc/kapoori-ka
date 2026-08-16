@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
@@ -298,8 +298,29 @@ function parseUrlParams(url: string): URLSearchParams {
   const signInWithGoogle = async () => {
     setError(null); setLoading(true);
     try {
-      const redirectTo = 'com.kapoori.ka://auth/callback';
+      const isWeb = Platform.OS === 'web';
+      // makeRedirectUri returns the native scheme on native and window.location.origin on web.
+      const redirectTo = makeRedirectUri({ scheme: 'com.kapoori.ka', path: 'auth/callback' });
       console.log('[AuthContext] Google sign-in redirect URL:', redirectTo);
+
+      if (isWeb) {
+        // Web: let the browser handle the OAuth redirect. supabase detectSessionInUrl
+        // (enabled in lib/supabase.ts) picks up the session when the callback returns.
+        const { error: e } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo,
+            queryParams: { access_type: 'offline', prompt: 'consent' },
+          },
+        });
+        if (e) {
+          console.error('[AuthContext] Google sign-in OAuth error:', e.message);
+          setError(e.message);
+          setLoading(false);
+          throw e;
+        }
+        return; // browser navigates away; session detected on return
+      }
 
       const { data, error: e } = await supabase.auth.signInWithOAuth({
         provider: 'google',
