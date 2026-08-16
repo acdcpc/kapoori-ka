@@ -6,9 +6,7 @@ import {
   Modal, Image, Animated,
 } from 'react-native';
 import dayjs from 'dayjs';
-import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
-import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Speech from 'expo-speech';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,7 +41,6 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());
   const [deniedIds, setDeniedIds] = useState<Set<string>>(new Set());
-  const [showConfetti, setShowConfetti] = useState(false);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const [animScale] = useState(new Animated.Value(1));
   const [loading, setLoading] = useState(true);
