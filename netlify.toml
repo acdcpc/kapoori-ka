@@ -1,8 +1,8 @@
 # Netlify config — Kapoori Ka web pages (payment + admin + guide)
 [build]
-  # No build step: these are static HTML files served straight from public/
+  # No build step: these are static HTML files served straight from netlify/
   command = ""
-  publish = "public"
+  publish = "netlify"
 
 # Make the bare root URL land on the public payment page instead of 404ing
 [[redirects]]
