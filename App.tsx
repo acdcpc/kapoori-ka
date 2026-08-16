@@ -19,7 +19,6 @@ import MilestoneScreen from './src/screens/MilestoneScreen';
 import MChatScreen from './src/screens/MChatScreen';
 import PDFReportScreen from './src/screens/PDFReportScreen';
 import SubscriptionScreen from './src/screens/SubscriptionScreen';
-import PaymentScreen from './src/screens/PaymentScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -68,7 +67,6 @@ function Navigation() {
             <Stack.Screen name="MChat" component={MChatScreen} options={{ title: 'अटिज्म जाँच | M-CHAT' }} />
             <Stack.Screen name="PDFReport" component={PDFReportScreen} options={{ title: 'PDF रिपोर्ट | Report' }} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'सदस्यता | Subscription' }} />
-            <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: 'भुक्तानी | Payment' }} />
             <Stack.Screen name="About" component={AboutScreen} options={{ title: 'हाम्रो बारेमा | About' }} />
             <Stack.Screen name="Nutrition" component={NutritionScreen} options={{ title: 'पोषण | Nutrition' }} />
           </>

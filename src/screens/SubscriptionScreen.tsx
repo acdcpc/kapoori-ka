@@ -11,9 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 
 const MONTHLY_PRICE_NPR = 100;
 const YEARLY_PRICE_NPR = 500;
@@ -58,7 +55,6 @@ export default function SubscriptionScreen() {
   const { language } = useContext(LanguageContext);
   const { subscription, redeemCode, refreshUserData, loading: authLoading } = useAuth();
   const isNe = language === 'ne';
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [redemptionCode, setRedemptionCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
@@ -204,13 +200,15 @@ export default function SubscriptionScreen() {
             </View>
           </View>
 
-          {/* In-app payment — opens the hosted payment page in a WebView */}
-          <TouchableOpacity style={styles.payBtn} onPress={() => navigation.navigate('Payment')}>
-            <Ionicons name="card-outline" size={20} color="#fff" />
-            <Text style={styles.payBtnText}>
-              {isNe ? 'प्रिमियम किन्नुहोस्' : 'Buy Premium'}
+          {/* Neutral compliance message — no links, no URLs, no payment instructions */}
+          <View style={styles.complianceNote}>
+            <Ionicons name="information-circle-outline" size={20} color="#C4956A" />
+            <Text style={styles.complianceText}>
+              {isNe
+                ? 'प्रिमियम हाल हाम्रो आधिकारिक माध्यमहरू मार्फत उपलब्ध छ।'
+                : 'Premium is currently available through our official channels.'}
             </Text>
-          </TouchableOpacity>
+          </View>
 
           {/* Activation Code Redemption (neutral — not a payment solicitation) */}
           <Text style={styles.sectionLabel}>
@@ -306,13 +304,13 @@ const styles = StyleSheet.create({
   pricePeriod: { fontSize: 12, color: '#999', marginTop: 2 },
   priceSave: { fontSize: 12, color: '#4CAF50', fontWeight: '700', marginTop: 6 },
 
-  // In-app payment button
-  payBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginHorizontal: 12, marginTop: 12, gap: 8,
-    backgroundColor: '#E8602C', borderRadius: 14, paddingVertical: 16,
+  // Compliance note — no links, no URLs
+  complianceNote: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    marginHorizontal: 12, marginTop: 8, marginBottom: 4,
+    backgroundColor: '#F7F1EB', borderRadius: 12, padding: 14, gap: 8,
   },
-  payBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  complianceText: { flex: 1, fontSize: 13, color: '#C4956A', lineHeight: 18 },
 
   // Redemption
   redeemBox: {
