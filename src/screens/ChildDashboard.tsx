@@ -1,6 +1,6 @@
 // src/screens/ChildDashboard.tsx
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -148,45 +148,54 @@ export default function ChildDashboard({ route, navigation }: Props) {
       if (result.canceled || !result.assets?.[0]) { console.log('[PHOTO] cancelled or no assets'); return; }
       console.log('[PHOTO] image selected, uri:', result.assets[0].uri?.substring(0, 50));
 
-      const destDir = FileSystem.documentDirectory + 'child-photos/';
-      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
-      const path = destDir + `child-${child.id}-${Date.now()}.jpg`;
-
       const manip = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
         [{ resize: { width: 512 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
-      await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      // Upload to Supabase Storage via FileSystem.uploadAsync (native multipart — works on Hermes)
       const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
-      const ext = (manip.uri.split('.').pop() || 'jpg').toLowerCase();
-      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-      console.log('[PHOTO] uploading via FileSystem.uploadAsync, mimeType:', mimeType);
+      const mimeType = 'image/jpeg';
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Not authenticated');
+      if (Platform.OS === 'web') {
+        // Web: upload a Blob directly via supabase-js (no native FileSystem).
+        const blob = await fetch(manip.uri).then(r => r.blob());
+        const { error: upErr } = await supabase.storage
+          .from('child-photos')
+          .upload(storagePath, blob, { upsert: true, contentType: mimeType });
+        if (upErr) throw upErr;
+        console.log('[PHOTO] web upload succeeded');
+      } else {
+        // Native: persist locally + upload via FileSystem.uploadAsync (native multipart).
+        const destDir = FileSystem.documentDirectory + 'child-photos/';
+        await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+        const path = destDir + `child-${child.id}-${Date.now()}.jpg`;
+        await FileSystem.copyAsync({ from: manip.uri, to: path });
 
-      const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/child-photos/${storagePath}`;
-      console.log('[PHOTO] uploadUrl:', uploadUrl.substring(0, 80));
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) throw new Error('Not authenticated');
 
-      const uploadResult = await FileSystem.uploadAsync(uploadUrl, manip.uri, {
-        httpMethod: 'POST',
-        headers: {
-          'apikey': 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
-          'Authorization': `Bearer ${token}`,
-          'x-upsert': 'true',
-          'Content-Type': mimeType,
-        },
-      });
+        const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/child-photos/${storagePath}`;
+        console.log('[PHOTO] uploadUrl:', uploadUrl.substring(0, 80));
 
-      if (uploadResult.status < 200 || uploadResult.status >= 300) {
-        console.error('[PHOTO] upload failed:', uploadResult.status, uploadResult.body);
-        throw new Error(uploadResult.body || `Upload failed (${uploadResult.status})`);
+        const uploadResult = await FileSystem.uploadAsync(uploadUrl, manip.uri, {
+          httpMethod: 'POST',
+          headers: {
+            'apikey': 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
+            'Authorization': `Bearer ${token}`,
+            'x-upsert': 'true',
+            'Content-Type': mimeType,
+          },
+        });
+
+        if (uploadResult.status < 200 || uploadResult.status >= 300) {
+          console.error('[PHOTO] upload failed:', uploadResult.status, uploadResult.body);
+          throw new Error(uploadResult.body || `Upload failed (${uploadResult.status})`);
+        }
+        console.log('[PHOTO] upload succeeded, status:', uploadResult.status);
       }
-      console.log('[PHOTO] upload succeeded, status:', uploadResult.status);
+
       const { data: urlData } = supabase.storage
         .from('child-photos')
         .getPublicUrl(storagePath);

@@ -2,7 +2,7 @@
 import React, { useContext, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
-  StyleSheet, ScrollView, Alert, Modal, FlatList, StatusBar
+  StyleSheet, ScrollView, Alert, Modal, FlatList, StatusBar, Platform
 } from 'react-native';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
@@ -204,7 +204,13 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Copy to persistent local path
+      // Web has no persistent filesystem — use the manipulated blob/data URI directly.
+      if (Platform.OS === 'web') {
+        setPhotoUri(resized.uri);
+        return;
+      }
+
+      // Copy to persistent local path (native)
       const childId = name && sex ? `${name.replace(/\s+/g, '_')}_${Date.now()}` : `temp_${Date.now()}`;
       const destDir = FileSystem.documentDirectory + 'child-photos/';
       await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
