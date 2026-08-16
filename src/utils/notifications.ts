@@ -4,18 +4,24 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import dayjs from 'dayjs';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Web does not support expo-notifications (no web-push bridge). Guard everything so the
+// module is a safe no-op on web instead of throwing at import/call time.
+const IS_WEB = Platform.OS === 'web';
+
+if (!IS_WEB) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export const registerForPushNotifications = async (): Promise<string | null> => {
-  if (!Device.isDevice) return null;
+  if (IS_WEB || !Device.isDevice) return null;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -58,6 +64,7 @@ export const scheduleVaccineReminders = async (
   vaccines: any[], // ComputedVaccine
   language: 'en' | 'ne' = 'en'
 ) => {
+  if (IS_WEB) return;
   await cancelVaccineReminders(childName);
 
   const toSchedule = vaccines.filter(v => v.status === 'due' || v.status === 'upcoming');
@@ -128,6 +135,7 @@ export const scheduleVaccineReminders = async (
 };
 
 export const cancelVaccineReminders = async (childName: string) => {
+  if (IS_WEB) return;
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const toCancel = scheduled
     .filter(n => n.identifier.includes(`_${childName}_`))
@@ -142,6 +150,7 @@ export const scheduleMilestoneReminder = async (
   childId: string,
   language: 'en' | 'ne' = 'en'
 ) => {
+  if (IS_WEB) return;
   await Notifications.cancelScheduledNotificationAsync(`milestone_${childId}`);
   const nextMonth = dayjs().add(1, 'month').startOf('month').hour(10).minute(0);
 
@@ -172,6 +181,7 @@ export const scheduleGrowthAlert = async (
   statusLabelNe: string,
   language: 'en' | 'ne' = 'en'
 ) => {
+  if (IS_WEB) return;
   // Send a local notification 1 hour from now (non-intrusive delay)
   const alertTime = dayjs().add(1, 'hour').toDate();
   const identifier = `growth_alert_${childId}`;
