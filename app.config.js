@@ -47,7 +47,15 @@ export default {
       ]
     },
     web: {
-      favicon: "./assets/favicon.png"
+      favicon: "./assets/favicon.png",
+      name: "Kapoori Ka",
+      shortName: "Kapoori Ka",
+      themeColor: "#E8602C",
+      backgroundColor: "#FDF8F2",
+      startUrl: "/",
+      scope: "/",
+      display: "standalone",
+      lang: "ne",
     },
     plugins: [
       "expo-font",
