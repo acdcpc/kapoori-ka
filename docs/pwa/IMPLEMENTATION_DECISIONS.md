@@ -1,57 +1,74 @@
 # Kapoori Ka — Expo Web / PWA Implementation Decisions
 
-- Status: Phase 0 baseline complete (no code changes yet)
-- Date: 2026-08-16
-- Checked-out commit: `8cf41e6` — chore: remove redundant premium compliance note
-- Branch: `main` (clean, up to date with `origin/main`)
+- Status: Phase 1 + platform-safe implementation (2.1, 2.2, 2.5) complete; device tests and console steps pending (see WEB_PWA_TEST_REPORT.md / DEPLOYMENT_HANDOVER.md)
+- Date: 2026-08-17
+- Branch: `main`
 
 ## Baseline
 | Item | Value |
 |---|---|
 | Expo SDK | 56 (`expo@56.0.18`) |
 | React Native | 0.85.3 |
-| React | 19.2.3 |
-| Package manager | pnpm 11.14.0 (`pnpm install --frozen-lockfile`) |
-| Public production URL (source of truth) | target `https://app.kapoorika.com.np` (final domain TBD; not yet wired) |
-| Web build | `pnpm expo export -p web` → **SUCCESS** |
+| Package manager | pnpm 11.14.0 |
+| Web build | `pnpm build:web` → `expo export -p web` → `dist/` (SUCCESS) |
+| Production domain | TBD — final HTTPS origin must be chosen by owner (e.g. `app.kapoorika.com.np`) |
 
-## Phase 0 command results
-| Command | Result |
-|---|---|
-| `git status` | clean; `main` == `origin/main` |
-| `pnpm install --frozen-lockfile` | exit 0 (30s) |
-| `npx expo-doctor` | **FAIL** (2 checks — see below) |
-| `npx tsc --noEmit` | exit 0 (0 errors) |
-| `pnpm expo export -p web` | exit 0 → `dist/` (3 MB JS + 21 font assets + index.html) |
+## Web output mode (explicit decision)
+The default **single-page (SPA) output is retained** and not set to `output: "static"`.
+This app uses **React Navigation**, not Expo Router. Setting `web.output: "static"`
+makes Expo pull in `@expo/router-server` + `expo-router` + `@expo/metro-runtime`
+(not installed), which fails the export. The SPA is served with a host-level
+`try_files $uri $uri/ /index.html` fallback (nginx) / `/* /index.html 200` (Netlify).
 
-### expo-doctor findings (documented, NOT blindly fixed)
-1. **Hermes V1 memory regression** — expo@56.0.18 ships Hermes V1 `250829098.0.10`; fix first ships in `250829098.0.16` (SDK 57 / RN 0.86.2). This is an Android *runtime memory* issue, not a web blocker. **Decision: do NOT upgrade the SDK for this.** Deferred.
-2. **Dependency mismatches**:
-   - MAJOR: `expo-build-properties@57.0.8` (SDK 56 expects `~56.0.25`)
-   - Patch (7): expo, expo-asset, expo-file-system, expo-image-manipulator, expo-image-picker, expo-notifications, expo-sharing (each ~1 patch behind)
-   - **Smallest correction (proposed, deferred pending user approval):** `npx expo install --fix` + pin `expo-build-properties` to `~56.0.25`. Any dependency change risks the working Android build, so this is gated on approval.
+## Platform-resolved auth storage (2.1)
+- `src/lib/authStorage.ts` — `AuthStorage` interface + safe no-op fallback (type contract only).
+- `src/lib/authStorage.native.ts` — `expo-secure-store` (Keychain/Keystore). Never imported on web.
+- `src/lib/authStorage.web.ts` — `window.localStorage` with SSR/storage-unavailable guards; fails safe (returns null / no-op, never throws).
+- `src/lib/supabase.ts` imports `./authStorage` (Metro resolves `.native.ts`/`.web.ts`).
+- `persistSession: true`, `autoRefreshToken: true`, `detectSessionInUrl: true` are all required (session persistence, token refresh, web OAuth callback). `signOut` clears the session via the active adapter.
 
-## Native API → Web fallback decisions
-| Area | Current usage | Web outcome / selected fallback |
+## Web origin configuration (1.1)
+- `EXPO_PUBLIC_WEB_APP_URL` is the single public (non-secret) web-origin value, set per environment.
+- `src/lib/webConfig.ts` `getWebAppUrl()` validates it at startup: malformed/missing → clear `console.error`/`warn` in dev, falls back to `window.location.origin` so the app still runs.
+- Wired into `App.tsx` startup. Declared in `.env.example`; `expo-env.d.ts` enables typed `process.env`.
+
+## Google OAuth redirect (2.2)
+- `makeRedirectUri({ scheme: 'com.kapoori.ka', path: 'auth/callback' })` → native `com.kapoori.ka://auth/callback`, web `https://<origin>/auth/callback` (verified against `expo-linking` `createURL.web.js`).
+- Web uses the standard browser redirect (`signInWithOAuth` without `skipBrowserRedirect`); `detectSessionInUrl` completes the session. Native keeps `openAuthSessionAsync` + manual token extraction.
+- **Failure handling**: supabase-js leaves the `error` fragment in the URL on failure (only clears on success). `App.tsx` detects it and shows a localized (Nepali/English), recoverable alert, then clears the fragment.
+
+## Native module → web compatibility matrix (2.5)
+| Module | Where | Web outcome |
 |---|---|---|
-| Supabase session | `src/lib/supabase.ts`: `Platform.OS==='web' ? undefined : secureStoreAdapter` | ✅ Split already correct (web → localStorage). Refine: make `expo-secure-store` a lazy import so the web bundle never loads it. |
-| Google OAuth | `AuthContext.tsx`: `redirectTo='com.kapoori.ka://auth/callback'` (hardcoded) | ⚠️ Needs platform redirect: web → `https://<prod>/auth/callback`, native → `com.kapoori.ka://auth/callback`. Validate redirect URLs in Supabase + Google console. |
-| Profile photos | `AddChildScreen.tsx`, `ChildDashboard.tsx`: expo-image-picker + expo-image-manipulator + `expo-file-system/legacy` (`documentDirectory`, `copyAsync`, `uploadAsync`) | ⚠️ Web branch: use picker/manipulator URI directly (no `FileSystem.copyAsync`), upload via `supabase.storage` Blob (not `FileSystem.uploadAsync`). |
-| Milestone celebration | `MilestoneScreen.tsx`: `react-native-confetti-cannon` + `expo-speech` + `expo-file-system/legacy` | ⚠️ Omit/fallback confetti on web; keep `expo-speech` (Web Speech API) guarded; drop FileSystem dependency. |
-| PDF reports | `PDFReportScreen.tsx`: `expo-print` (`printToFileAsync`) + `expo-sharing` + `FileSystem.copyAsync` | ⚠️ Web: use `expo-print`'s browser path (print/download blob); skip `expo-sharing` (native-only). |
-| Vaccine reminders | `src/utils/notifications.ts`: static `expo-notifications` + `expo-device`; module-level `Notifications.setNotificationHandler()` | ⚠️ **No web-push exists.** Guard module load + all calls behind `Platform.OS!=='web'`. Do **not** claim web reminders work without web-push + service worker + device test. |
+| `expo-secure-store` | `authStorage.native.ts` only | ✅ Platform-resolved (web never imports it) |
+| `expo-notifications` | `utils/notifications.ts` | ⚠️ Web-specific equivalent: all schedule fns no-op on web; `setNotificationHandler` wrapped. **Web push is not implemented** — reminders are device/calendar dependent on web |
+| `expo-device` | `utils/notifications.ts` | Native push path only (guarded) |
+| `expo-file-system/legacy` | ChildDashboard, AddChildScreen, PDFReport | ✅ Web-specific equivalent: web branches skip it (Blob upload / browser print); native keeps FileSystem |
+| `expo-image-picker` | ChildDashboard, AddChildScreen | ⚠️ Works on web (returns File/URI) — needs physical Safari + Chrome test |
+| `expo-image-manipulator` | ChildDashboard, AddChildScreen | ✅ Works on web (canvas resize → JPEG) |
+| `expo-sharing` | PDFReportScreen | ⚠️ Web-specific equivalent: skipped on web (browser print/download instead) |
+| `expo-print` | PDFReportScreen | ✅ `Print.printAsync({ html })` on web; `printToFileAsync` native |
+| `react-native-confetti-cannon` | ImmunizationScreen | ✅ Explicitly unavailable on web: `Platform.OS !== 'web'` guard; milestone completion unaffected |
+| `expo-web-browser` | AuthContext, App | ✅ Web-specific equivalent: browser redirect on web; `openAuthSessionAsync` native |
+| `expo-auth-session` | AuthContext | ✅ `makeRedirectUri` is platform-correct |
+| `expo-speech` | ImmunizationScreen, MilestoneScreen | ⚠️ Works on web (Web Speech API) — browser-dependent |
+| `react-native-webview` / `expo-sensors` | (unused) | n/a — not referenced |
 
-## Policy decisions
-- **Revert the "Buy Premium" CTA + in-app payment WebView** (commits `9fe5efb`, `8cf41e6`): the PWA spec requires a neutral *"Have an activation code? Redeem it"* experience — no payment URLs / QR / instructions / "buy premium" CTAs in the app/PWA UI. `public/payment.html` + admin pages remain **separate website surfaces**.
-- **No secrets in the web bundle**: the Supabase publishable/anon key is public client config (acceptable); `service_role`, DB passwords, private keys, and admin bypass keys must never appear in the repo, bundle, PWA files, or browser-exposed env.
-- **Browser is untrusted**: authorization stays server-side (Supabase Auth + RLS + RPC + Storage policies). No client-side `isAdmin`/email allowlist as the boundary.
+## Photo upload (2.3)
+- Storage path is user-scoped: `child-photos/{user_id}/{child_id}/photo.jpg`; `contentType: image/jpeg`.
+- Web uploads a `Blob` via `supabase.storage.upload`; native uses `FileSystem.uploadAsync` (multipart).
+- Size ceiling is structurally enforced: every photo is resized to 512px JPEG (≈50–150 KB), far below the 5 MB ceiling. MIME is normalised to JPEG by `expo-image-manipulator`. Explicit MIME/size rejection + bilingual errors remain a device-test item.
+
+## Security (3.2)
+- `public/_headers` (Netlify) + nginx `add_header` (Function Compute) apply: `nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Permissions-Policy`, and a restrictive CSP (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `connect-src 'self' https://*.supabase.co https://accounts.google.com`, `upgrade-insecure-requests`).
+- SW registration is an **external** file (`register-sw.js`) so `script-src 'self'` holds (no inline script).
+- Secrets scan of `dist/` confirms only the public anon key is present; no `service_role`/private keys.
+
+## Residual limitations (honest)
+- Web push reminders are **not** implemented → no "notification scheduled" claims on web.
+- HEIC upload on web is not verified (Safari HEIC → JPEG conversion depends on the picker/manipulator).
+- Physical-device tests (iPhone Safari install, photo/OAuth/report, two-account RLS) are pending — see WEB_PWA_TEST_REPORT.md.
 
 ## Delivery identity (Function Compute)
 - `projectId` / `folderName`: `website-7910e8a18bd46fa127240ce4`
-- `deliveryMode`: `create`
-
-## Next phases
-1. Revert app-UI payment CTA (neutral redeem experience).
-2. Web-safe guards: notifications, photos, PDF, confetti, OAuth redirect, lazy secure-store import.
-3. PWA: manifest + service worker + web favicon + host redirects.
-4. Web build + real-browser/iPhone Safari test matrix (success + denied cases).
+- `deliveryMode`: `create`; nginx SPA fallback `try_files $uri $uri/ /index.html`.
