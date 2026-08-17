@@ -2,7 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator, Modal, FlatList,
+  StyleSheet, Alert, ActivityIndicator, Modal, FlatList, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
@@ -386,7 +386,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
   return (
     <View style={styles.container}>
-      {showConfetti && <ConfettiCannon count={40} origin={{ x: -10, y: 0 }} fadeOut autoStart explosionSpeed={250} fallSpeed={2000} />}
+      {showConfetti && Platform.OS !== 'web' && <ConfettiCannon count={40} origin={{ x: -10, y: 0 }} fadeOut autoStart explosionSpeed={250} fallSpeed={2000} />}
       {nextDue && (
         <View style={[styles.nextBanner, { borderLeftColor: nextDue.status === 'due' ? '#C0392B' : '#E8602C' }]}>
           <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#C0392B' : '#E8602C'} />
