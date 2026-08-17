@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LanguageContext } from './src/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -102,6 +102,29 @@ export default function App() {
       }
     };
     prepare();
+  }, []);
+
+  // ── Web OAuth callback error handling ──
+  // Google/Supabase redirect back to /auth/callback with an error fragment
+  // (user cancelled or auth failed). supabase-js leaves the error hash in the
+  // URL on failure (it only clears it on success), so we detect it here and
+  // present a localized, recoverable message.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const hash = window.location.hash || '';
+    if (!hash.includes('error=')) return;
+    try {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const raw = params.get('error_description') || params.get('error') || 'unknown_error';
+      const title = language === 'ne' ? 'साइन-इन असफल' : 'Sign-in failed';
+      const msg = language === 'ne' ? `साइन-इन असफल भयो: ${raw}` : `Sign-in failed: ${raw}`;
+      // Clear the fragment so a refresh does not re-trigger the error.
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.alert(`${title}\n\n${msg}`);
+    } catch (e) {
+      console.warn('[App] OAuth callback error parse failed:', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Deep link handler for password reset
