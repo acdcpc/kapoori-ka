@@ -26,6 +26,7 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
+import { getWebAppUrl } from './src/lib/webConfig';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = { current: null as any };
@@ -88,6 +89,7 @@ export default function App() {
   useEffect(() => {
     const prepare = async () => {
       try {
+        getWebAppUrl(); // validate EXPO_PUBLIC_WEB_APP_URL on web (dev warning if missing/malformed)
         const savedLang = await AsyncStorage.getItem('user_language');
         if (savedLang === 'en' || savedLang === 'ne') {
           setLanguage(savedLang);

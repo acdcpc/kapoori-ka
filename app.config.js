@@ -47,6 +47,9 @@ export default {
       ]
     },
     web: {
+      // NOTE: default single-page (SPA) output is retained on purpose.
+      // This app uses React Navigation, not Expo Router — `output: "static"`
+      // would pull in @expo/router-server and fail. See docs/pwa/IMPLEMENTATION_DECISIONS.md.
       favicon: "./assets/favicon.png",
       name: "Kapoori Ka",
       shortName: "Kapoori Ka",
