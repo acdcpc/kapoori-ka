@@ -1,0 +1,9 @@
+// Kapoori Ka — external service-worker registration (CSP-safe: no inline script).
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/service-worker.js').catch(function (err) {
+      console.warn('[SW] registration failed:', err);
+    });
+  });
+})();

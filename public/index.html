@@ -37,12 +37,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/service-worker.js').catch(function () {});
-        });
-      }
-    </script>
+    <script src="/register-sw.js" defer></script>
   </body>
 </html>
