@@ -13,6 +13,7 @@ import Onboarding from '../components/Onboarding';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import ChildPhoto from '../components/ChildPhoto';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { formatAge, getAgeInMonths, getIdealRanges, classifyGrowthStatus } from '../utils/growthCalculations';
@@ -196,16 +197,13 @@ export default function ChildDashboard({ route, navigation }: Props) {
         console.log('[PHOTO] upload succeeded, status:', uploadResult.status);
       }
 
-      const { data: urlData } = supabase.storage
-        .from('child-photos')
-        .getPublicUrl(storagePath);
-
-      console.log('[PHOTO] public url:', urlData.publicUrl?.substring(0, 60));
-      await supabase.from('children').update({ photo_uri: urlData.publicUrl }).eq('id', child.id);
-      child.photoUri = urlData.publicUrl;
+      // Store the storage path (private bucket). Signed URLs are minted on read
+      // via getChildPhotoUrl() so child photos are never publicly accessible.
+      await supabase.from('children').update({ photo_uri: storagePath }).eq('id', child.id);
+      child.photoUri = storagePath;
 
       // Force re-render
-      navigation.setParams({ child: { ...child, photoUri: urlData.publicUrl } });
+      navigation.setParams({ child: { ...child, photoUri: storagePath } });
       console.log('[PHOTO] upload complete');
     } catch (e: any) {
       console.error('[PHOTO] upload error:', e?.message || e);
@@ -266,7 +264,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
         <TouchableOpacity onPress={handleChangePhoto} style={styles.avatarCircle}>
           {child.photoUri ? (
             <>
-              <Image source={{ uri: child.photoUri }} style={styles.avatarPhoto} />
+              <ChildPhoto uri={child.photoUri} style={styles.avatarPhoto} />
               <View style={styles.avatarEditOverlay}>
                 <Ionicons name="camera" size={14} color="#FFF" />
               </View>

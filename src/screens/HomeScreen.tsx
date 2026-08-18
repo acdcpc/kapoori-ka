@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
 import { LanguageContext } from '../context/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
@@ -183,7 +184,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.childCardContent}>
         <View style={styles.avatar}>
           {item.photoUri ? (
-            <Image source={{ uri: item.photoUri }} style={styles.avatarPhoto} />
+            <ChildPhoto uri={item.photoUri} style={styles.avatarPhoto} />
           ) : (
             <Text style={styles.avatarText}>{item.sex === 'male' ? '👦' : '👧'}</Text>
           )}
