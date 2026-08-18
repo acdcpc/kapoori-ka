@@ -61,6 +61,7 @@ export default {
       lang: "ne",
     },
     plugins: [
+      "expo-asset",
       "expo-font",
       "expo-splash-screen",
       "expo-sharing",
