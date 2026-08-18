@@ -61,6 +61,8 @@ export default {
       lang: "ne",
     },
     plugins: [
+      "expo-secure-store",
+      "expo-status-bar",
       "expo-asset",
       "expo-font",
       "expo-splash-screen",
