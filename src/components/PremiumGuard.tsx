@@ -73,7 +73,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
       const { data } = await supabase
         .from('payments')
         .select('id')
-        .eq('userId', user.uid)
+        .eq('user_id', user.uid)
         .eq('status', 'pending')
         .limit(1);
       setHasPendingPayment((data || []).length > 0);

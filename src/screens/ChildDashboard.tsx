@@ -1,18 +1,17 @@
 // src/screens/ChildDashboard.tsx
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Onboarding from '../components/Onboarding';
 
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
 import ChildPhoto from '../components/ChildPhoto';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
@@ -140,74 +139,18 @@ export default function ChildDashboard({ route, navigation }: Props) {
   };
 
   async function pickAndUpload(source: 'camera' | 'gallery') {
-    console.log('[PHOTO] pickAndUpload called:', source);
     try {
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
 
-      if (result.canceled || !result.assets?.[0]) { console.log('[PHOTO] cancelled or no assets'); return; }
-      console.log('[PHOTO] image selected, uri:', result.assets[0].uri?.substring(0, 50));
+      if (result.canceled || !result.assets?.[0]) return;
 
-      const manip = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
-        [{ resize: { width: 512 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      const storagePath = `${user?.uid}/${child.id}/photo.jpg`;
-      const mimeType = 'image/jpeg';
-
-      if (Platform.OS === 'web') {
-        // Web: upload a Blob directly via supabase-js (no native FileSystem).
-        const blob = await fetch(manip.uri).then(r => r.blob());
-        const { error: upErr } = await supabase.storage
-          .from('child-photos')
-          .upload(storagePath, blob, { upsert: true, contentType: mimeType });
-        if (upErr) throw upErr;
-        console.log('[PHOTO] web upload succeeded');
-      } else {
-        // Native: persist locally + upload via FileSystem.uploadAsync (native multipart).
-        const destDir = FileSystem.documentDirectory + 'child-photos/';
-        await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
-        const path = destDir + `child-${child.id}-${Date.now()}.jpg`;
-        await FileSystem.copyAsync({ from: manip.uri, to: path });
-
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        if (!token) throw new Error('Not authenticated');
-
-        const uploadUrl = `https://tgnzucqjebnisgrxjfjg.supabase.co/storage/v1/object/child-photos/${storagePath}`;
-        console.log('[PHOTO] uploadUrl:', uploadUrl.substring(0, 80));
-
-        const uploadResult = await FileSystem.uploadAsync(uploadUrl, manip.uri, {
-          httpMethod: 'POST',
-          headers: {
-            'apikey': 'sb_publishable_DzI94YKcBeomrcWogOJPnQ__rOC7fMs',
-            'Authorization': `Bearer ${token}`,
-            'x-upsert': 'true',
-            'Content-Type': mimeType,
-          },
-        });
-
-        if (uploadResult.status < 200 || uploadResult.status >= 300) {
-          console.error('[PHOTO] upload failed:', uploadResult.status, uploadResult.body);
-          throw new Error(uploadResult.body || `Upload failed (${uploadResult.status})`);
-        }
-        console.log('[PHOTO] upload succeeded, status:', uploadResult.status);
-      }
-
-      // Store the storage path (private bucket). Signed URLs are minted on read
-      // via getChildPhotoUrl() so child photos are never publicly accessible.
-      await supabase.from('children').update({ photo_uri: storagePath }).eq('id', child.id);
+      const storagePath = await uploadChildPhoto({ uri: result.assets[0].uri, childId: child.id });
       child.photoUri = storagePath;
-
-      // Force re-render
       navigation.setParams({ child: { ...child, photoUri: storagePath } });
-      console.log('[PHOTO] upload complete');
     } catch (e: any) {
-      console.error('[PHOTO] upload error:', e?.message || e);
-      Alert.alert('Error', e?.message || 'Could not upload photo.');
+      Alert.alert('Error', photoErrorText(e, isNe));
     }
   };
 

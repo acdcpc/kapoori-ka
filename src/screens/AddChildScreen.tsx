@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
 import { translations } from '../i18n/translations';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -245,7 +246,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
           sex,
           birth_weight: birthWeight ? parseFloat(birthWeight) : null,
           birth_length: birthLength ? parseFloat(birthLength) : null,
-          photo_uri: photoUri || null,
+          photo_uri: null,
           parent_phone: parentPhone.trim() || null,
         })
         .select('id')
@@ -287,6 +288,15 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
             notes: isNe ? 'सुरुको हालको नाप' : 'Initial current measurement',
             recorded_at: dayjs().toISOString(),
           });
+      }
+
+      // Upload the picked photo to the private bucket (safe skip on failure).
+      if (photoUri) {
+        try {
+          await uploadChildPhoto({ uri: photoUri, childId });
+        } catch (e) {
+          Alert.alert(isNe ? 'चेतावनी' : 'Warning', photoErrorText(e, isNe));
+        }
       }
 
       Alert.alert('Success', `${storedName} added!`, [{ text: 'OK', onPress: () => navigation.goBack() }]);

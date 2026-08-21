@@ -9,6 +9,7 @@ export const T = {
   surface: '#FDF8F2',    // warm off-white card bg
   bg: '#F7F1EB',         // parchment screen bg
   text: '#1A1A2E',       // near-black
+  onClay: '#1A1A2E',    // dark ink on terracotta — 4.99:1 (AA). White on clay is only 3.42:1 (fails AA for normal text).
   muted: '#7A6E65',      // warm gray
   border: '#EDE0D4',     // subtle border
   shadow: '#C4956A',     // warm shadow color

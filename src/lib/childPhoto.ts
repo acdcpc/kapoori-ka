@@ -1,8 +1,14 @@
 import { supabase } from './supabase';
 
 // In-memory cache of minted signed URLs (keyed by storage path).
+// Never persisted (no AsyncStorage / service-worker) so signed URLs expire.
 const cache = new Map<string, { url: string; exp: number }>();
 const TTL_MS = 55 * 60 * 1000; // signed for 60 min; refresh slightly early
+
+/** Drop a cached signed URL (e.g. after an <Image> load failure). */
+export function invalidateChildPhotoUrl(ref: string): void {
+  cache.delete(ref);
+}
 
 /**
  * Resolve a child photo reference to a displayable URL.
