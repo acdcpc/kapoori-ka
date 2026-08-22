@@ -1,0 +1,33 @@
+- [ ] Audit Expo dependencies and existing native-module usage for web compatibility.
+- [ ] Define platform-safe fallbacks for storage, image picking, notifications, printing, sharing, and authentication.
+- [ ] Configure Expo Web export, browser metadata, PWA manifest, icons, and service-worker strategy.
+- [ ] Build and test the web export using real browser flows for authentication, child profiles, photos, immunization, premium redemption, and reports.
+- [ ] Prepare static-hosting deployment, security headers, and post-deployment verification steps.
+- [ ] Produce an implementation report that separates verified work, unsupported features, and remaining manual configuration.
+- [x] Fetch the latest `origin/main` and verify the reviewed commit matches the GitHub repository.
+- [x] Check Expo Web/PWA configuration, browser-specific source files, static-hosting files, and generated production assets.
+- [x] Run the project’s available dependency, type, Expo export, and web-serving checks without modifying production code.
+- [x] Compare each result with the PWA implementation prompt and classify it as verified, partial, missing, or requiring owner-console access.
+- [x] Deliver a release recommendation based only on completed, reproducible checks.
+- [x] Define the required private-storage migration and signed-URL client changes for child photographs.
+- [x] Define the Expo SDK/dependency remediation path and evidence required for a clean diagnostic result.
+- [x] Define safe service-worker caching, deployed-header validation, and owner-console configuration requirements.
+- [x] Define the required two-account, production HTTPS, and physical-iPhone test gates.
+- [x] Produce and deliver the corrective agent prompt without modifying application code.
+- [x] Synchronize the local audit copy with the current GitHub branch and record the exact revision reviewed.
+- [x] Audit source, build outputs, Supabase policies, PWA assets, dependency health, and deployment configuration for release-blocking security risks.
+- [x] Capture representative browser screenshots and assess UI hierarchy, color contrast, responsive layout, bilingual UX, and accessibility.
+- [x] Separate mandatory deployment fixes from high-value usability and visual polish recommendations.
+- [x] Create and deliver a final audit report plus a strict implementation prompt for the agent.
+- [x] Package the verified Kapoori Ka security and release-audit workflow as a reusable skill.
+- [x] Inspect remaining backend routes, RPC functions, and effective Supabase RLS/Storage policies for unresolved vulnerabilities.
+- [x] Create a complete payment-screenshot submission, approval, activation-code, and premium-redemption test checklist.
+- [x] Create secure production deployment and environment-variable templates without embedding secrets.
+- [x] Validate the skill and deliver all requested files with a prioritized security summary.
+- [x] Add a dedicated database-enforced administrator role and remove all Premium-as-admin checks.
+- [x] Make activation-code redemption atomic under concurrent requests and harden definer-function privileges.
+- [x] Replace anonymous direct payment/receipt writes with a protected server-side submission flow.
+- [x] Move payment approval and activation-code issuance into an audited atomic admin operation.
+- [x] Remove or quarantine legacy Firebase payment functions and align static-host security configuration.
+- [x] Update Expo-compatible patch dependencies and verify diagnostics, build, and security regression tests.
+- [ ] Commit and push the release-security implementation to main with a file-by-file change record.

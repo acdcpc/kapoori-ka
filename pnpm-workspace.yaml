@@ -1,6 +1,9 @@
 allowBuilds:
   dtrace-provider: true
   protobufjs: false
+overrides:
+  undici: 6.28.0
+  nanoid: 3.3.18
 minimumReleaseAgeExclude:
   - '@expo/cli@56.1.24'
   - '@expo/config-plugins@56.0.15'

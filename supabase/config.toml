@@ -1,0 +1,8 @@
+# Edge Functions require a valid Supabase JWT before handler code executes.
+# Configure the values in Supabase Dashboard → Edge Functions → Secrets; do not
+# copy a service-role key into Expo, Netlify, Firebase Hosting, or HTML.
+[functions.submit-payment]
+verify_jwt = true
+
+[functions.admin-payments]
+verify_jwt = true
