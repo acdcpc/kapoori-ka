@@ -23,7 +23,11 @@ import AboutScreen from './src/screens/AboutScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
+import CaregiverToolsScreen from './src/screens/CaregiverToolsScreen';
+import ClinicSummaryScreen from './src/screens/ClinicSummaryScreen';
+import PreferencesScreen from './src/screens/PreferencesScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AccessibilityProvider } from './src/context/AccessibilityContext';
 import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
 import { getWebAppUrl } from './src/lib/webConfig';
@@ -70,6 +74,9 @@ function Navigation() {
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'सदस्यता | Subscription' }} />
             <Stack.Screen name="About" component={AboutScreen} options={{ title: 'हाम्रो बारेमा | About' }} />
             <Stack.Screen name="Nutrition" component={NutritionScreen} options={{ title: 'पोषण | Nutrition' }} />
+            <Stack.Screen name="CaregiverTools" component={CaregiverToolsScreen} options={{ title: 'हेरचाह टोली | Care team' }} />
+            <Stack.Screen name="ClinicSummary" component={ClinicSummaryScreen} options={{ title: 'क्लिनिक सारांश | Clinic summary' }} />
+            <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'सेटिङ | Settings' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
@@ -167,9 +174,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
-        <AuthProvider>
-          <Navigation />
-        </AuthProvider>
+        <AccessibilityProvider>
+          <AuthProvider>
+            <Navigation />
+          </AuthProvider>
+        </AccessibilityProvider>
       </LanguageContext.Provider>
     </SafeAreaProvider>
   );

@@ -31,3 +31,9 @@
 - [x] Remove or quarantine legacy Firebase payment functions and align static-host security configuration.
 - [x] Update Expo-compatible patch dependencies and verify diagnostics, build, and security regression tests.
 - [ ] Commit and push the release-security implementation to main with a file-by-file change record.
+- [x] Create a protected review branch and establish the caregiver-feature implementation scope.
+- [x] Add child membership, consent, clinical-content, and privacy foundations with database-enforced access controls.
+- [x] Add accessibility settings, caregiver tools, clinic-summary export, growth guidance, and immunization safety support.
+- [x] Add owner-bound offline synchronization and consent-gated aggregated analytics foundations.
+- [x] Validate TypeScript, Expo Doctor, web export, static release security, and caregiver-feature safeguards.
+- [ ] Commit and push the caregiver-feature review branch with a file-by-file implementation report.

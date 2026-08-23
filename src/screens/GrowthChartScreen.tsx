@@ -28,6 +28,7 @@ import { FlatList } from 'react-native';
 import { PremiumGuard } from '../components/PremiumGuard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { CLINICAL_SAFETY_NOTICE, getGrowthTrendFlags } from '../lib/clinicalSafety';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GrowthChart'>;
 
@@ -185,6 +186,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const status = (chartType === 'bmi' && latestBMIRecord?.bmi)
     ? classifyGrowthStatus(latestRecord?.weight, latestRecord?.height, displayAgeMonths, child.sex, { metric: 'bmi', bmiValue: latestBMIRecord.bmi })
     : (latestRecord ? classifyGrowthStatus(latestRecord.weight, latestRecord.height, displayAgeMonths, child.sex) : null);
+  const trendFlags = useMemo(() => getGrowthTrendFlags(records, isNe ? 'ne' : 'en'), [records, isNe]);
 
   const getActiveCurves = () => {
     if (chartType === 'weight') return child.sex === 'male' ? WHO_WFA_BOYS : WHO_WFA_GIRLS;
@@ -255,6 +257,17 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
           <View style={styles.disclaimerBanner}>
             <Text style={styles.disclaimerText}>{isNe ? '⚠️ यो शैक्षिक सन्दर्भ मात्र हो। चिकित्सकीय सल्लाहको विकल्प होइन।' : '⚠️ For educational reference only. Not medical advice.'}</Text>
           </View>
+
+          {trendFlags.map((flag) => (
+            <View key={`${flag.level}-${flag.measuredAt}`} style={styles.trendNotice} accessibilityRole="alert">
+              <Ionicons name="information-circle-outline" size={20} color="#8A541C" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.trendNoticeTitle}>{flag.title}</Text>
+                <Text style={styles.trendNoticeText}>{flag.message}</Text>
+                <Text style={styles.trendNoticeFootnote}>{isNe ? CLINICAL_SAFETY_NOTICE.ne : CLINICAL_SAFETY_NOTICE.en}</Text>
+              </View>
+            </View>
+          ))}
 
           {/* Growth Status Card */}
           {status && status.status !== 'grey' && (
@@ -448,6 +461,10 @@ const styles = StyleSheet.create({
 
   disclaimerBanner: { backgroundColor: '#FEF3C7', padding: 10, marginHorizontal: 12, marginBottom: 8, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F5A623' },
   disclaimerText: { fontSize: 12, color: '#92400E', lineHeight: 18 },
+  trendNotice: { flexDirection: 'row', gap: 9, backgroundColor: '#FFF7E6', padding: 12, marginHorizontal: 12, marginBottom: 10, borderRadius: 10, borderLeftWidth: 4, borderLeftColor: '#D9943A' },
+  trendNoticeTitle: { color: '#704112', fontWeight: '800', fontSize: 14, marginBottom: 3 },
+  trendNoticeText: { color: '#674B2B', fontSize: 12, lineHeight: 18 },
+  trendNoticeFootnote: { color: '#8A6A42', fontSize: 11, lineHeight: 16, marginTop: 6 },
 
   statusCard: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, borderLeftWidth: 5, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   statusHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' },

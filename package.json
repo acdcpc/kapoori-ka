@@ -65,7 +65,8 @@
     "web": "expo start --web",
     "build:web": "expo export -p web",
     "serve:web": "expo serve",
-    "validate:release-security": "node scripts/validate-release-security.mjs"
+    "validate:release-security": "node scripts/validate-release-security.mjs",
+    "validate:caregiver-features": "node scripts/validate-caregiver-features.mjs"
   },
   "private": true,
   "expo": {

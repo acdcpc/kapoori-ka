@@ -239,8 +239,8 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
       console.log('[IMMUN] saved', vaccine.id, 'as', status, 'on', givenDate);
       await loadRecords();
-      await recalcDependentDates(vaccine.id, givenDate);
-      // Sync DOB-based dates after any status change
+      // Do not automatically derive a catch-up series from a recorded dose.
+      // A health worker must confirm any delayed-dose plan for the child.
       await syncDobBasedDates();
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
@@ -249,9 +249,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       Alert.alert(isNe ? 'त्रुटि' : 'Error', (e?.message) || (isNe ? 'सुरक्षित गर्न सकिएन।' : 'Could not save.'));
     }
   };
-
-  // Recalculate dependent vaccine dates after a status change.
-  // 6-week → 10-week (+28 days) → 14-week (+28 days)
 
   // Sync 9-month, 12-month, 15-month vaccine dates from DOB.
   // These are always DOB-based, not derived from the 6/10/14-week chain.
@@ -292,96 +289,13 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
     }
   };
 
-  const recalcDependentDates = async (vaccineId: string, newGivenDate: string) => {
-    // Map of vaccine groups by age
-    const sixWeekIds = ['penta1', 'opv1', 'pcv1', 'rota1'];
-    const tenWeekIds = ['penta2', 'opv2', 'pcv2', 'rota2'];
-    const fourteenWeekIds = ['penta3', 'opv3', 'fipv1'];
-
-    const isSixWeek = sixWeekIds.includes(vaccineId);
-    const isTenWeek = tenWeekIds.includes(vaccineId);
-
-    if (!isSixWeek && !isTenWeek) return; // No dependents to recalculate
-
-    const baseDate = dayjs(newGivenDate);
-    const tenWeekDate = baseDate.add(28, 'day').format('YYYY-MM-DD');
-    const fourteenWeekDate = dayjs(tenWeekDate).add(28, 'day').format('YYYY-MM-DD');
-
-    try {
-      // Update 10-week vaccines (derived from 6-week date)
-      // Only update scheduled_date — never overwrite given_date
-      if (isSixWeek) {
-        for (const vid of tenWeekIds) {
-          const { data: existing } = await supabase
-            .from('vaccinations')
-            .select('id')
-            .eq('child_id', child.id)
-            .eq('vaccine_name', vid)
-            .maybeSingle();
-          if (existing) {
-            await supabase.from('vaccinations')
-              .update({ scheduled_date: tenWeekDate })
-              .eq('id', existing.id);
-          } else {
-            await supabase.from('vaccinations')
-              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: tenWeekDate });
-          }
-        }
-        // Also update 14-week (derived from 6-week + 56 days)
-        for (const vid of fourteenWeekIds) {
-          const { data: existing } = await supabase
-            .from('vaccinations')
-            .select('id')
-            .eq('child_id', child.id)
-            .eq('vaccine_name', vid)
-            .maybeSingle();
-          if (existing) {
-            await supabase.from('vaccinations')
-              .update({ scheduled_date: fourteenWeekDate })
-              .eq('id', existing.id);
-          } else {
-            await supabase.from('vaccinations')
-              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: fourteenWeekDate });
-          }
-        }
-      }
-
-      // Update 14-week vaccines (derived from 10-week date)
-      if (isTenWeek) {
-        const fromTenWeek14 = dayjs(newGivenDate).add(28, 'day').format('YYYY-MM-DD');
-        for (const vid of fourteenWeekIds) {
-          const { data: existing } = await supabase
-            .from('vaccinations')
-            .select('id')
-            .eq('child_id', child.id)
-            .eq('vaccine_name', vid)
-            .maybeSingle();
-          if (existing) {
-            await supabase.from('vaccinations')
-              .update({ scheduled_date: fromTenWeek14 })
-              .eq('id', existing.id);
-          } else {
-            await supabase.from('vaccinations')
-              .insert({ child_id: child.id, user_id: user?.uid || '', vaccine_name: vid, scheduled_date: fromTenWeek14 });
-          }
-        }
-      }
-
-      // Reload and sync DOB-based dates to reflect changes
-      await loadRecords();
-      await syncDobBasedDates();
-    } catch (e: any) {
-      console.error('Recalc dependent dates error:', e?.message || e);
-      // Non-critical — dates were saved, just chain update failed
-    }
-  };
-
 
   if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
 
   const givenIds = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
   const missedIds = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
   const computed = computeSchedule(child.dateOfBirth, givenIds, missedIds, vaccineRecords);
+  const missedVaccines = computed.filter(v => v.status === 'missed' && !v.isSupplement);
   const childAgeMonths = dayjs().diff(dayjs(child.dateOfBirth), 'month');
   const nextDue = computed.find(v => v.status === 'due' || v.status === 'upcoming');
   return (
@@ -430,6 +344,20 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
           </View>
 
           <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
+
+            {missedVaccines.length > 0 && (
+              <View style={styles.catchUpNotice} accessibilityRole="alert">
+                <Ionicons name="medical-outline" size={20} color="#92400E" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.catchUpTitle}>{isNe ? 'छुटेको खोपका लागि सहयोग' : 'Support for missed vaccines'}</Text>
+                  <Text style={styles.catchUpText}>
+                    {isNe
+                      ? 'छुटेको खोप देखिएको छ। सही क्याच-अप मिति बालबालिकाको उमेर, पहिलेका खोप र स्थानीय मार्गदर्शनमा निर्भर हुन्छ। नजिकको स्वास्थ्यकर्मी वा खोप केन्द्रसँग पुष्टि गर्नुहोस्।'
+                      : 'A missed vaccine is shown. This is not an automated catch-up plan: the correct date depends on age, previous doses, and local guidance. Please confirm the plan with a health worker or immunization clinic.'}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {AGE_GROUPS.map(group => {
               const vaccines = computed.filter(v => v.ageLabel === group.label && !v.isSupplement);
@@ -501,6 +429,14 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
         </View>
       ) : (
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
+          <View style={styles.scheduleSourceNotice}>
+            <Ionicons name="shield-checkmark-outline" size={18} color="#3D8B5E" />
+            <Text style={styles.scheduleSourceText}>
+              {isNe
+                ? 'नेपालको तालिका देखाइँदैछ। अन्य देशको तालिका चिकित्सकीय समीक्षा भएको संस्करण उपलब्ध भएपछि मात्र प्रयोग गरिनेछ।'
+                : 'The Nepal schedule is shown. Another country schedule will be used only after a clinician-reviewed version is available.'}
+            </Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.tableWrapper}>
               <View style={styles.tableHeader}>
@@ -594,6 +530,11 @@ const styles = StyleSheet.create({
   filterPillOutline: { backgroundColor: '#FDF8F2', borderColor: '#EDE0D4' },
 
   content: { flex: 1, paddingHorizontal: 10 },
+  catchUpNotice: { flexDirection: 'row', gap: 10, backgroundColor: '#FFF7E6', borderLeftWidth: 4, borderLeftColor: '#E5A135', padding: 12, marginBottom: 14, borderRadius: 8 },
+  catchUpTitle: { color: '#7A3F00', fontWeight: '700', fontSize: 13, marginBottom: 3 },
+  catchUpText: { color: '#6B4A22', fontSize: 12, lineHeight: 18 },
+  scheduleSourceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#ECF8F0', borderLeftWidth: 4, borderLeftColor: '#3D8B5E', padding: 11, marginTop: 10, marginBottom: 2, borderRadius: 8 },
+  scheduleSourceText: { flex: 1, color: '#1E5C3A', fontSize: 12, lineHeight: 17 },
   noMoreCard: { backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
   noMoreText: { color: '#065F46', fontWeight: 'bold', fontSize: 13 },
 

@@ -15,4 +15,7 @@ export type RootStackParamList = {
   About: undefined;
   Nutrition: { child?: Child; highlightAge?: number } | undefined;
   ResetPassword: undefined;
+  CaregiverTools: { child: Child };
+  ClinicSummary: { child: Child };
+  Preferences: undefined;
 };

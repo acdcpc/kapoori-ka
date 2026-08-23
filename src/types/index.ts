@@ -115,3 +115,80 @@ export interface NotificationPreferences {
   milestoneReminders: boolean;
   growthReminders: boolean;
 }
+
+export type CaregiverRole = 'viewer' | 'editor';
+
+export interface ChildMembership {
+  id: string;
+  childId: string;
+  userId: string;
+  role: CaregiverRole;
+  acceptedAt: string;
+  revokedAt?: string | null;
+}
+
+export interface FeedingRecord {
+  id: string;
+  childId: string;
+  recordedBy: string;
+  occurredAt: string;
+  mealType: 'breastfeeding' | 'formula' | 'solid_food' | 'snack' | 'water' | 'other';
+  foods: string[];
+  appetite?: 'low' | 'usual' | 'high' | null;
+  reactionNotes?: string | null;
+  notes?: string | null;
+}
+
+export interface ClinicVisit {
+  id: string;
+  childId: string;
+  recordedBy: string;
+  visitDate: string;
+  facilityName?: string | null;
+  purpose?: string | null;
+  clinicianNotes?: string | null;
+  followUpDate?: string | null;
+}
+
+export interface ClinicFacility {
+  id: string;
+  countryCode: string;
+  name: string;
+  district?: string | null;
+  ward?: string | null;
+  facilityType?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  verifiedAt?: string | null;
+  sourceUrl?: string | null;
+}
+
+export interface AccessibilityPreferences {
+  textScale: 'standard' | 'large' | 'extra_large';
+  highContrast: boolean;
+  reduceMotion: boolean;
+  voiceGuidance: boolean;
+  literacyMode: boolean;
+}
+
+export interface PrivacyPreferences {
+  analyticsOptIn: boolean;
+  shareCrashDiagnostics: boolean;
+}
+
+export interface OfflineMutation {
+  id: string;
+  ownerId: string;
+  createdAt: string;
+  operation: 'create_feeding_record' | 'create_clinic_visit' | 'update_privacy_preferences' | 'record_export_audit';
+  payload: Record<string, unknown>;
+  attempts: number;
+  lastError?: string;
+}
+
+export interface GrowthTrendFlag {
+  level: 'info' | 'attention';
+  title: string;
+  message: string;
+  measuredAt: string;
+}

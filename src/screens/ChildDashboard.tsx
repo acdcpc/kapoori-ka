@@ -19,6 +19,8 @@ import { formatAge, getAgeInMonths, getIdealRanges, classifyGrowthStatus } from 
 import { computeVaccineSchedule, getVaccineSummary, ComputedVaccine } from '../utils/vaccineSchedule';
 import { getMilestonesForAge } from '../data/milestones';
 import { VaccineRecord, GrowthRecord } from '../types';
+import { useAccessibility } from '../context/AccessibilityContext';
+import { getFollowUpReminder } from '../lib/clinicalSafety';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChildDashboard'>;
 
@@ -30,6 +32,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const isNe = language === 'ne';
 
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const { preferences } = useAccessibility();
 
   // Dashboard summary state
   const [growthStatus, setGrowthStatus] = useState<'green' | 'yellow' | 'red' | 'grey'>('grey');
@@ -39,6 +42,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const [milestoneStatus, setMilestoneStatus] = useState<'green' | 'yellow' | 'red'>('green');
   const [milestoneRedFlags, setMilestoneRedFlags] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [growthReminder, setGrowthReminder] = useState<string | null>(null);
 
   useEffect(() => {
     const loadSummary = async () => {
@@ -60,12 +64,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
         if (records.length === 0) {
           setGrowthStatus('grey');
           setGrowthLabel(isNe ? 'नाप भएको छैन' : 'Not yet measured');
+          setGrowthReminder(getFollowUpReminder(undefined, language as 'en' | 'ne'));
         } else {
           const latest = records[records.length - 1];
           const ageM = latest.ageMonths || getAgeInMonths(child.dateOfBirth, latest.date);
           const result = classifyGrowthStatus(latest.weight, latest.height, ageM, child.sex);
           setGrowthStatus(result.status);
           setGrowthLabel(isNe ? result.labelNe : result.labelEn);
+          setGrowthReminder(getFollowUpReminder(latest.date, language as 'en' | 'ne'));
         }
 
         // Vaccines
@@ -114,16 +120,12 @@ export default function ChildDashboard({ route, navigation }: Props) {
     { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#3D8B5E', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: '#C0392B', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
+    { title: isNe ? 'क्लिनिक सारांश' : 'Clinic summary', icon: '🩺', color: '#8B5E34', screen: 'ClinicSummary' as const, desc: isNe ? 'छानिएका रेकर्ड PDF मा सेयर गर्नुहोस्' : 'Share selected records as a PDF', premium: false },
+    { title: isNe ? 'हेरचाह टोली' : 'Care team & care log', icon: '🤝', color: '#B85C38', screen: 'CaregiverTools' as const, desc: isNe ? 'विश्वासिलो हेरचाहकर्ता र खाना/क्लिनिक रेकर्ड' : 'Trusted caregiver, feeding and clinic log', premium: false },
   ];
 
   const handleChangePhoto = async () => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(isNe ? 'अनुमति अस्वीकृत' : 'Permission denied',
-          isNe ? 'क्यामेरा अनुमति चाहिन्छ।' : 'Camera permission is needed.');
-        return;
-      }
       Alert.alert(
         isNe ? 'फोटो थप्नुहोस्' : 'Add Photo',
         isNe ? 'क्यामेरा वा ग्यालरी प्रयोग गर्नुहोस्।' : 'Use camera or choose from gallery.',
@@ -140,6 +142,13 @@ export default function ChildDashboard({ route, navigation }: Props) {
 
   async function pickAndUpload(source: 'camera' | 'gallery') {
     try {
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(isNe ? 'अनुमति अस्वीकृत' : 'Permission denied', isNe ? 'क्यामेरा प्रयोग गर्न क्यामेरा अनुमति चाहिन्छ।' : 'Camera permission is needed only to take a new photo.');
+          return;
+        }
+      }
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
@@ -197,10 +206,15 @@ export default function ChildDashboard({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#7A6E65" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.deletePill}>
-            <Ionicons name="trash-outline" size={16} color="#C0392B" />
-            <Text style={styles.deletePillText}>{isNe ? 'मेटाउनुहोस्' : 'Delete'}</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('Preferences')} style={styles.settingsPill} accessibilityLabel={isNe ? 'सेटिङ' : 'Settings'}>
+              <Ionicons name="settings-outline" size={16} color="#7A4E36" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete} style={styles.deletePill}>
+              <Ionicons name="trash-outline" size={16} color="#C0392B" />
+              <Text style={styles.deletePillText}>{isNe ? 'मेटाउनुहोस्' : 'Delete'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar — 64×64 circle, tap to change photo */}
@@ -226,6 +240,12 @@ export default function ChildDashboard({ route, navigation }: Props) {
         <Text style={styles.childName}>{displayName}</Text>
         <Text style={styles.childAge}>{formatAge(child.dateOfBirth, language)}</Text>
         <Text style={styles.childDob}>{isNe ? 'जन्म' : 'Born'}: {child.dateOfBirth}</Text>
+        {growthReminder && (
+          <View style={[styles.growthReminder, preferences.highContrast && styles.growthReminderHighContrast]} accessibilityRole="summary">
+            <Ionicons name="calendar-outline" size={18} color="#7A4E36" />
+            <Text style={styles.growthReminderText}>{growthReminder}</Text>
+          </View>
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -277,7 +297,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, marginBottom: 8 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backBtn: { padding: 8 },
+  settingsPill: { minWidth: 36, minHeight: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#EAD2C2', backgroundColor: '#FFF9F4' },
   deletePill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#FEE2E2', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#FFF5F5' },
   deletePillText: { fontSize: 12, fontWeight: '600', color: '#C0392B' },
 
@@ -289,6 +311,9 @@ const styles = StyleSheet.create({
   childName: { fontSize: 17, fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginTop: 12 },
   childAge: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginTop: 4 },
   childDob: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginTop: 2 },
+  growthReminder: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginHorizontal: 16, padding: 10, borderRadius: 10, backgroundColor: '#FCECE2' },
+  growthReminderHighContrast: { borderWidth: 2, borderColor: '#4A2B20', backgroundColor: '#FFF' },
+  growthReminderText: { flex: 1, color: '#653B2A', fontSize: 13, lineHeight: 18 },
 
   statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, paddingHorizontal: 16 },
   statChip: { backgroundColor: '#FDF8F2', borderRadius: 12, borderWidth: 1, borderColor: '#EDE0D4', paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center' },
