@@ -162,7 +162,7 @@ ON public.growth_records FOR SELECT TO authenticated USING (public.can_access_ch
 CREATE POLICY "Caregivers can read shared vaccinations"
 ON public.vaccinations FOR SELECT TO authenticated USING (public.can_access_child(child_id, 'viewer'));
 CREATE POLICY "Caregivers can read shared milestones"
-ON public.milestone_records FOR SELECT TO authenticated USING (public.can_access_child(child_id, 'viewer'));
+ON public.milestones FOR SELECT TO authenticated USING (public.can_access_child(child_id, 'viewer'));
 
 -- ---------------------------------------------------------------------------
 -- Versioned content and care records. Clinical fields are informational and
