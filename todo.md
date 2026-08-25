@@ -31,6 +31,10 @@
 - [x] Remove or quarantine legacy Firebase payment functions and align static-host security configuration.
 - [x] Update Expo-compatible patch dependencies and verify diagnostics, build, and security regression tests.
 - [ ] Commit and push the release-security implementation to main with a file-by-file change record.
+- [x] Localize Clinic summary content into Nepali-first bilingual UI without changing health calculations or export behavior.
+- [x] Localize Settings & privacy content into Nepali-first bilingual UI while preserving security-sensitive controls and consent wording.
+- [x] Validate all user-facing strings, navigation, accessibility labels, and language switching for the updated flows.
+- [x] Create and commit an agent handoff report describing the localization changes and validation evidence.
 - [x] Create a protected review branch and establish the caregiver-feature implementation scope.
 - [x] Add child membership, consent, clinical-content, and privacy foundations with database-enforced access controls.
 - [x] Add accessibility settings, caregiver tools, clinic-summary export, growth guidance, and immunization safety support.
