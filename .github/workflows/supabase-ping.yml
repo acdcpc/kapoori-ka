@@ -2,11 +2,23 @@ name: Daily Supabase Ping
 
 # Prevent auto-pause of Supabase free-tier project (pauses after 7 days of inactivity).
 # Runs daily at 03:00 UTC (off-peak).
+#
+# Why the heartbeat commit: GitHub auto-disables scheduled workflows after 60 days
+# of no repository activity. The weekly timestamp commit keeps the repo active so
+# this workflow is never disabled, which keeps the daily pings — and therefore
+# Supabase — alive during quiet periods.
 
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:  # Manual trigger for testing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: supabase-ping
+  cancel-in-progress: false
 
 jobs:
   ping:
@@ -24,4 +36,25 @@ jobs:
           else
             echo "❌ Supabase ping returned HTTP $HTTP_CODE"
             exit 1
+          fi
+
+      - name: Checkout (for heartbeat commit)
+        uses: actions/checkout@v4
+
+      # Weekly (Mondays) timestamp commit = repo activity. GitHub counts commits
+      # toward the 60-day scheduled-workflow activity clock, so this keeps the
+      # workflow enabled indefinitely. Manual dispatch runs also commit so the
+      # path can be verified end-to-end. GITHUB_TOKEN pushes do not re-trigger
+      # workflows, so there is no loop.
+      - name: Heartbeat commit (keeps this workflow from being auto-disabled)
+        run: |
+          if [ "$(date -u +%u)" = "1" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            date -u '+%Y-%m-%dT%H:%M:%SZ' > .github/heartbeat.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/heartbeat.txt
+            git commit -m "chore(keepalive): heartbeat $(date -u '+%Y-%m-%d %H:%M UTC')" || echo "nothing to commit"
+            git push
+          else
+            echo "Not Monday — heartbeat commit skipped (ping only)."
           fi
