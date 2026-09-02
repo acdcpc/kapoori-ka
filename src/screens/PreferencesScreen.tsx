@@ -3,18 +3,20 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { ThemeContext, ThemeMode } from '../context/ThemeContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { PrivacyPreferences } from '../types';
+import { Palette } from '../theme';
 import { loadPrivacyPreferences, savePrivacyPreferences } from '../lib/featureAnalytics';
 import { createOfflineMutation, flushOfflineQueue } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
 
-const terracotta = '#B85C38';
-
 export default function PreferencesScreen() {
   const { user } = useAuth();
   const { language } = useContext(LanguageContext);
+  const { mode, setMode, palette: t } = useContext(ThemeContext);
   const { preferences, setPreferences, textScale, speak } = useAccessibility();
+  const styles = makeStyles(t);
   const isNe = language === 'ne';
   const tr = (ne: string, en: string) => (isNe ? ne : en);
   const [privacy, setPrivacy] = useState<PrivacyPreferences>({ analyticsOptIn: false, shareCrashDiagnostics: false });
@@ -71,6 +73,17 @@ export default function PreferencesScreen() {
         <Toggle label={tr('सरल भाषाका लेबल प्रयोग गर्नुहोस्', 'Simple-language labels')} value={preferences.literacyMode} onValueChange={(literacyMode) => updateAccessibility({ literacyMode })} />
       </Section>
 
+      <Section title={tr('रूप', 'Appearance')}>
+        <Text style={styles.label}>{tr('थिम', 'Theme')}</Text>
+        <View style={styles.choiceRow} accessibilityRole="radiogroup">
+          {(['system', 'light', 'dark'] as const).map((m: ThemeMode) => {
+            const label = m === 'system' ? tr('प्रणाली', 'System') : m === 'light' ? tr('उज्यालो', 'Light') : tr('अँध्यारो', 'Dark');
+            return <TouchableOpacity key={m} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected: mode === m }} onPress={() => setMode(m)} style={[styles.choice, mode === m && styles.choiceActive]}><Text style={[styles.choiceText, mode === m && styles.choiceTextActive]}>{label}</Text></TouchableOpacity>;
+          })}
+        </View>
+        <Text style={styles.helper}>{tr('प्रणालीले तपाईंको फोनको उज्यालो/अँध्यारो सेटिङ पालना गर्छ।', 'System follows your phone’s light/dark setting.')}</Text>
+      </Section>
+
       <Section title={tr('हेरचाह र साझा पहुँच', 'Care and sharing')}>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={tr('हेरचाहकर्ता पहुँच र हेरचाह रेकर्ड खोल्नुहोस्', 'Open caregiver access and care log')} onPress={() => Alert.alert(tr('बच्चाको प्रोफाइल खोल्नुहोस्', 'Open a child profile'), tr('पहिले बच्चाको प्रोफाइल खोल्नुहोस्, त्यसपछि “हेरचाह टोली र हेरचाह रेकर्ड” छानेर पहुँच व्यवस्थापन गर्नुहोस् वा रेकर्ड थप्नुहोस्।', 'Open a child profile, then select “Care team & care log” to manage caregiver access or care entries.'))} style={styles.action}>
           <Text style={styles.actionTitle}>{tr('हेरचाहकर्ता पहुँच र हेरचाह रेकर्ड', 'Caregiver access and care log')}</Text>
@@ -95,6 +108,14 @@ export default function PreferencesScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) { return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>; }
-function Toggle({ label, value, onValueChange }: { label: string; value: boolean; onValueChange: (value: boolean) => void }) { return <View style={styles.toggle}><Text style={styles.label}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={onValueChange} trackColor={{ false: '#C8B9A8', true: '#D89777' }} thumbColor={value ? terracotta : '#fff'} /></View>; }
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: '#FFF8F2' }, content: { padding: 18, paddingBottom: 40 }, highContrast: { backgroundColor: '#FFF' }, title: { color: '#4A2B20', fontWeight: '800' }, nepali: { color: '#7D5140', marginTop: 2, marginBottom: 18 }, section: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#F0DED2' }, sectionTitle: { fontSize: 18, fontWeight: '800', color: '#4A2B20', marginBottom: 10 }, label: { flex: 1, color: '#3D302B', fontSize: 16 }, helper: { color: '#6D5A52', lineHeight: 20, marginBottom: 12 }, toggle: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, choiceRow: { flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }, choice: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#D7BBAA' }, choiceActive: { backgroundColor: terracotta, borderColor: terracotta }, choiceText: { color: '#4A2B20', fontWeight: '700' }, choiceTextActive: { color: '#FFF' }, action: { backgroundColor: '#FCECE2', borderRadius: 12, padding: 14, marginBottom: 8 }, actionTitle: { color: '#71381F', fontWeight: '800', fontSize: 16 }, actionText: { color: '#714D3B', marginTop: 5, lineHeight: 19 }, primary: { minHeight: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: terracotta }, primaryText: { color: '#FFF', fontWeight: '800' }, disabled: { opacity: 0.6 } });
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
+  return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;
+}
+function Toggle({ label, value, onValueChange }: { label: string; value: boolean; onValueChange: (value: boolean) => void }) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
+  return <View style={styles.toggle}><Text style={styles.label}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={onValueChange} trackColor={{ false: t.switchTrackOff, true: t.switchTrackOn }} thumbColor={t.surface} /></View>;
+}
+const makeStyles = (t: Palette) => StyleSheet.create({ page: { flex: 1, backgroundColor: t.bgWarm }, content: { padding: 18, paddingBottom: 40 }, highContrast: { backgroundColor: t.surface }, title: { color: t.titleInk, fontWeight: '800' }, nepali: { color: t.subInk, marginTop: 2, marginBottom: 18 }, section: { backgroundColor: t.surface, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.border }, sectionTitle: { fontSize: 18, fontWeight: '800', color: t.titleInk, marginBottom: 10 }, label: { flex: 1, color: t.labelInk, fontSize: 16 }, helper: { color: t.muted2, lineHeight: 20, marginBottom: 12 }, toggle: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }, choiceRow: { flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }, choice: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 10, borderWidth: 1, borderColor: t.choiceBorder }, choiceActive: { backgroundColor: t.terracotta, borderColor: t.terracotta }, choiceText: { color: t.titleInk, fontWeight: '700' }, choiceTextActive: { color: t.onAccent }, action: { backgroundColor: t.actionBg, borderRadius: 12, padding: 14, marginBottom: 8 }, actionTitle: { color: t.actionTitleInk, fontWeight: '800', fontSize: 16 }, actionText: { color: t.actionTextInk, marginTop: 5, lineHeight: 19 }, primary: { minHeight: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: t.terracotta }, primaryText: { color: t.onAccent, fontWeight: '800' }, disabled: { opacity: 0.6 } });
