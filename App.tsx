@@ -28,6 +28,7 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import CaregiverToolsScreen from './src/screens/CaregiverToolsScreen';
 import ClinicSummaryScreen from './src/screens/ClinicSummaryScreen';
 import PreferencesScreen from './src/screens/PreferencesScreen';
+import WebsiteScreen from './src/screens/WebsiteScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AccessibilityProvider } from './src/context/AccessibilityContext';
 import { registerForPushNotifications } from './src/utils/notifications';
@@ -209,9 +210,13 @@ export default function App() {
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
         <ThemeContext.Provider value={{ mode: themeMode, setMode: handleSetThemeMode, isDark, palette }}>
           <AccessibilityProvider>
-            <AuthProvider>
-              <Navigation />
-            </AuthProvider>
+            {Platform.OS === 'web' ? (
+              <WebsiteScreen />
+            ) : (
+              <AuthProvider>
+                <Navigation />
+              </AuthProvider>
+            )}
           </AccessibilityProvider>
         </ThemeContext.Provider>
       </LanguageContext.Provider>
