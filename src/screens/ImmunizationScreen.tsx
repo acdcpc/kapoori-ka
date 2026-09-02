@@ -4,6 +4,8 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList, Platform,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import { LanguageContext } from '../context/LanguageContext';
@@ -98,12 +100,12 @@ function computeSchedule(dob: string, givenIds: Set<string>, missedIds: Set<stri
   });
 }
 
-const STATUS_PILL: Record<VaccineStatus, { bg: string; text: string; labelEn: string; labelNe: string }> = {
-  given: { bg: '#D1FAE5', text: '#065F46', labelEn: 'Given', labelNe: 'दिइयो' },
-  due: { bg: '#FEF3C7', text: '#92400E', labelEn: 'Due Now', labelNe: 'दिनुपर्छ' },
-  upcoming: { bg: '#EDE0D4', text: '#7A6E65', labelEn: 'Upcoming', labelNe: 'आउँदो' },
-  missed: { bg: '#FEE2E2', text: '#991B1B', labelEn: 'Missed', labelNe: 'छुट्यो' },
-};
+const makeStatusPill = (pal: Palette): Record<VaccineStatus, { bg: string; text: string; labelEn: string; labelNe: string }> => ({
+  given: { bg: pal.greenLight, text: pal.greenDark, labelEn: 'Given', labelNe: 'दिइयो' },
+  due: { bg: pal.amberLight, text: pal.amberDark, labelEn: 'Due Now', labelNe: 'दिनुपर्छ' },
+  upcoming: { bg: pal.border, text: pal.muted, labelEn: 'Upcoming', labelNe: 'आउँदो' },
+  missed: { bg: pal.redLight, text: pal.redDark, labelEn: 'Missed', labelNe: 'छुट्यो' },
+});
 
 const neMonths = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फागुन','चैत्र'];
 const neDigits = (n: number) => String(n).split('').map(c => '०१२३४५६७८९'[parseInt(c)] ?? c).join('');
@@ -133,6 +135,9 @@ function bsDaysInMonth(bsYear: number, bsMonth: number): number {
 }
 
 export default function ImmunizationScreen({ route, navigation }: Props) {
+  const { palette: pal } = useContext(ThemeContext);
+  const statusPill = makeStatusPill(pal);
+  const styles = makeStyles(pal);
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const { subscription, user } = useAuth();
@@ -290,7 +295,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   };
 
 
-  if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
+  if (loading) return <ActivityIndicator size="large" color={pal.clay} style={{ flex: 1, backgroundColor: pal.bg }} />;
 
   const givenIds = new Set(vaccineRecords.filter(v => v.isGiven).map(v => v.vaccineName));
   const missedIds = new Set(vaccineRecords.filter(v => v.isMissed).map(v => v.vaccineName));
@@ -302,12 +307,12 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       {showConfetti && Platform.OS !== 'web' && <ConfettiCannon count={40} origin={{ x: -10, y: 0 }} fadeOut autoStart explosionSpeed={250} fallSpeed={2000} />}
       {nextDue && (
-        <View style={[styles.nextBanner, { borderLeftColor: nextDue.status === 'due' ? '#C0392B' : '#E8602C' }]}>
-          <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? '#C0392B' : '#E8602C'} />
-          <Text style={[styles.nextBannerText, { color: nextDue.status === 'due' ? '#991B1B' : '#92400E' }]}>
+        <View style={[styles.nextBanner, { borderLeftColor: nextDue.status === 'due' ? pal.red : pal.clay }]}>
+          <Ionicons name="notifications" size={18} color={nextDue.status === 'due' ? pal.red : pal.clay} />
+          <Text style={[styles.nextBannerText, { color: nextDue.status === 'due' ? pal.redDark : pal.amberDark }]}>
             {isNe
-              ? `अर्को खोप: ${nextDue.nameNe} (${nextDue.ageLabelNe}) — ${formatDateNe(nextDue.scheduledDate)} — ${STATUS_PILL[nextDue.status].labelNe}`
-              : `Next vaccine: ${nextDue.name} (${nextDue.ageLabel}) — ${nextDue.scheduledDate} — ${STATUS_PILL[nextDue.status].labelEn}`}
+              ? `अर्को खोप: ${nextDue.nameNe} (${nextDue.ageLabelNe}) — ${formatDateNe(nextDue.scheduledDate)} — ${statusPill[nextDue.status].labelNe}`
+              : `Next vaccine: ${nextDue.name} (${nextDue.ageLabel}) — ${nextDue.scheduledDate} — ${statusPill[nextDue.status].labelEn}`}
           </Text>
         </View>
       )}
@@ -347,7 +352,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
             {missedVaccines.length > 0 && (
               <View style={styles.catchUpNotice} accessibilityRole="alert">
-                <Ionicons name="medical-outline" size={20} color="#92400E" />
+                <Ionicons name="medical-outline" size={20} color={pal.amberDark} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.catchUpTitle}>{isNe ? 'छुटेको खोपका लागि सहयोग' : 'Support for missed vaccines'}</Text>
                   <Text style={styles.catchUpText}>
@@ -378,7 +383,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                   </View>
 
                   {filtered.map(v => {
-                    const pill = STATUS_PILL[v.status];
+                    const pill = statusPill[v.status];
                     return (
                       <View key={v.id} style={styles.timelineRow}>
                         {/* Timeline left column */}
@@ -398,7 +403,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <Text style={styles.vaccineName}>{isNe ? v.nameNe : v.name}</Text>
                                 <TouchableOpacity onPress={(e: any) => { e.stopPropagation?.(); Speech.speak(isNe ? v.nameNe : v.name); }}>
-                                  <Ionicons name="volume-high" size={16} color="#7A6E65" />
+                                  <Ionicons name="volume-high" size={16} color={pal.muted} />
                                 </TouchableOpacity>
                               </View>
                               <Text style={styles.vaccineSubtitle}>{isNe ? v.diseasesNe : v.diseases} · {isNe ? v.routeNe : v.route} · {isNe ? v.doseNe : v.dose}</Text>
@@ -410,11 +415,11 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                           </View>
                           <View style={styles.actionRow}>
                             <TouchableOpacity style={[styles.actionBtn, v.status === 'given' && styles.actionBtnGiven]} onPress={() => handleSetStatus(v, 'given')}>
-                              <Ionicons name={v.status === 'given' ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={v.status === 'given' ? '#fff' : '#3D8B5E'} />
+                              <Ionicons name={v.status === 'given' ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={v.status === 'given' ? pal.onAccent : pal.green} />
                               <Text style={[styles.actionBtnText, v.status === 'given' && styles.actionBtnTextActive]}>{isNe ? 'दिइयो' : 'Given'}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[styles.actionBtn, v.status === 'missed' && styles.actionBtnMissed]} onPress={() => handleSetStatus(v, 'missed')}>
-                              <Ionicons name={v.status === 'missed' ? 'close-circle' : 'ellipse-outline'} size={16} color={v.status === 'missed' ? '#fff' : '#C0392B'} />
+                              <Ionicons name={v.status === 'missed' ? 'close-circle' : 'ellipse-outline'} size={16} color={v.status === 'missed' ? pal.onAccent : pal.red} />
                               <Text style={[styles.actionBtnText, v.status === 'missed' && styles.actionBtnTextActive]}>{isNe ? 'छुट्यो' : 'Missed'}</Text>
                             </TouchableOpacity>
                           </View>
@@ -430,7 +435,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       ) : (
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 50 }}>
           <View style={styles.scheduleSourceNotice}>
-            <Ionicons name="shield-checkmark-outline" size={18} color="#3D8B5E" />
+            <Ionicons name="shield-checkmark-outline" size={18} color={pal.green} />
             <Text style={styles.scheduleSourceText}>
               {isNe
                 ? 'नेपालको तालिका देखाइँदैछ। अन्य देशको तालिका चिकित्सकीय समीक्षा भएको संस्करण उपलब्ध भएपछि मात्र प्रयोग गरिनेछ।'
@@ -446,7 +451,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                 <Text style={[styles.cell, styles.wRoute, styles.hText]}>{isNe ? 'विधि' : 'Route'}</Text>
               </View>
               {NIP_SCHEDULE.map((v, idx) => (
-                <View key={v.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: '#FDF8F2' }]}>
+                <View key={v.id} style={[styles.tableRow, idx % 2 === 1 && { backgroundColor: pal.surface }]}>
                   <Text style={[styles.cell, styles.wAge]}>{isNe ? v.ageLabelNe : v.ageLabel}</Text>
                   <Text style={[styles.cell, styles.wName, { fontWeight: 'bold' }]}>{isNe ? v.nameNe : v.name}</Text>
                   <Text style={[styles.cell, styles.wDisease]}>{isNe ? v.diseasesNe : v.diseases}</Text>
@@ -462,7 +467,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       <Modal visible={showPremiumModal} transparent animationType="fade" onRequestClose={() => setShowPremiumModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { alignItems: 'center' }]}>
-            <Ionicons name="diamond-outline" size={48} color="#E8602C" style={{ marginBottom: 12 }} />
+            <Ionicons name="diamond-outline" size={48} color={pal.clay} style={{ marginBottom: 12 }} />
             <Text style={styles.modalTitle}>{isNe ? 'प्रिमियम सुविधा' : 'Premium Feature'}</Text>
             <Text style={[styles.modalSubtitle, { marginBottom: 20, lineHeight: 22 }]}>
               {isNe
@@ -472,8 +477,8 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
             <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%' }]} onPress={() => setShowPremiumModal(false)}>
               <Text style={styles.modalConfirmBtnText}>{isNe ? 'बुझें' : 'Got it'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%', backgroundColor: '#E8602C', marginTop: 10 }]} onPress={() => { setShowPremiumModal(false); }}>
-              <Text style={[styles.modalConfirmBtnText, { color: '#fff' }]}>{isNe ? 'प्रिमियम लिनुहोस्' : 'Upgrade to Premium'}</Text>
+            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%', backgroundColor: pal.clay, marginTop: 10 }]} onPress={() => { setShowPremiumModal(false); }}>
+              <Text style={[styles.modalConfirmBtnText, { color: pal.onAccent }]}>{isNe ? 'प्रिमियम लिनुहोस्' : 'Upgrade to Premium'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -511,84 +516,84 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
-  nextBanner: { marginHorizontal: 10, marginTop: 8, marginBottom: 2, backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderLeftWidth: 4, elevation: 1 },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: pal.bg },
+  nextBanner: { marginHorizontal: 10, marginTop: 8, marginBottom: 2, backgroundColor: pal.amberLight, borderRadius: 8, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderLeftWidth: 4, elevation: 1 },
   nextBannerText: { fontSize: 12, fontWeight: '600', flex: 1 },
 
-  tabBar: { flexDirection: 'row', backgroundColor: '#FDF8F2', paddingHorizontal: 16, margin: 10, marginBottom: 4, borderRadius: 0, borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
+  tabBar: { flexDirection: 'row', backgroundColor: pal.surface, paddingHorizontal: 16, margin: 10, marginBottom: 4, borderRadius: 0, borderBottomWidth: 1, borderBottomColor: pal.border },
   tab: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  activeTab: { borderBottomColor: '#E8602C' },
-  tabText: { fontWeight: '600', color: '#7A6E65', fontSize: 14 },
-  activeTabText: { color: '#E8602C' },
+  activeTab: { borderBottomColor: pal.clay },
+  tabText: { fontWeight: '600', color: pal.muted, fontSize: 14 },
+  activeTabText: { color: pal.clay },
 
   filterRow: { flexDirection: 'row', paddingHorizontal: 10, gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' },
-  filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2' },
-  filterPillActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
-  filterPillText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
-  filterPillTextActive: { color: '#fff', fontWeight: 'bold' },
-  filterPillOutline: { backgroundColor: '#FDF8F2', borderColor: '#EDE0D4' },
+  filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: pal.border, backgroundColor: pal.surface },
+  filterPillActive: { backgroundColor: pal.clay, borderColor: pal.clay },
+  filterPillText: { fontSize: 12, color: pal.muted, fontWeight: '600' },
+  filterPillTextActive: { color: pal.onAccent, fontWeight: 'bold' },
+  filterPillOutline: { backgroundColor: pal.surface, borderColor: pal.border },
 
   content: { flex: 1, paddingHorizontal: 10 },
-  catchUpNotice: { flexDirection: 'row', gap: 10, backgroundColor: '#FFF7E6', borderLeftWidth: 4, borderLeftColor: '#E5A135', padding: 12, marginBottom: 14, borderRadius: 8 },
-  catchUpTitle: { color: '#7A3F00', fontWeight: '700', fontSize: 13, marginBottom: 3 },
-  catchUpText: { color: '#6B4A22', fontSize: 12, lineHeight: 18 },
-  scheduleSourceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#ECF8F0', borderLeftWidth: 4, borderLeftColor: '#3D8B5E', padding: 11, marginTop: 10, marginBottom: 2, borderRadius: 8 },
-  scheduleSourceText: { flex: 1, color: '#1E5C3A', fontSize: 12, lineHeight: 17 },
-  noMoreCard: { backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
-  noMoreText: { color: '#065F46', fontWeight: 'bold', fontSize: 13 },
+  catchUpNotice: { flexDirection: 'row', gap: 10, backgroundColor: pal.amberLight, borderLeftWidth: 4, borderLeftColor: pal.amberDark, padding: 12, marginBottom: 14, borderRadius: 8 },
+  catchUpTitle: { color: pal.amberDark, fontWeight: '700', fontSize: 13, marginBottom: 3 },
+  catchUpText: { color: pal.muted2, fontSize: 12, lineHeight: 18 },
+  scheduleSourceNotice: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: pal.greenLight, borderLeftWidth: 4, borderLeftColor: pal.green, padding: 11, marginTop: 10, marginBottom: 2, borderRadius: 8 },
+  scheduleSourceText: { flex: 1, color: pal.greenDark, fontSize: 12, lineHeight: 17 },
+  noMoreCard: { backgroundColor: pal.greenLight, padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: pal.green },
+  noMoreText: { color: pal.greenDark, fontWeight: 'bold', fontSize: 13 },
 
   groupSection: { marginBottom: 8 },
   groupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4, gap: 8 },
-  groupLine: { flex: 1, height: 1, backgroundColor: '#EDE0D4' },
-  groupHeaderText: { fontSize: 11, color: '#7A6E65', letterSpacing: 1.1, fontWeight: '700', textTransform: 'uppercase' },
+  groupLine: { flex: 1, height: 1, backgroundColor: pal.border },
+  groupHeaderText: { fontSize: 11, color: pal.muted, letterSpacing: 1.1, fontWeight: '700', textTransform: 'uppercase' },
 
   timelineRow: { flexDirection: 'row', marginBottom: 10 },
   timelineLeft: { width: 24, alignItems: 'center', marginRight: 8 },
-  timelineLine: { flex: 1, width: 2, backgroundColor: '#EDE0D4' },
-  timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EDE0D4', borderWidth: 2, borderColor: '#F7F1EB', position: 'absolute', top: 8 },
-  timelineDotGiven: { backgroundColor: '#3D8B5E', borderColor: '#3D8B5E' },
-  timelineDotMissed: { backgroundColor: '#C0392B', borderColor: '#C0392B' },
-  timelineDotUpcoming: { backgroundColor: 'transparent', borderColor: '#EDE0D4', borderWidth: 2 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: pal.border },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: pal.border, borderWidth: 2, borderColor: pal.bg, position: 'absolute', top: 8 },
+  timelineDotGiven: { backgroundColor: pal.green, borderColor: pal.green },
+  timelineDotMissed: { backgroundColor: pal.red, borderColor: pal.red },
+  timelineDotUpcoming: { backgroundColor: 'transparent', borderColor: pal.border, borderWidth: 2 },
 
-  vaccineCard: { flex: 1, backgroundColor: '#FDF8F2', borderRadius: 12, padding: 12, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 1 }, shadowRadius: 6, elevation: 1 },
+  vaccineCard: { flex: 1, backgroundColor: pal.surface, borderRadius: 12, padding: 12, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowOffset: { width: 0, height: 1 }, shadowRadius: 6, elevation: 1 },
   vaccineCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  vaccineName: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
-  vaccineSubtitle: { fontSize: 12, color: '#7A6E65', marginTop: 1 },
-  vaccineDate: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
+  vaccineName: { fontSize: 15, fontWeight: '700', color: pal.text },
+  vaccineSubtitle: { fontSize: 12, color: pal.muted, marginTop: 1 },
+  vaccineDate: { fontSize: 12, color: pal.muted, marginTop: 2 },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   statusPillText: { fontSize: 10, fontWeight: 'bold' },
 
   actionRow: { flexDirection: 'row', gap: 8 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2', gap: 4 },
-  actionBtnGiven: { backgroundColor: '#3D8B5E', borderColor: '#3D8B5E' },
-  actionBtnMissed: { backgroundColor: '#C0392B', borderColor: '#C0392B' },
-  actionBtnText: { fontSize: 11, color: '#7A6E65', fontWeight: 'bold' },
-  actionBtnTextActive: { color: '#fff' },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: pal.border, backgroundColor: pal.surface, gap: 4 },
+  actionBtnGiven: { backgroundColor: pal.green, borderColor: pal.green },
+  actionBtnMissed: { backgroundColor: pal.red, borderColor: pal.red },
+  actionBtnText: { fontSize: 11, color: pal.muted, fontWeight: 'bold' },
+  actionBtnTextActive: { color: pal.onAccent },
 
-  tableWrapper: { backgroundColor: '#FDF8F2', marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#EDE0D4', minWidth: 640 },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#E8602C', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
-  hText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
-  cell: { padding: 10, fontSize: 11, color: '#1A1A2E', borderRightWidth: 1, borderRightColor: '#EDE0D4', justifyContent: 'center' },
+  tableWrapper: { backgroundColor: pal.surface, marginVertical: 10, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: pal.border, minWidth: 640 },
+  tableHeader: { flexDirection: 'row', backgroundColor: pal.clay, borderBottomWidth: 1, borderBottomColor: pal.border },
+  hText: { color: pal.onAccent, fontWeight: 'bold', textAlign: 'center' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: pal.border },
+  cell: { padding: 10, fontSize: 11, color: pal.text, borderRightWidth: 1, borderRightColor: pal.border, justifyContent: 'center' },
   wAge: { width: 100 },
   wName: { width: 120 },
   wDisease: { width: 200 },
   wRoute: { width: 180 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FDF8F2', width: '92%', borderRadius: 16, padding: 20, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: 4 },
-  modalSubtitle: { fontSize: 13, color: '#E8602C', textAlign: 'center', marginBottom: 16, fontWeight: '600' },
+  modalContent: { backgroundColor: pal.surface, width: '92%', borderRadius: 16, padding: 20, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: pal.text, textAlign: 'center', marginBottom: 4 },
+  modalSubtitle: { fontSize: 13, color: pal.clay, textAlign: 'center', marginBottom: 16, fontWeight: '600' },
   pickerRow: { flexDirection: 'row', height: 200, gap: 4 },
   pickerCol: { flex: 1 },
   pickerItem: { height: 40, justifyContent: 'center', paddingHorizontal: 8, borderRadius: 6 },
   pickerItemSel: { backgroundColor: '#E8602C20' },
-  pickerItemTxt: { fontSize: 14, color: '#7A6E65', textAlign: 'center' },
-  pickerItemTxtSel: { color: '#E8602C', fontWeight: '700' },
+  pickerItemTxt: { fontSize: 14, color: pal.muted, textAlign: 'center' },
+  pickerItemTxtSel: { color: pal.clay, fontWeight: '700' },
   modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  modalCancelBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: '#F7F1EB', alignItems: 'center' },
-  modalCancelBtnText: { color: '#7A6E65', fontWeight: '600' },
-  modalConfirmBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: '#E8602C', alignItems: 'center' },
-  modalConfirmBtnText: { color: '#fff', fontWeight: '700' },
+  modalCancelBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: pal.bg, alignItems: 'center' },
+  modalCancelBtnText: { color: pal.muted, fontWeight: '600' },
+  modalConfirmBtn: { flex: 1, padding: 12, borderRadius: 28, backgroundColor: pal.clay, alignItems: 'center' },
+  modalConfirmBtnText: { color: pal.onAccent, fontWeight: '700' },
 });

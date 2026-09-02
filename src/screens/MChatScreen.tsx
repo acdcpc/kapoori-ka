@@ -4,6 +4,8 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Alert, ActivityIndicator, Modal,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
@@ -132,6 +134,8 @@ const MCHAT_QUESTIONS: MChatQuestion[] = [
 ];
 
 export default function MChatScreen({ route, navigation }: Props) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { user } = useAuth();
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
@@ -186,15 +190,15 @@ export default function MChatScreen({ route, navigation }: Props) {
   const getExtendedAgeNotice = () => {
     if (!showExtendedNotice) return null;
     return (
-      <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 14, marginBottom: 16,
-        borderLeftWidth: 4, borderLeftColor: '#F5A623', }}>
-        <Ionicons name="information-circle" size={20} color="#F5A623" style={{ marginBottom: 6 }} />
-        <Text style={{ fontSize: 13, color: '#92400E', lineHeight: 19, fontWeight: '600', marginBottom: 4 }}>
+      <View style={{ backgroundColor: t.amberLight, borderRadius: 12, padding: 14, marginBottom: 16,
+        borderLeftWidth: 4, borderLeftColor: t.gold, }}>
+        <Ionicons name="information-circle" size={20} color={t.gold} style={{ marginBottom: 6 }} />
+        <Text style={{ fontSize: 13, color: t.amberDark, lineHeight: 19, fontWeight: '600', marginBottom: 4 }}>
           {isNe
             ? 'M-CHAT-R/F १६ देखि ३० महिनाका बच्चाहरूको लागि चिकित्सकीय रूपमा प्रमाणित गरिएको छ। तपाईंको बच्चा यो उमेर दायरा बाहिर छ।'
             : 'The M-CHAT-R/F is clinically validated for children aged 16 to 30 months. Your child is outside this age range.'}
         </Text>
-        <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+        <Text style={{ fontSize: 12, color: t.amberDark, lineHeight: 18 }}>
           {isNe
             ? 'यो स्क्रिनिङ सन्दर्भको रूपमा उपयोगी हुन सक्छ, तर कृपया पूर्ण विकासात्मक मूल्याङ्कनको लागि स्वास्थ्य सेवा प्रदायकसँग परामर्श गर्नुहोस्।'
             : 'This screening may still be useful as a reference, but please consult a healthcare provider for a full developmental assessment.'}
@@ -204,9 +208,9 @@ export default function MChatScreen({ route, navigation }: Props) {
   };
 
   const getResultMessage = () => {
-    if (score <= 2) return { title: isNe ? 'कम जोखिम' : 'Low Risk', message: isNe ? 'बच्चाको विकास ठीक छ। नियमित रूपमा स्वास्थ्य जाँच गराउनुहोस्।' : "Your child's development appears typical.", color: '#3D8B5E' };
-    else if (score <= 7) return { title: isNe ? 'मध्यम जोखिम' : 'Medium Risk', message: isNe ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञद्वारा मूल्यांकन गराउनुपर्छ।' : 'Your child should be evaluated.', color: '#F5A623' };
-    else return { title: isNe ? 'उच्च जोखिम' : 'High Risk', message: isNe ? 'तपाईंको बच्चालाई तुरुन्त विशेषज्ञसँग जाँच गराउन सिफारिस गरिन्छ।' : 'Seek specialist evaluation immediately.', color: '#C0392B' };
+    if (score <= 2) return { title: isNe ? 'कम जोखिम' : 'Low Risk', message: isNe ? 'बच्चाको विकास ठीक छ। नियमित रूपमा स्वास्थ्य जाँच गराउनुहोस्।' : "Your child's development appears typical.", color: t.green };
+    else if (score <= 7) return { title: isNe ? 'मध्यम जोखिम' : 'Medium Risk', message: isNe ? 'तपाईंको बच्चालाई बाल रोग विशेषज्ञद्वारा मूल्यांकन गराउनुपर्छ।' : 'Your child should be evaluated.', color: t.gold };
+    else return { title: isNe ? 'उच्च जोखिम' : 'High Risk', message: isNe ? 'तपाईंको बच्चालाई तुरुन्त विशेषज्ञसँग जाँच गराउन सिफारिस गरिन्छ।' : 'Seek specialist evaluation immediately.', color: t.red };
   };
 
   const result = getResultMessage();
@@ -218,7 +222,7 @@ export default function MChatScreen({ route, navigation }: Props) {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#7A6E65" />
+            <Ionicons name="arrow-back" size={24} color={t.muted} />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={styles.headerTitle}>M-CHAT-R/F</Text><InfoBubble titleEn='About M-CHAT-R/F' titleNe='M-CHAT बारे' bodyEn='The Modified Checklist for Autism in Toddlers screens for autism risk.' bodyNe='The Modified Checklist for Autism in Toddlers screens for autism risk.' iconSize={16} /></View>
         </View>
@@ -231,8 +235,8 @@ export default function MChatScreen({ route, navigation }: Props) {
               <Text style={styles.warningSubtitleEn}>Age Not Validated</Text>
               <Text style={styles.warningTextLarge}>
                 {isNe
-                  ? <>यो स्क्रिनिङ १६-३० महिनाका बच्चाहरूका लागि मात्र हो। तपाईंको बच्चा <Text style={{ color: '#E8602C', fontWeight: '700' }}>{ageMonths}</Text> महिनाको छ।</>
-                  : <>This screening is for children aged 16–30 months. Your child is <Text style={{ color: '#E8602C', fontWeight: '700' }}>{ageMonths}</Text> months old.</>
+                  ? <>यो स्क्रिनिङ १६-३० महिनाका बच्चाहरूका लागि मात्र हो। तपाईंको बच्चा <Text style={{ color: t.clay, fontWeight: '700' }}>{ageMonths}</Text> महिनाको छ।</>
+                  : <>This screening is for children aged 16–30 months. Your child is <Text style={{ color: t.clay, fontWeight: '700' }}>{ageMonths}</Text> months old.</>
                 }
               </Text>
               <TouchableOpacity style={styles.goBackBtn} onPress={() => navigation.goBack()}>
@@ -253,7 +257,7 @@ export default function MChatScreen({ route, navigation }: Props) {
                     <Text style={styles.questionNum}>{isNe ? `प्रश्न ${index + 1}` : `Question ${index + 1}`}</Text>
                     {showHighlights && (
                       <View style={styles.concernBadge}>
-                        <Ionicons name="alert-circle" size={14} color="#C0392B" />
+                        <Ionicons name="alert-circle" size={14} color={t.red} />
                         <Text style={styles.concernBadgeText}>{isNe ? 'चिन्ताको विषय' : 'Concern'}</Text>
                       </View>
                     )}
@@ -282,7 +286,7 @@ export default function MChatScreen({ route, navigation }: Props) {
                 <Text style={styles.submitBtnText}>{isNe ? 'नतिजा हेर्नुहोस्' : 'See Results'}</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#7A6E65' }]} onPress={() => navigation.goBack()}>
+              <TouchableOpacity style={[styles.submitBtn, { backgroundColor: t.muted }]} onPress={() => navigation.goBack()}>
                 <Text style={styles.submitBtnText}>{isNe ? 'फिर्ता जानुहोस्' : 'Go Back'}</Text>
               </TouchableOpacity>
             )}
@@ -313,47 +317,47 @@ export default function MChatScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FDF8F2', shadowColor: '#C4956A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+const makeStyles = (t: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.surface },
+  container: { flex: 1, backgroundColor: t.bg },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: t.surface, shadowColor: t.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   backBtn: { padding: 4, marginRight: 16 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A1A2E' },
-  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#F7F1EB' },
-  warningBoxLarge: { backgroundColor: '#FDF8F2', padding: 28, borderRadius: 20, alignItems: 'center', marginHorizontal: 24, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4, width: '100%' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: t.text },
+  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: t.bg },
+  warningBoxLarge: { backgroundColor: t.surface, padding: 28, borderRadius: 20, alignItems: 'center', marginHorizontal: 24, shadowColor: t.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4, width: '100%' },
   warningEmoji: { fontSize: 64, marginBottom: 16 },
-  warningTitleNe: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', textAlign: 'center', marginBottom: 4 },
-  warningSubtitleEn: { fontSize: 16, color: '#7A6E65', textAlign: 'center', marginBottom: 12 },
-  warningTextLarge: { fontSize: 15, color: '#7A6E65', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  goBackBtn: { backgroundColor: '#E8602C', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28, alignSelf: 'center' },
-  goBackBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  warningTitleNe: { fontSize: 22, fontWeight: '800', color: t.text, textAlign: 'center', marginBottom: 4 },
+  warningSubtitleEn: { fontSize: 16, color: t.muted, textAlign: 'center', marginBottom: 12 },
+  warningTextLarge: { fontSize: 15, color: t.muted, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  goBackBtn: { backgroundColor: t.clay, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28, alignSelf: 'center' },
+  goBackBtnText: { color: t.onAccent, fontSize: 16, fontWeight: '700' },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  intro: { fontSize: 15, color: '#7A6E65', marginBottom: 20, lineHeight: 22 },
-  questionCard: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 16, marginBottom: 14, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  concernCard: { borderLeftWidth: 4, borderLeftColor: '#C0392B' },
+  intro: { fontSize: 15, color: t.muted, marginBottom: 20, lineHeight: 22 },
+  questionCard: { backgroundColor: t.surface, borderRadius: 16, padding: 16, marginBottom: 14, shadowColor: t.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  concernCard: { borderLeftWidth: 4, borderLeftColor: t.red },
   questionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  concernBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
-  concernBadgeText: { fontSize: 10, fontWeight: 'bold', color: '#C0392B' },
-  questionNum: { fontSize: 12, fontWeight: '700', color: '#E8602C', textTransform: 'uppercase' },
-  questionText: { fontSize: 16, fontWeight: '600', color: '#1A1A2E', marginBottom: 8, lineHeight: 22 },
-  questionDesc: { fontSize: 13, color: '#7A6E65', marginBottom: 16, fontStyle: 'italic' },
+  concernBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: t.redLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+  concernBadgeText: { fontSize: 10, fontWeight: 'bold', color: t.red },
+  questionNum: { fontSize: 12, fontWeight: '700', color: t.clay, textTransform: 'uppercase' },
+  questionText: { fontSize: 16, fontWeight: '600', color: t.text, marginBottom: 8, lineHeight: 22 },
+  questionDesc: { fontSize: 13, color: t.muted, marginBottom: 16, fontStyle: 'italic' },
   optionsRow: { flexDirection: 'row', gap: 12 },
-  optionBtn: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1.5, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2', alignItems: 'center', justifyContent: 'center' },
-  optionYes: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
-  optionNo: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
-  optionConcern: { backgroundColor: '#C0392B', borderColor: '#C0392B' },
-  optionText: { fontSize: 15, fontWeight: '600', color: '#7A6E65' },
-  optionTextActive: { color: '#fff' },
-  submitBtn: { backgroundColor: '#E8602C', height: 55, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 10, elevation: 3 },
-  submitBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  optionBtn: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1.5, borderColor: t.border, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center' },
+  optionYes: { backgroundColor: t.clay, borderColor: t.clay },
+  optionNo: { backgroundColor: t.clay, borderColor: t.clay },
+  optionConcern: { backgroundColor: t.red, borderColor: t.red },
+  optionText: { fontSize: 15, fontWeight: '600', color: t.muted },
+  optionTextActive: { color: t.onAccent },
+  submitBtn: { backgroundColor: t.clay, height: 55, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 10, elevation: 3 },
+  submitBtnText: { color: t.onAccent, fontSize: 18, fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FDF8F2', borderRadius: 20, padding: 30, width: '100%', alignItems: 'center' },
+  modalContent: { backgroundColor: t.surface, borderRadius: 20, padding: 30, width: '100%', alignItems: 'center' },
   scoreBadge: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  scoreText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
-  scoreLabel: { fontSize: 12, color: '#fff', fontWeight: 'bold' },
+  scoreText: { fontSize: 32, fontWeight: 'bold', color: t.onAccent },
+  scoreLabel: { fontSize: 12, color: t.onAccent, fontWeight: 'bold' },
   resultTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  resultMsg: { fontSize: 16, color: '#7A6E65', textAlign: 'center', lineHeight: 24, marginBottom: 20 },
-  reviewPrompt: { fontSize: 14, color: '#7A6E65', marginBottom: 20, fontStyle: 'italic' },
-  closeBtn: { backgroundColor: '#E8602C', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 28 },
-  closeBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  resultMsg: { fontSize: 16, color: t.muted, textAlign: 'center', lineHeight: 24, marginBottom: 20 },
+  reviewPrompt: { fontSize: 14, color: t.muted, marginBottom: 20, fontStyle: 'italic' },
+  closeBtn: { backgroundColor: t.clay, paddingVertical: 12, paddingHorizontal: 40, borderRadius: 28 },
+  closeBtnText: { color: t.onAccent, fontSize: 16, fontWeight: '600' },
 });

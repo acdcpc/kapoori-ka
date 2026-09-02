@@ -1,6 +1,8 @@
 // src/screens/NutritionScreen.tsx - Enhanced with Tabs
 import React, { useContext, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LanguageContext } from '../context/LanguageContext';
 import { PremiumGuard } from '../components/PremiumGuard';
@@ -11,14 +13,14 @@ import dayjs from 'dayjs';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Nutrition'>;
 
-const AGE_GROUPS_EN = [
-  { range: '0–6 Months', subtitle: 'Exclusive Breastfeeding Only', icon: '🍼', color: '#E8602C', minMonths: 0, maxMonths: 6,
+const makeAgeGroupsEn = (t: Palette) => ([
+  { range: '0–6 Months', subtitle: 'Exclusive Breastfeeding Only', icon: '🍼', color: t.clay, minMonths: 0, maxMonths: 6,
     points: ['Start breastfeeding within 1 hour of birth.', 'Give colostrum (first yellow milk) — do NOT throw away.', 'ONLY breast milk for 6 months — no water, no juice, no formula.', 'Feed on demand — at least 8–12 times per day.', 'No bottles or pacifiers recommended.'],
     malnutritionTip: 'If the baby is not feeding well, losing weight, or looks too thin — visit the health post immediately.' },
-  { range: '6–9 Months', subtitle: 'Start Complementary Foods', icon: '🥣', color: '#3D8B5E', minMonths: 6, maxMonths: 9,
+  { range: '6–9 Months', subtitle: 'Start Complementary Foods', icon: '🥣', color: t.green, minMonths: 6, maxMonths: 9,
     points: ['Continue breastfeeding alongside new foods.', 'Start with Sarbottam Lito (सर्वोत्तम लिटो) — thin, smooth porridge.', 'Frequency: 2–3 times per day + 1–2 breastfeeds.', 'Amount: start with 2–3 tablespoons, increase gradually.', 'Texture: very smooth, no lumps.', 'Include four star food groups in each meal.'],
     malnutritionTip: 'If the child refuses food, has persistent diarrhea, or is not gaining weight — consult FCHV or health post.' },
-  { range: '9–12 Months', subtitle: 'More Variety & Texture', icon: '🥘', color: '#F5A623', minMonths: 9, maxMonths: 12,
+  { range: '9–12 Months', subtitle: 'More Variety & Texture', icon: '🥘', color: t.gold, minMonths: 9, maxMonths: 12,
     points: ['Continue breastfeeding.', 'Frequency: 3 main meals + 1–2 nutritious snacks per day.', 'Amount: 3/4 cup (125–175 ml) per meal.', 'Texture: mashed/finely chopped — no need to grind.', 'Include: eggs, fish, meat, lentils, green vegetables, fruits.', 'Add 1 teaspoon of oil/ghee to each meal for energy.'],
     malnutritionTip: 'If the child looks pale (anaemia), introduce iron-rich foods (meat, liver, dark green leaves).' },
   { range: '12–24 Months', subtitle: 'Family Pot Foods', icon: '🍛', color: '#2196F3', minMonths: 12, maxMonths: 24,
@@ -27,16 +29,16 @@ const AGE_GROUPS_EN = [
   { range: '24–60 Months', subtitle: 'Balanced Family Diet', icon: '🍽️', color: '#673AB7', minMonths: 24, maxMonths: 60,
     points: ['Continue breastfeeding if desired.', 'Eat all family meals with the family.', 'Frequency: 3 meals + 1–2 snacks per day.', 'Amount: 1–1.5 cups per meal.', 'Include all four food groups at each meal.', 'Encourage hand-washing before meals.', 'Teach table manners and food safety.'],
     malnutritionTip: 'Monitor growth monthly. Ensure variety and adequate portions of protein, vegetables, and fruits.' },
-];
+]);
 
-const AGE_GROUPS_NE = [
-  { range: '०–६ महिना', subtitle: 'केवल आमाको दूध', icon: '🍼', color: '#E8602C', minMonths: 0, maxMonths: 6,
+const makeAgeGroupsNe = (t: Palette) => ([
+  { range: '०–६ महिना', subtitle: 'केवल आमाको दूध', icon: '🍼', color: t.clay, minMonths: 0, maxMonths: 6,
     points: ['जन्मपछि १ घन्टामा दुध खुवाउन सुरु गर्नुहोस्।', 'पहिलो पहेँलो दूध (कोलोस्ट्रम) दिनुहोस् — कहिले पनि फ्याँक्नु हुँदैन।', '६ महिनासम्म केवल आमाको दूध दिनुहोस्।', 'माग अनुसार दुध खुवाउनुहोस् — दिनमा कम्तिमा ८-१२ पटक।', 'बोतल वा निप्पल प्रयोग नगर्नुहोस्।'],
     malnutritionTip: 'बच्चा राम्रोसँग खाँदैन, तौल घट्छ वा निकै दुब्लो देखिन्छ भने तुरुन्त स्वास्थ्य चौकी जानुहोस्।' },
-  { range: '६–९ महिना', subtitle: 'पूरक खाना सुरु गर्नुहोस्', icon: '🥣', color: '#3D8B5E', minMonths: 6, maxMonths: 9,
+  { range: '६–९ महिना', subtitle: 'पूरक खाना सुरु गर्नुहोस्', icon: '🥣', color: t.green, minMonths: 6, maxMonths: 9,
     points: ['आमाको दूध जारी राख्नुहोस् र नयाँ खाना दिनुहोस्।', 'सर्वोत्तम लिटोबाट सुरु गर्नुहोस् — पातलो, चिल्लो लिटो।', 'दिनमा २–३ पटक + १–२ पटक स्तनपान।', 'सुरुमा २–३ चम्चा दिनुहोस्, बिस्तारै बढाउनुहोस्।', 'बनावट: एकदमै मुलायम र चिल्लो, कुनै डल्ला हुँदैन।', 'प्रत्येक खानामा चार तारे खाद्य समूह समावेश गर्नुहोस्।'],
     malnutritionTip: 'बच्चाले खान मान्दैन, दिसा लागिरहन्छ वा तौल बढ्दैन भने स्वास्थ्य स्वयंसेविका वा स्वास्थ्य चौकीमा जानुहोस्।' },
-  { range: '९–१२ महिना', subtitle: 'अधिक विविधता र बनावट', icon: '🥘', color: '#F5A623', minMonths: 9, maxMonths: 12,
+  { range: '९–१२ महिना', subtitle: 'अधिक विविधता र बनावट', icon: '🥘', color: t.gold, minMonths: 9, maxMonths: 12,
     points: ['आमाको दूध जारी राख्नुहोस्।', 'आवृत्ति: दिनमा ३ मुख्य खाना + १-२ पोषक खाजा।', 'मात्रा: ३/४ कप (१२५-१७५ मिली) प्रति खाना।', 'बनावट: नरम बनाएर मसिनो बनाएर दिनुहोस्। पिस्नु पर्दैन।', 'समावेश गर्नुहोस्: अण्डा, माछा, मासु, दाल, हरियो पात, फलफूल।', 'प्रत्येक खानामा १ चम्चा तेल वा घिउ हाल्नुहोस्।'],
     malnutritionTip: 'बच्चाको अनुहार फिका देखिन्छ भने मासु, कलेजो, हरियो सागपात जस्ता खानेकुरा दिनुहोस्।' },
   { range: '१२–२४ महिना', subtitle: 'पारिवारिक खाना', icon: '🍛', color: '#2196F3', minMonths: 12, maxMonths: 24,
@@ -45,7 +47,7 @@ const AGE_GROUPS_NE = [
   { range: '२४–६० महिना', subtitle: 'संतुलित पारिवारिक खाना', icon: '🍽️', color: '#673AB7', minMonths: 24, maxMonths: 60,
     points: ['आमाको दूध चाहिएमा जारी राख्नुहोस्।', 'परिवारसँगै घरको खाना खानुहोस्।', 'दिनमा ३ पटक मुख्य खाना + १–२ पटक खाजा।', 'एक पटकमा १ देखि १.५ कप।', 'प्रत्येक खानामा चारै किसिमका खानेकुरा हाल्नुहोस्।', 'खाना खानुअघि हात धुन प्रोत्साहित गर्नुहोस्।', 'टेबल शिष्टाचार र खाना सफा राख्ने तरिका सिकाउनुहोस्।'],
     malnutritionTip: 'हरेक महिना बच्चाको विकास हेर्नुहोस्। दाल-मासु, सागपात र फलफूल सबै किसिमका हाल्नुहोस्।' },
-];
+]);
 
 const SARBOTTAM_PITHO_EN = { title: 'Sarbottam Pitho (Super-Flour)', description: 'A traditional Nepali complementary food that is highly nutritious and affordable.',
   recipe: { title: 'Recipe & Preparation', ingredients: ['2 parts pulse (soybeans preferred, or other small beans)', '1 part whole grain cereal (maize or rice)', '1 part another whole grain cereal (wheat, millet, or buckwheat)'],
@@ -90,12 +92,14 @@ const FEEDING_DIFFICULTIES_NE = { title: 'खुवाउन गाह्रो 
 ]};
 
 export default function NutritionScreen({ route, navigation }: Props) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const [activeTab, setActiveTab] = useState<'age' | 'sarbottam' | 'myths' | 'difficulties'>('age');
   const child = route.params?.child;
   const highlightAge = route.params?.highlightAge;
-  const ageGroups = isNe ? AGE_GROUPS_NE : AGE_GROUPS_EN;
+  const ageGroups = isNe ? makeAgeGroupsNe(t) : makeAgeGroupsEn(t);
   const sarbottamData = isNe ? SARBOTTAM_PITHO_NE : SARBOTTAM_PITHO_EN;
   const mythsData = isNe ? MYTHS_NE : MYTHS_EN;
   const difficultiesData = isNe ? FEEDING_DIFFICULTIES_NE : FEEDING_DIFFICULTIES_EN;
@@ -196,7 +200,7 @@ export default function NutritionScreen({ route, navigation }: Props) {
               {mythsData.map((item, i) => (
                 <View key={i} style={styles.mythCard}>
                   <View style={styles.mythHeader}>
-                    <Ionicons name="close-circle" size={20} color="#C0392B" />
+                    <Ionicons name="close-circle" size={20} color={t.red} />
                     <Text style={styles.mythTitle}>{item.myth}</Text>
                   </View>
                   <View style={styles.mythContent}>
@@ -216,7 +220,7 @@ export default function NutritionScreen({ route, navigation }: Props) {
               {difficultiesData.challenges.map((item, i) => (
                 <View key={i} style={styles.challengeCard}>
                   <View style={styles.challengeHeader}>
-                    <Ionicons name="help-circle" size={20} color="#E8602C" />
+                    <Ionicons name="help-circle" size={20} color={t.clay} />
                     <Text style={styles.challengeTitle}>{item.challenge}</Text>
                   </View>
                   <View style={styles.challengeContent}>
@@ -238,52 +242,52 @@ export default function NutritionScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
-  tabScroll: { maxHeight: 52, backgroundColor: '#FDF8F2', borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
+const makeStyles = (t: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.surface },
+  container: { flex: 1, backgroundColor: t.bg },
+  tabScroll: { maxHeight: 52, backgroundColor: t.surface, borderBottomWidth: 1, borderBottomColor: t.border },
   tabScrollContent: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  tabPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#EDE0D4' },
-  tabPillActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
-  tabPillText: { fontSize: 12, fontWeight: '600', color: '#7A6E65' },
-  tabPillTextActive: { color: '#fff' },
+  tabPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: t.border },
+  tabPillActive: { backgroundColor: t.clay, borderColor: t.clay },
+  tabPillText: { fontSize: 12, fontWeight: '600', color: t.muted },
+  tabPillTextActive: { color: t.onAccent },
   content: { flex: 1, padding: 12 },
 
-  ageCard: { backgroundColor: '#FDF8F2', borderRadius: 12, marginBottom: 12, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 2 },
+  ageCard: { backgroundColor: t.surface, borderRadius: 12, marginBottom: 12, shadowColor: t.shadow, shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 2 },
   ageCardHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
   ageIcon: { fontSize: 32 },
-  ageRange: { fontSize: 16, fontWeight: '800', color: '#1A1A2E' },
+  ageRange: { fontSize: 16, fontWeight: '800', color: t.text },
   yourChildBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  yourChildBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  feedingBadge: { alignSelf: 'flex-start', marginTop: 4, backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  feedingBadgeText: { fontSize: 11, color: '#C0392B', fontWeight: '600' },
+  yourChildBadgeText: { color: t.onAccent, fontSize: 10, fontWeight: '800' },
+  feedingBadge: { alignSelf: 'flex-start', marginTop: 4, backgroundColor: t.redLight, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  feedingBadgeText: { fontSize: 11, color: t.red, fontWeight: '600' },
   ageCardBody: { padding: 14, paddingTop: 0 },
 
   pointRow: { flexDirection: 'row', marginBottom: 8, gap: 8 },
-  pointCheck: { fontSize: 14, fontWeight: '700', color: '#E8602C', minWidth: 16 },
-  pointNum: { fontSize: 14, fontWeight: '700', color: '#7A6E65', minWidth: 20 },
-  pointText: { flex: 1, fontSize: 13, color: '#7A6E65', lineHeight: 18 },
+  pointCheck: { fontSize: 14, fontWeight: '700', color: t.clay, minWidth: 16 },
+  pointNum: { fontSize: 14, fontWeight: '700', color: t.muted, minWidth: 20 },
+  pointText: { flex: 1, fontSize: 13, color: t.muted, lineHeight: 18 },
 
-  tipBox: { flexDirection: 'row', backgroundColor: '#FEF3C7', padding: 10, borderRadius: 8, marginTop: 10, borderLeftWidth: 2, borderLeftColor: '#F5A623', gap: 6 },
-  tipLabel: { fontSize: 12, fontWeight: '700', color: '#92400E' },
-  tipText: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 16 },
+  tipBox: { flexDirection: 'row', backgroundColor: t.amberLight, padding: 10, borderRadius: 8, marginTop: 10, borderLeftWidth: 2, borderLeftColor: t.gold, gap: 6 },
+  tipLabel: { fontSize: 12, fontWeight: '700', color: t.amberDark },
+  tipText: { flex: 1, fontSize: 12, color: t.amberDark, lineHeight: 16 },
 
   sectionContent: { paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginBottom: 8 },
-  sectionDesc: { fontSize: 13, color: '#7A6E65', marginBottom: 16, lineHeight: 18 },
-  subsection: { backgroundColor: '#FDF8F2', padding: 16, borderRadius: 12, marginBottom: 16, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 1 },
-  subsectionTitle: { fontSize: 15, fontWeight: '700', color: '#E8602C', marginBottom: 12 },
-  subsubtitle: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginTop: 12, marginBottom: 6 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: t.text, marginBottom: 8 },
+  sectionDesc: { fontSize: 13, color: t.muted, marginBottom: 16, lineHeight: 18 },
+  subsection: { backgroundColor: t.surface, padding: 16, borderRadius: 12, marginBottom: 16, shadowColor: t.shadow, shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 1 },
+  subsectionTitle: { fontSize: 15, fontWeight: '700', color: t.clay, marginBottom: 12 },
+  subsubtitle: { fontSize: 13, fontWeight: '600', color: t.text, marginTop: 12, marginBottom: 6 },
 
-  mythCard: { backgroundColor: '#FDF8F2', borderRadius: 12, marginBottom: 12, overflow: 'hidden', shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 1, borderLeftWidth: 4, borderLeftColor: '#C0392B' },
-  mythHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: '#FEE2E2' },
-  mythTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#991B1B' },
+  mythCard: { backgroundColor: t.surface, borderRadius: 12, marginBottom: 12, overflow: 'hidden', shadowColor: t.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 1, borderLeftWidth: 4, borderLeftColor: t.red },
+  mythHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: t.redLight },
+  mythTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: t.redDark },
   mythContent: { padding: 12 },
-  mythLabel: { fontSize: 12, fontWeight: '700', color: '#E8602C', marginBottom: 4 },
-  mythText: { fontSize: 13, color: '#7A6E65', marginBottom: 10, lineHeight: 18 },
+  mythLabel: { fontSize: 12, fontWeight: '700', color: t.clay, marginBottom: 4 },
+  mythText: { fontSize: 13, color: t.muted, marginBottom: 10, lineHeight: 18 },
 
-  challengeCard: { backgroundColor: '#FDF8F2', borderRadius: 12, marginBottom: 12, overflow: 'hidden', shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 1, borderLeftWidth: 4, borderLeftColor: '#E8602C' },
-  challengeHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: '#FDF8F2' },
-  challengeTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1A1A2E' },
+  challengeCard: { backgroundColor: t.surface, borderRadius: 12, marginBottom: 12, overflow: 'hidden', shadowColor: t.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 1, borderLeftWidth: 4, borderLeftColor: t.clay },
+  challengeHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: t.surface },
+  challengeTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: t.text },
   challengeContent: { padding: 12 },
 });

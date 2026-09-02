@@ -4,6 +4,8 @@ import {
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
   Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
@@ -49,6 +51,8 @@ function getGreeting(isNe: boolean): string {
 }
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
+  const { palette: pal } = useContext(ThemeContext);
+  const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user } = useAuth();
   const t = translations[language];
@@ -211,20 +215,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.langToggle}>
-            <TouchableOpacity style={[styles.langBtn, language === 'ne' && { backgroundColor: '#E8602C' }]} onPress={() => setLanguage('ne')}>
-              <Text style={[styles.langBtnText, language === 'ne' && { color: '#fff', fontWeight: '700' }]}>नेपाली</Text>
+            <TouchableOpacity style={[styles.langBtn, language === 'ne' && { backgroundColor: pal.clay }]} onPress={() => setLanguage('ne')}>
+              <Text style={[styles.langBtnText, language === 'ne' && { color: pal.onAccent, fontWeight: '700' }]}>नेपाली</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.langBtn, language === 'en' && { backgroundColor: '#E8602C' }]} onPress={() => setLanguage('en')}>
-              <Text style={[styles.langBtnText, language === 'en' && { color: '#fff', fontWeight: '700' }]}>EN</Text>
+            <TouchableOpacity style={[styles.langBtn, language === 'en' && { backgroundColor: pal.clay }]} onPress={() => setLanguage('en')}>
+              <Text style={[styles.langBtnText, language === 'en' && { color: pal.onAccent, fontWeight: '700' }]}>EN</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={22} color="#C0392B" />
+              <Ionicons name="log-out-outline" size={22} color={pal.red} />
               <Text style={styles.logoutBtnLabel}>{isNe ? 'लग आउट' : 'Logout'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowSettings(s => !s)}>
-              <Ionicons name={showSettings ? "settings" : "settings-outline"} size={22} color="#7A6E65" />
+              <Ionicons name={showSettings ? "settings" : "settings-outline"} size={22} color={pal.muted} />
               <Text style={styles.settingsBtnLabel}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
             </TouchableOpacity>
           </View>
@@ -237,7 +241,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Text style={styles.welcomeTitle}>{getGreeting(isNe)}{user?.displayName ? ', ' + user.displayName : ''}</Text>
             <Text style={styles.welcomeSubtitle}>{isNe ? 'एप कसरी चलाउने? थिच्नुहोस्' : 'Tap to learn how to use the app'}</Text>
           </View>
-          <Ionicons name={showGuide ? 'chevron-up' : 'chevron-down'} size={20} color="#E8602C" />
+          <Ionicons name={showGuide ? 'chevron-up' : 'chevron-down'} size={20} color={pal.clay} />
         </View>
         {showGuide && (
           <View style={styles.stepsBox}>
@@ -256,7 +260,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       </TouchableOpacity>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E8602C" style={styles.loader} />
+        <ActivityIndicator size="large" color={pal.clay} style={styles.loader} />
       ) : children.length === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyState}>
           <Text style={styles.emptyText}>{t.noChildren}</Text>
@@ -302,137 +306,137 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
           <View style={styles.settingsRow}>
-            <Ionicons name="medical-outline" size={18} color="#7A6E65" />
+            <Ionicons name="medical-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>Kapoori Ka</Text>
             <Text style={styles.settingsValue}>{isNe ? 'बाल स्वास्थ्य सहायक' : 'Child Health Assistant'}</Text>
           </View>
           <View style={styles.settingsRow}>
-            <Ionicons name="code-slash-outline" size={18} color="#7A6E65" />
+            <Ionicons name="code-slash-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>{isNe ? 'संस्करण' : 'Version'}</Text>
             <Text style={styles.settingsValue}>1.0.0</Text>
           </View>
           <View style={styles.settingsRow}>
-            <Ionicons name="language-outline" size={18} color="#7A6E65" />
+            <Ionicons name="language-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>{isNe ? 'भाषा' : 'Language'}</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>
               <TouchableOpacity
                 onPress={() => setLanguage('en')}
-                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'en' ? '#E8602C' : '#EDE0D4' }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'en' ? '#fff' : '#5B4A3A' }}>English</Text>
+                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'en' ? pal.clay : pal.border }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'en' ? pal.onAccent : pal.muted2 }}>English</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setLanguage('ne')}
-                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'ne' ? '#E8602C' : '#EDE0D4' }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'ne' ? '#fff' : '#5B4A3A' }}>नेपाली</Text>
+                style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, backgroundColor: language === 'ne' ? pal.clay : pal.border }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: language === 'ne' ? pal.onAccent : pal.muted2 }}>नेपाली</Text>
               </TouchableOpacity>
             </View>
           </View>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Subscription'); }}>
-            <Ionicons name="diamond-outline" size={18} color="#E8602C" />
+            <Ionicons name="diamond-outline" size={18} color={pal.clay} />
             <Text style={styles.settingsLabel}>{isNe ? 'प्रिमियम सदस्यता' : 'Premium Subscription'}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#C4956A" />
+            <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
-            <Ionicons name="information-circle-outline" size={18} color="#7A6E65" />
+            <Ionicons name="information-circle-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>{t.about}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#C4956A" />
+            <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.settingsRow, styles.logoutRow]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={18} color="#C0392B" />
-            <Text style={[styles.settingsLabel, { color: '#C0392B' }]}>{isNe ? 'लग आउट' : 'Logout'}</Text>
+            <Ionicons name="log-out-outline" size={18} color={pal.red} />
+            <Text style={[styles.settingsLabel, { color: pal.red }]}>{isNe ? 'लग आउट' : 'Logout'}</Text>
           </TouchableOpacity>
         </View>
       )}
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} screen="home" />}
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddChild')}>
-        <Ionicons name="add" size={30} color="#fff" />
+        <Ionicons name="add" size={30} color={pal.onAccent} />
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: pal.bg },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6 },
   headerLeft: { flex: 1 },
-  headerTitle: { fontWeight: '800', fontSize: 22, color: '#1A1A2E' },
-  headerSubtitle: { fontSize: 13, color: '#7A6E65', marginTop: 1 },
+  headerTitle: { fontWeight: '800', fontSize: 22, color: pal.text },
+  headerSubtitle: { fontSize: 13, color: pal.muted, marginTop: 1 },
   headerRight: { alignItems: 'flex-end' },
-  langToggle: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, borderColor: '#EDE0D4', padding: 2, marginBottom: 6 },
+  langToggle: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, borderColor: pal.border, padding: 2, marginBottom: 6 },
   langBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 18 },
-  langBtnText: { fontSize: 12, fontWeight: '600', color: '#7A6E65' },
+  langBtnText: { fontSize: 12, fontWeight: '600', color: pal.muted },
   headerIcons: { flexDirection: 'row', gap: 8 },
 
   // Missed vaccine banner
-  missedBanner: { marginHorizontal: 12, marginTop: 6, marginBottom: 6, backgroundColor: '#FEE2E2', borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#C0392B', padding: 10 },
+  missedBanner: { marginHorizontal: 12, marginTop: 6, marginBottom: 6, backgroundColor: pal.redLight, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: pal.red, padding: 10 },
   missedBannerInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  missedBannerTitle: { fontSize: 13, fontWeight: '700', color: '#991B1B' },
-  missedBannerDetail: { fontSize: 11, color: '#991B1B', marginTop: 2 },
-  missedBannerMore: { fontSize: 11, color: '#991B1B', textAlign: 'center', marginTop: 4, fontWeight: '600' },
+  missedBannerTitle: { fontSize: 13, fontWeight: '700', color: pal.redDark },
+  missedBannerDetail: { fontSize: 11, color: pal.redDark, marginTop: 2 },
+  missedBannerMore: { fontSize: 11, color: pal.redDark, textAlign: 'center', marginTop: 4, fontWeight: '600' },
 
   aboutBtn: { padding: 4 },
   settingsBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
-  settingsBtnLabel: { fontSize: 13, color: '#7A6E65', fontWeight: '500' },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4, borderWidth: 1, borderColor: '#F3C1B8', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
-  logoutBtnLabel: { fontSize: 13, color: '#C0392B', fontWeight: '600' },
-  settingsPanel: { backgroundColor: '#FDF8F2', borderTopWidth: 1, borderTopColor: '#EDE0D4', padding: 16, paddingTop: 8 },
-  settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#EDE0D4', alignSelf: 'center', marginBottom: 12 },
-  settingsTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
-  settingsSectionLabel: { fontSize: 11, fontWeight: '700', color: '#B8A58E', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: 6, paddingHorizontal: 2 },
+  settingsBtnLabel: { fontSize: 13, color: pal.muted, fontWeight: '500' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4, borderWidth: 1, borderColor: pal.actionBg, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
+  logoutBtnLabel: { fontSize: 13, color: pal.red, fontWeight: '600' },
+  settingsPanel: { backgroundColor: pal.surface, borderTopWidth: 1, borderTopColor: pal.border, padding: 16, paddingTop: 8 },
+  settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: pal.border, alignSelf: 'center', marginBottom: 12 },
+  settingsTitle: { fontSize: 16, fontWeight: '700', color: pal.text, marginBottom: 12 },
+  settingsSectionLabel: { fontSize: 11, fontWeight: '700', color: pal.muted2, textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: 6, paddingHorizontal: 2 },
   langToggleInline: { flexDirection: 'row', gap: 4 },
-  langBtnSmall: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#ddd' },
-  langBtnSmallActive: { backgroundColor: '#E8602C', borderColor: '#E8602C' },
-  langBtnSmallText: { fontSize: 12, color: '#666' },
-  langBtnSmallTextActive: { color: '#fff', fontWeight: '600' },
-  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F7ECD6', gap: 10 },
-  settingsLabel: { flex: 1, fontSize: 14, color: '#1A1A2E' },
-  settingsValue: { fontSize: 13, color: '#7A6E65' },
+  langBtnSmall: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: pal.border },
+  langBtnSmallActive: { backgroundColor: pal.clay, borderColor: pal.clay },
+  langBtnSmallText: { fontSize: 12, color: pal.muted },
+  langBtnSmallTextActive: { color: pal.onAccent, fontWeight: '600' },
+  settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pal.actionBg, gap: 10 },
+  settingsLabel: { flex: 1, fontSize: 14, color: pal.text },
+  settingsValue: { fontSize: 13, color: pal.muted },
   logoutRow: { borderBottomWidth: 0, marginTop: 4 },
 
-  welcomeBanner: { marginHorizontal: 12, marginTop: 6, marginBottom: 4, backgroundColor: '#FDF8F2', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#EDE0D4', borderLeftWidth: 4, borderLeftColor: '#E8602C' },
+  welcomeBanner: { marginHorizontal: 12, marginTop: 6, marginBottom: 4, backgroundColor: pal.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: pal.border, borderLeftWidth: 4, borderLeftColor: pal.clay },
   welcomeRow: { flexDirection: 'row', alignItems: 'center' },
   welcomeTextBox: { flex: 1 },
-  welcomeTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
-  welcomeSubtitle: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
-  stepsBox: { marginTop: 12, backgroundColor: '#FDF8F2', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#EDE0D4' },
-  stepsHeading: { fontSize: 13, fontWeight: '700', color: '#1A1A2E', marginBottom: 10 },
+  welcomeTitle: { fontSize: 15, fontWeight: '700', color: pal.text },
+  welcomeSubtitle: { fontSize: 12, color: pal.muted, marginTop: 2 },
+  stepsBox: { marginTop: 12, backgroundColor: pal.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: pal.border },
+  stepsHeading: { fontSize: 13, fontWeight: '700', color: pal.text, marginBottom: 10 },
   stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 },
   stepIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#E8602C15', alignItems: 'center', justifyContent: 'center' },
   stepIcon: { fontSize: 18 },
   stepTextBox: { flex: 1 },
-  stepTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A2E' },
-  stepDesc: { fontSize: 11, color: '#7A6E65', marginTop: 1 },
+  stepTitle: { fontSize: 13, fontWeight: '700', color: pal.text },
+  stepDesc: { fontSize: 11, color: pal.muted, marginTop: 1 },
 
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: '#7A6E65', textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: pal.muted, textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
 
   list: { paddingHorizontal: 12, paddingBottom: 16 },
-  childCard: { backgroundColor: '#FDF8F2', borderRadius: 16, marginBottom: 8, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  childCard: { backgroundColor: pal.surface, borderRadius: 16, marginBottom: 8, shadowColor: pal.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   childCardContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F7ECD6', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: pal.actionBg, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   avatarText: { fontSize: 24 },
   avatarPhoto: { width: 44, height: 44, borderRadius: 22 },
   childInfo: { flex: 1 },
-  childName: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
-  childNameNepali: { fontSize: 14, color: '#7A6E65', marginTop: 2 },
-  childNameRoman: { fontSize: 12, color: '#7A6E65', marginTop: 1 },
+  childName: { fontSize: 16, fontWeight: '700', color: pal.text },
+  childNameNepali: { fontSize: 14, color: pal.muted, marginTop: 2 },
+  childNameRoman: { fontSize: 12, color: pal.muted, marginTop: 1 },
   childMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  childAge: { fontSize: 13, color: '#7A6E65' },
-  childArrow: { fontSize: 22, color: '#C4956A', fontWeight: '600' },
+  childAge: { fontSize: 13, color: pal.muted },
+  childArrow: { fontSize: 22, color: pal.shadow, fontWeight: '600' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', padding: 40, paddingBottom: 160 },
-  emptyText: { fontSize: 16, color: '#7A6E65', textAlign: 'center', lineHeight: 24 },
-  hintText: { fontSize: 13, color: '#E8602C', textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
+  emptyText: { fontSize: 16, color: pal.muted, textAlign: 'center', lineHeight: 24 },
+  hintText: { fontSize: 13, color: pal.clay, textAlign: 'center', marginTop: 10, fontStyle: 'italic' },
   fabPointer: { backgroundColor: '#E8602C18', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, alignItems: 'center', marginBottom: 8, alignSelf: 'flex-end', marginRight: 20 },
-  fabPointerTitle: { fontWeight: '700', fontSize: 13, color: '#E8602C', textAlign: 'center' },
-  fabPointerArrow: { fontSize: 20, color: '#E8602C', textAlign: 'center', marginTop: 2 },
+  fabPointerTitle: { fontWeight: '700', fontSize: 13, color: pal.clay, textAlign: 'center' },
+  fabPointerArrow: { fontSize: 20, color: pal.clay, textAlign: 'center', marginTop: 2 },
   featurePreview: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 20, gap: 10 },
-  featureChip: { alignItems: 'center', backgroundColor: '#FDF8F2', borderRadius: 12, padding: 12, width: 80, borderWidth: 1, borderColor: '#EDE0D4' },
+  featureChip: { alignItems: 'center', backgroundColor: pal.surface, borderRadius: 12, padding: 12, width: 80, borderWidth: 1, borderColor: pal.border },
   featureChipIcon: { fontSize: 24, marginBottom: 4 },
-  featureChipLabel: { fontSize: 11, color: '#7A6E65', fontWeight: '600', textAlign: 'center' },
+  featureChipLabel: { fontSize: 11, color: pal.muted, fontWeight: '600', textAlign: 'center' },
 
   loader: { flex: 1 },
-  fab: { position: 'absolute', bottom: 80, right: 20, width: 56, height: 56, borderRadius: 30, backgroundColor: '#E8602C', alignItems: 'center', justifyContent: 'center', shadowColor: '#E8602C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8 },
+  fab: { position: 'absolute', bottom: 80, right: 20, width: 56, height: 56, borderRadius: 30, backgroundColor: pal.clay, alignItems: 'center', justifyContent: 'center', shadowColor: pal.clay, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8 },
   whatsappCard: { paddingHorizontal: 16, paddingBottom: 80, paddingTop: 12 },
   whatsappBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#25D366', borderRadius: 28, paddingVertical: 12, paddingHorizontal: 24, gap: 10 },
-  whatsappBtnTxt: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
+  whatsappBtnTxt: { fontSize: 15, fontWeight: '700', color: pal.text },
 });

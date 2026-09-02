@@ -5,6 +5,8 @@ import {
   StyleSheet, ScrollView, Alert, ActivityIndicator,
   Dimensions, Modal,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import dayjs from 'dayjs';
 import {
@@ -42,6 +44,8 @@ function calculateMidParentalHeight(fatherHeight: number, motherHeight: number, 
 }
 
 export default function GrowthChartScreen({ route, navigation }: Props) {
+  const { palette: pal } = useContext(ThemeContext);
+  const styles = makeStyles(pal);
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const { subscription, user } = useAuth();
@@ -83,7 +87,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
       renderItem={({ item }) => (
         <TouchableOpacity style={{ height: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 6, backgroundColor: item.value === selected ? '#E8602C20' : 'transparent' }}
           onPress={() => onSelect(item.value)}>
-          <Text style={{ fontSize: 15, color: item.value === selected ? '#E8602C' : '#7A6E65', fontWeight: item.value === selected ? '700' : '400' }}>{item.label}</Text>
+          <Text style={{ fontSize: 15, color: item.value === selected ? pal.clay : pal.muted, fontWeight: item.value === selected ? '700' : '400' }}>{item.label}</Text>
         </TouchableOpacity>
       )}
     />
@@ -208,7 +212,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
 
   const bmiAvailable = childAgeMonths >= 24;
 
-const STATUS_COLORS = { green: '#3D8B5E', yellow: '#F5A623', red: '#C0392B', grey: '#7A6E65' };
+const STATUS_COLORS = { green: pal.green, yellow: pal.gold, red: pal.red, grey: pal.muted };
 const STATUS_DESC: Record<string, { en: string; ne: string }> = {
   green: { en: 'Your child is growing well within WHO standards.', ne: 'बच्चा WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ।' },
   yellow: { en: 'Growth needs attention. Monitor closely.', ne: 'वृद्धि ध्यान दिनुपर्ने। नजिकबाट निगरानी गर्नुहोस्।' },
@@ -216,7 +220,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
   grey: { en: 'Not enough data yet.', ne: 'पर्याप्त डेटा छैन।' },
 };
 
-  if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
+  if (loading) return <ActivityIndicator size="large" color={pal.clay} style={{ flex: 1, backgroundColor: pal.bg }} />;
 
   if (records.length === 0) {
     return (
@@ -226,11 +230,11 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
           <Text style={styles.firstCardTitle}>{isNe ? 'पहिलो नाप' : 'First Measurement'}</Text>
           <Text style={styles.firstCardSub}>{isNe ? 'तपाईंको बच्चाको पहिलो तौल र उचाइ रेकर्ड गर्नुहोस्' : "Record your child's first weight and height"}</Text>
           <Text style={styles.firstLabel}>{isNe ? 'तौल (केजी)' : 'Weight (kg)'}</Text>
-          <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ३.२' : 'e.g. 3.2'} keyboardType="numeric" value={firstWeight} onChangeText={setFirstWeight} autoFocus editable={!firstSaving} placeholderTextColor="#C4956A" />
+          <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ३.२' : 'e.g. 3.2'} keyboardType="numeric" value={firstWeight} onChangeText={setFirstWeight} autoFocus editable={!firstSaving} placeholderTextColor={pal.shadow} />
           <Text style={styles.firstLabel}>{isNe ? 'उचाइ (सेमी)' : 'Height (cm)'}</Text>
-          <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ५०' : 'e.g. 50'} keyboardType="numeric" value={firstHeight} onChangeText={setFirstHeight} editable={!firstSaving} placeholderTextColor="#C4956A" />
+          <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ५०' : 'e.g. 50'} keyboardType="numeric" value={firstHeight} onChangeText={setFirstHeight} editable={!firstSaving} placeholderTextColor={pal.shadow} />
           <TouchableOpacity style={[styles.firstSaveBtn, firstSaving && { opacity: 0.6 }]} onPress={saveFirstMeasurement} disabled={firstSaving}>
-            {firstSaving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.firstSaveBtnText}>{isNe ? 'बचत गर्नुहोस्' : 'Save'}</Text>}
+            {firstSaving ? <ActivityIndicator color={pal.onAccent} size="small" /> : <Text style={styles.firstSaveBtnText}>{isNe ? 'बचत गर्नुहोस्' : 'Save'}</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -242,11 +246,11 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
       {/* Tab Switcher — Pill style */}
       <View style={styles.tabContainer}>
         <TouchableOpacity style={[styles.pillTab, activeTab === 'chart' && styles.pillTabActive]} onPress={() => setActiveTab('chart')}>
-          <Ionicons name="analytics" size={16} color={activeTab === 'chart' ? '#fff' : '#7A6E65'} />
+          <Ionicons name="analytics" size={16} color={activeTab === 'chart' ? pal.onAccent : pal.muted} />
           <Text style={[styles.pillTabText, activeTab === 'chart' && styles.pillTabTextActive]}>{isNe ? 'वृद्धि चार्ट' : 'Growth Chart'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.pillTab, activeTab === 'predictor' && styles.pillTabActive]} onPress={() => setActiveTab('predictor')}>
-          <Ionicons name="trending-up" size={16} color={activeTab === 'predictor' ? '#fff' : '#7A6E65'} />
+          <Ionicons name="trending-up" size={16} color={activeTab === 'predictor' ? pal.onAccent : pal.muted} />
           <Text style={[styles.pillTabText, activeTab === 'predictor' && styles.pillTabTextActive]}>{isNe ? 'भविष्य उचाइ' : 'Height Predictor'}</Text>
         </TouchableOpacity>
       </View>
@@ -260,7 +264,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
 
           {trendFlags.map((flag) => (
             <View key={`${flag.level}-${flag.measuredAt}`} style={styles.trendNotice} accessibilityRole="alert">
-              <Ionicons name="information-circle-outline" size={20} color="#8A541C" />
+              <Ionicons name="information-circle-outline" size={20} color={pal.subInk} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.trendNoticeTitle}>{flag.title}</Text>
                 <Text style={styles.trendNoticeText}>{flag.message}</Text>
@@ -274,10 +278,10 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
             <View style={[styles.statusCard, { borderLeftColor: STATUS_COLORS[status.status] }]}>
               <View style={styles.statusHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <InfoBubble titleEn="What is WAZ?" titleNe="WAZ के हो?" bodyEn="Weight-for-Age Z-score compares your child's weight to WHO standards." bodyNe="यो उमेर अनुसारको तौल सूचकांक हो।" iconSize={14} iconColor="#7A6E65" />
+                  <InfoBubble titleEn="What is WAZ?" titleNe="WAZ के हो?" bodyEn="Weight-for-Age Z-score compares your child's weight to WHO standards." bodyNe="यो उमेर अनुसारको तौल सूचकांक हो।" iconSize={14} iconColor={pal.muted} />
                   <Text style={styles.statusTitle}>{chartType === 'bmi' ? (isNe ? 'BMI स्थिति' : 'BMI Status') : (isNe ? 'वृद्धि स्थिति' : 'Growth Status')}: </Text>
                   <TouchableOpacity onPress={() => { Speech.speak(isNe ? STATUS_DESC[status.status].ne : STATUS_DESC[status.status].en); }}>
-                    <Ionicons name="volume-high" size={16} color="#7A6E65" />
+                    <Ionicons name="volume-high" size={16} color={pal.muted} />
                   </TouchableOpacity>
                 </View>
                 <Text style={[styles.statusLabel, { color: STATUS_COLORS[status.status] }]}>{isNe ? status.labelNe : status.labelEn}</Text>
@@ -285,7 +289,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
               <Text style={styles.statusDesc}>{isNe ? STATUS_DESC[status.status].ne : STATUS_DESC[status.status].en}</Text>
               {status.status === 'red' && (
                 <View style={styles.alertBox}>
-                  <Ionicons name="warning" size={20} color="#C0392B" />
+                  <Ionicons name="warning" size={20} color={pal.red} />
                   <Text style={styles.alertText}>{isNe ? 'बाल रोग विशेषज्ञसँग परामर्श लिनुहोस्।' : 'Please have your child evaluated by a pediatrician.'}</Text>
                 </View>
               )}
@@ -302,7 +306,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
             </View>
             {latestRecord && (
               <View style={styles.lastRecordedRow}>
-                <Ionicons name="calendar-outline" size={14} color="#7A6E65" />
+                <Ionicons name="calendar-outline" size={14} color={pal.muted} />
                 <Text style={styles.lastRecordedText}>{isNe ? 'अन्तिम: ' : 'Last: '}{(latestRecord as any).bsDate ? `${(latestRecord as any).bsDate}` : dayjs(latestRecord.date).format('YYYY-MM-DD')}</Text>
               </View>
             )}
@@ -340,18 +344,18 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
             <VictoryChart width={CHART_WIDTH} height={CHART_HEIGHT} theme={VictoryTheme.material} padding={{ top: 20, bottom: 40, left: 50, right: 20 }}>
               <VictoryAxis label={isNe ? 'उमेर (महिना)' : 'Age (months)'} style={{ axisLabel: { padding: 30, fontSize: 10 } }} />
               <VictoryAxis dependentAxis label={`${chartType === 'weight' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : chartType === 'height' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : 'BMI (kg/m²)'}`} style={{ axisLabel: { padding: 40, fontSize: 10 } }} />
-              <VictoryArea data={sd3p} y0={(d: any) => sd3n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: '#ffebee', fillOpacity: 0.3 } }} />
-              <VictoryArea data={sd2p} y0={(d: any) => sd2n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: '#e8f5e9', fillOpacity: 0.4 } }} />
-              <VictoryLine data={med} style={{ data: { stroke: '#3D8B5E', strokeWidth: 1.5, strokeDasharray: '4,4' } }} />
-              <VictoryLine data={sd2n} style={{ data: { stroke: '#F5A623', strokeWidth: 1, opacity: 0.6 } }} />
-              <VictoryLine data={sd2p} style={{ data: { stroke: '#F5A623', strokeWidth: 1, opacity: 0.6 } }} />
-              <VictoryLine data={chartData} style={{ data: { stroke: '#E8602C', strokeWidth: 3 } }} />
-              <VictoryScatter data={chartData} size={4} style={{ data: { fill: '#E8602C' } }} />
+              <VictoryArea data={sd3p} y0={(d: any) => sd3n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.redLight, fillOpacity: 0.3 } }} />
+              <VictoryArea data={sd2p} y0={(d: any) => sd2n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.greenLight, fillOpacity: 0.4 } }} />
+              <VictoryLine data={med} style={{ data: { stroke: pal.green, strokeWidth: 1.5, strokeDasharray: '4,4' } }} />
+              <VictoryLine data={sd2n} style={{ data: { stroke: pal.gold, strokeWidth: 1, opacity: 0.6 } }} />
+              <VictoryLine data={sd2p} style={{ data: { stroke: pal.gold, strokeWidth: 1, opacity: 0.6 } }} />
+              <VictoryLine data={chartData} style={{ data: { stroke: pal.clay, strokeWidth: 3 } }} />
+              <VictoryScatter data={chartData} size={4} style={{ data: { fill: pal.clay } }} />
             </VictoryChart>
             <View style={styles.legendRow}>
-              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor:'#E8602C'}]} /><Text style={styles.legendText}>{isNe ? 'तपाईंको बच्चा' : 'Your Child'}</Text></View>
-              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor:'#3D8B5E'}]} /><Text style={styles.legendText}>WHO Median</Text></View>
-              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor:'#F5A623'}]} /><Text style={styles.legendText}>±2 SD</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor: pal.clay}]} /><Text style={styles.legendText}>{isNe ? 'तपाईंको बच्चा' : 'Your Child'}</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor: pal.green}]} /><Text style={styles.legendText}>WHO Median</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, {backgroundColor: pal.gold}]} /><Text style={styles.legendText}>±2 SD</Text></View>
             </View>
           </View>
 
@@ -371,12 +375,12 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
           {/* Add Button */}
           {isPremium ? (
             <TouchableOpacity style={styles.addBtn} onPress={() => { setBsDate(new NepaliDate()); setShowForm(true); }}>
-              <Ionicons name="add-circle" size={24} color="#fff" />
+              <Ionicons name="add-circle" size={24} color={pal.onAccent} />
               <Text style={styles.addBtnText}>{isNe ? 'नयाँ मापन थप्नुहोस्' : 'Add New Measurement'}</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.addBtnLocked}>
-              <Ionicons name="lock-closed" size={20} color="#E8602C" />
+              <Ionicons name="lock-closed" size={20} color={pal.clay} />
               <Text style={styles.addBtnLockedText}>{isNe ? 'प्रिमियम सुविधा — बृद्धि निदान र WHO प्रतिशत चार्टहरू' : 'Premium Feature — Growth diagnostics & WHO percentile charts'}</Text>
             </View>
           )}
@@ -407,8 +411,8 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
                     </View>
                   </>
                 )}
-                <TextInput style={styles.input} placeholder={isNe ? 'तौल (केजी)' : 'Weight (kg)'} keyboardType="numeric" value={weight} onChangeText={setWeight} placeholderTextColor="#C4956A" />
-                <TextInput style={styles.input} placeholder={isNe ? 'उचाइ (सेमी)' : 'Height (cm) - optional'} keyboardType="numeric" value={height} onChangeText={setHeight} placeholderTextColor="#C4956A" />
+                <TextInput style={styles.input} placeholder={isNe ? 'तौल (केजी)' : 'Weight (kg)'} keyboardType="numeric" value={weight} onChangeText={setWeight} placeholderTextColor={pal.shadow} />
+                <TextInput style={styles.input} placeholder={isNe ? 'उचाइ (सेमी)' : 'Height (cm) - optional'} keyboardType="numeric" value={height} onChangeText={setHeight} placeholderTextColor={pal.shadow} />
                 <View style={styles.modalBtns}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}><Text style={styles.cancelBtnText}>{isNe ? 'रद्द' : 'Cancel'}</Text></TouchableOpacity>
                   <TouchableOpacity style={styles.saveBtn} onPress={saveRecord} disabled={saving}><Text style={styles.saveBtnText}>{saving ? '...' : (isNe ? 'बचत' : 'Save')}</Text></TouchableOpacity>
@@ -422,12 +426,12 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
         <PremiumGuard feature="growth_report">
           <View style={styles.predictorContainer}>
             <View style={styles.predictorCard}>
-              <Ionicons name="trending-up" size={40} color="#E8602C" style={{ alignSelf: 'center', marginBottom: 12 }} />
+              <Ionicons name="trending-up" size={40} color={pal.clay} style={{ alignSelf: 'center', marginBottom: 12 }} />
               <Text style={styles.predictorTitle}>{isNe ? 'बच्चाको सम्भावित वयस्क उचाइ' : "Predict Your Child's Adult Height"}</Text>
               <Text style={styles.predictorSubtitle}>{isNe ? 'आमाबुबाको उचाइबाट अनुमान' : 'Estimate based on parent heights'}</Text>
               <View style={styles.predictorInputRow}>
-                <View style={styles.predictorInputGroup}><Text style={styles.predictorLabel}>{isNe ? 'बुबाको उचाइ (सेमी)' : "Father (cm)"}</Text><TextInput style={styles.predictorInput} keyboardType="numeric" value={fatherHeight} onChangeText={setFatherHeight} placeholder="170" placeholderTextColor="#C4956A" /></View>
-                <View style={styles.predictorInputGroup}><Text style={styles.predictorLabel}>{isNe ? 'आमाको उचाइ (सेमी)' : "Mother (cm)"}</Text><TextInput style={styles.predictorInput} keyboardType="numeric" value={motherHeight} onChangeText={setMotherHeight} placeholder="155" placeholderTextColor="#C4956A" /></View>
+                <View style={styles.predictorInputGroup}><Text style={styles.predictorLabel}>{isNe ? 'बुबाको उचाइ (सेमी)' : "Father (cm)"}</Text><TextInput style={styles.predictorInput} keyboardType="numeric" value={fatherHeight} onChangeText={setFatherHeight} placeholder="170" placeholderTextColor={pal.shadow} /></View>
+                <View style={styles.predictorInputGroup}><Text style={styles.predictorLabel}>{isNe ? 'आमाको उचाइ (सेमी)' : "Mother (cm)"}</Text><TextInput style={styles.predictorInput} keyboardType="numeric" value={motherHeight} onChangeText={setMotherHeight} placeholder="155" placeholderTextColor={pal.shadow} /></View>
               </View>
               <TouchableOpacity style={styles.predictorBtn} onPress={() => setShowPrediction(true)}><Text style={styles.predictorBtnText}>{isNe ? 'अनुमान गर्नुहोस्' : 'Calculate'}</Text></TouchableOpacity>
               {showPrediction && predictedHeight && (
@@ -450,118 +454,118 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
-  tabContainer: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: '#EDE0D4', backgroundColor: '#FDF8F2', padding: 4 },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: pal.surface },
+  container: { flex: 1, backgroundColor: pal.bg },
+  tabContainer: { flexDirection: 'row', marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: 24, borderWidth: 1, borderColor: pal.border, backgroundColor: pal.surface, padding: 4 },
   pillTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 22, gap: 6 },
-  pillTabActive: { backgroundColor: '#E8602C' },
-  pillTabText: { fontSize: 13, fontWeight: '600', color: '#7A6E65' },
-  pillTabTextActive: { color: '#fff' },
+  pillTabActive: { backgroundColor: pal.clay },
+  pillTabText: { fontSize: 13, fontWeight: '600', color: pal.muted },
+  pillTabTextActive: { color: pal.onAccent },
 
-  disclaimerBanner: { backgroundColor: '#FEF3C7', padding: 10, marginHorizontal: 12, marginBottom: 8, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F5A623' },
-  disclaimerText: { fontSize: 12, color: '#92400E', lineHeight: 18 },
-  trendNotice: { flexDirection: 'row', gap: 9, backgroundColor: '#FFF7E6', padding: 12, marginHorizontal: 12, marginBottom: 10, borderRadius: 10, borderLeftWidth: 4, borderLeftColor: '#D9943A' },
-  trendNoticeTitle: { color: '#704112', fontWeight: '800', fontSize: 14, marginBottom: 3 },
-  trendNoticeText: { color: '#674B2B', fontSize: 12, lineHeight: 18 },
-  trendNoticeFootnote: { color: '#8A6A42', fontSize: 11, lineHeight: 16, marginTop: 6 },
+  disclaimerBanner: { backgroundColor: pal.amberLight, padding: 10, marginHorizontal: 12, marginBottom: 8, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: pal.gold },
+  disclaimerText: { fontSize: 12, color: pal.amberDark, lineHeight: 18 },
+  trendNotice: { flexDirection: 'row', gap: 9, backgroundColor: pal.amberLight, padding: 12, marginHorizontal: 12, marginBottom: 10, borderRadius: 10, borderLeftWidth: 4, borderLeftColor: pal.amberDark },
+  trendNoticeTitle: { color: pal.amberDark, fontWeight: '800', fontSize: 14, marginBottom: 3 },
+  trendNoticeText: { color: pal.muted2, fontSize: 12, lineHeight: 18 },
+  trendNoticeFootnote: { color: pal.muted2, fontSize: 11, lineHeight: 16, marginTop: 6 },
 
-  statusCard: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, borderLeftWidth: 5, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  statusCard: { backgroundColor: pal.surface, marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, borderLeftWidth: 5, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   statusHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' },
-  statusTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A2E' },
+  statusTitle: { fontSize: 16, fontWeight: '600', color: pal.text },
   statusLabel: { fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
   categoryBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 8 },
   categoryText: { fontSize: 13, fontWeight: '700' },
-  statusDesc: { fontSize: 14, color: '#7A6E65', lineHeight: 20 },
-  alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', padding: 10, borderRadius: 8, marginTop: 10 },
-  alertText: { flex: 1, fontSize: 12, color: '#991B1B', marginLeft: 8 },
+  statusDesc: { fontSize: 14, color: pal.muted, lineHeight: 20 },
+  alertBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: pal.redLight, padding: 10, borderRadius: 8, marginTop: 10 },
+  alertText: { flex: 1, fontSize: 12, color: pal.redDark, marginLeft: 8 },
 
-  currentInfoCard: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  currentInfoTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#1A1A2E' },
+  currentInfoCard: { backgroundColor: pal.surface, marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  currentInfoTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: pal.text },
   currentInfoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, gap: 8 },
-  statChip: { flex: 1, alignItems: 'center', backgroundColor: '#FDF8F2', borderRadius: 12, borderWidth: 1, borderColor: '#EDE0D4', padding: 12 },
-  statChipLabel: { fontSize: 12, color: '#7A6E65', marginBottom: 4 },
-  statChipValue: { fontSize: 18, fontWeight: 'bold', color: '#1A1A2E' },
-  bmiRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: '#D1FAE5', padding: 8, borderRadius: 8 },
-  bmiLabel: { fontSize: 14, fontWeight: '600', color: '#065F46' },
-  bmiValue: { fontSize: 18, fontWeight: 'bold', color: '#065F46', marginLeft: 8 },
-  idealRangeBox: { backgroundColor: '#F7F1EB', borderRadius: 8, padding: 12, marginTop: 4 },
-  idealRangeTitle: { fontSize: 13, fontWeight: '600', color: '#7A6E65', marginBottom: 8 },
+  statChip: { flex: 1, alignItems: 'center', backgroundColor: pal.surface, borderRadius: 12, borderWidth: 1, borderColor: pal.border, padding: 12 },
+  statChipLabel: { fontSize: 12, color: pal.muted, marginBottom: 4 },
+  statChipValue: { fontSize: 18, fontWeight: 'bold', color: pal.text },
+  bmiRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: pal.greenLight, padding: 8, borderRadius: 8 },
+  bmiLabel: { fontSize: 14, fontWeight: '600', color: pal.greenDark },
+  bmiValue: { fontSize: 18, fontWeight: 'bold', color: pal.greenDark, marginLeft: 8 },
+  idealRangeBox: { backgroundColor: pal.bg, borderRadius: 8, padding: 12, marginTop: 4 },
+  idealRangeTitle: { fontSize: 13, fontWeight: '600', color: pal.muted, marginBottom: 8 },
   idealRangeRow: { flexDirection: 'row', justifyContent: 'space-between' },
   idealRangeItem: { alignItems: 'center', flex: 1 },
-  idealMedian: { borderWidth: 1, borderColor: '#E8602C', borderRadius: 8, padding: 6 },
-  idealRangeLabel: { fontSize: 11, color: '#7A6E65', marginBottom: 2 },
-  idealRangeValue: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
+  idealMedian: { borderWidth: 1, borderColor: pal.clay, borderRadius: 8, padding: 6 },
+  idealRangeLabel: { fontSize: 11, color: pal.muted, marginBottom: 2 },
+  idealRangeValue: { fontSize: 14, fontWeight: '700', color: pal.text },
 
   underlineToggle: { flexDirection: 'row', marginHorizontal: 12, marginBottom: 12, gap: 0 },
   underlineBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  underlineBtnActive: { borderBottomColor: '#E8602C' },
-  underlineBtnText: { fontSize: 13, fontWeight: '600', color: '#7A6E65' },
-  underlineBtnTextActive: { color: '#E8602C' },
+  underlineBtnActive: { borderBottomColor: pal.clay },
+  underlineBtnText: { fontSize: 13, fontWeight: '600', color: pal.muted },
+  underlineBtnTextActive: { color: pal.clay },
 
-  chartWrapper: { backgroundColor: '#FDF8F2', marginHorizontal: 12, borderRadius: 16, padding: 8, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, marginBottom: 12 },
-  chartTitle: { fontSize: 14, fontWeight: '600', color: '#7A6E65', marginBottom: 10, textAlign: 'center' },
+  chartWrapper: { backgroundColor: pal.surface, marginHorizontal: 12, borderRadius: 16, padding: 8, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, marginBottom: 12 },
+  chartTitle: { fontSize: 14, fontWeight: '600', color: pal.muted, marginBottom: 10, textAlign: 'center' },
   legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 11, color: '#7A6E65' },
+  legendText: { fontSize: 11, color: pal.muted },
 
-  addBtn: { backgroundColor: '#E8602C', marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 3, marginBottom: 12 },
-  addBtnLocked: { backgroundColor: '#FFF5F0', marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E8602C', marginBottom: 12 },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
-  addBtnLockedText: { color: '#E8602C', fontSize: 13, fontWeight: '600', marginLeft: 8, flex: 1 },
+  addBtn: { backgroundColor: pal.clay, marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 3, marginBottom: 12 },
+  addBtnLocked: { backgroundColor: pal.surfaceWarm, marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pal.clay, marginBottom: 12 },
+  addBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
+  addBtnLockedText: { color: pal.clay, fontSize: 13, fontWeight: '600', marginLeft: 8, flex: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 20 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4, textAlign: 'center', color: '#1A1A2E' },
-  modalDateLabel: { fontSize: 13, color: '#7A6E65', marginBottom: 4, textAlign: 'center' },
-  dateDisplay: { alignItems: 'center', backgroundColor: '#FDF8F2', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#EDE0D4' },
-  dateValue: { fontSize: 20, fontWeight: 'bold', color: '#E8602C' },
+  modalContent: { backgroundColor: pal.surface, borderRadius: 16, padding: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4, textAlign: 'center', color: pal.text },
+  modalDateLabel: { fontSize: 13, color: pal.muted, marginBottom: 4, textAlign: 'center' },
+  dateDisplay: { alignItems: 'center', backgroundColor: pal.surface, borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: pal.border },
+  dateValue: { fontSize: 20, fontWeight: 'bold', color: pal.clay },
   pickerRow: { flexDirection: 'row', height: 180, marginBottom: 16 },
   pickerCol: { flex: 1 },
-  pickerLabel: { fontSize: 12, color: '#7A6E65', textAlign: 'center', marginBottom: 4, fontWeight: '600' },
-  input: { borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 16, color: '#1A1A2E', backgroundColor: '#FDF8F2' },
+  pickerLabel: { fontSize: 12, color: pal.muted, textAlign: 'center', marginBottom: 4, fontWeight: '600' },
+  input: { borderWidth: 1.5, borderColor: pal.border, borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 16, color: pal.text, backgroundColor: pal.surface },
   modalBtns: { flexDirection: 'row', justifyContent: 'space-between' },
-  cancelBtn: { flex: 1, padding: 14, marginRight: 10, borderRadius: 28, alignItems: 'center', backgroundColor: '#F7F1EB' },
-  cancelBtnText: { color: '#7A6E65', fontWeight: 'bold' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 28, alignItems: 'center', backgroundColor: '#E8602C' },
-  saveBtnText: { color: '#fff', fontWeight: 'bold' },
+  cancelBtn: { flex: 1, padding: 14, marginRight: 10, borderRadius: 28, alignItems: 'center', backgroundColor: pal.bg },
+  cancelBtnText: { color: pal.muted, fontWeight: 'bold' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 28, alignItems: 'center', backgroundColor: pal.clay },
+  saveBtnText: { color: pal.onAccent, fontWeight: 'bold' },
 
-  lastRecordedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EDE0D4' },
-  lastRecordedText: { fontSize: 12, color: '#7A6E65', marginLeft: 4 },
+  lastRecordedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: pal.border },
+  lastRecordedText: { fontSize: 12, color: pal.muted, marginLeft: 4 },
 
-  recordsCard: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  recordsTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
+  recordsCard: { backgroundColor: pal.surface, marginHorizontal: 12, marginBottom: 12, borderRadius: 16, padding: 16, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  recordsTitle: { fontSize: 14, fontWeight: '700', color: pal.text, marginBottom: 12 },
   recordRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 },
-  recordRowBorder: { borderTopWidth: 1, borderTopColor: '#EDE0D4' },
-  recordDateText: { fontSize: 14, fontWeight: '600', color: '#E8602C' },
-  recordValue: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
+  recordRowBorder: { borderTopWidth: 1, borderTopColor: pal.border },
+  recordDateText: { fontSize: 14, fontWeight: '600', color: pal.clay },
+  recordValue: { fontSize: 15, fontWeight: '600', color: pal.text },
 
   predictorContainer: { paddingHorizontal: 12, paddingTop: 8 },
-  predictorCard: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 20, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, marginBottom: 12 },
-  predictorTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A2E', textAlign: 'center', marginBottom: 8 },
-  predictorSubtitle: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginBottom: 20, lineHeight: 18 },
+  predictorCard: { backgroundColor: pal.surface, borderRadius: 16, padding: 20, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, marginBottom: 12 },
+  predictorTitle: { fontSize: 18, fontWeight: 'bold', color: pal.text, textAlign: 'center', marginBottom: 8 },
+  predictorSubtitle: { fontSize: 13, color: pal.muted, textAlign: 'center', marginBottom: 20, lineHeight: 18 },
   predictorInputRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   predictorInputGroup: { flex: 1 },
-  predictorLabel: { fontSize: 13, color: '#7A6E65', marginBottom: 6 },
-  predictorInput: { borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 12, padding: 12, fontSize: 16, backgroundColor: '#FDF8F2', color: '#1A1A2E' },
-  predictorBtn: { backgroundColor: '#E8602C', borderRadius: 28, padding: 14, alignItems: 'center', marginTop: 4 },
-  predictorBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  predictionResult: { backgroundColor: '#D1FAE5', borderRadius: 12, padding: 16, marginTop: 16, alignItems: 'center' },
-  predictionLabel: { fontSize: 14, color: '#065F46', marginBottom: 4 },
-  predictionValue: { fontSize: 32, fontWeight: 'bold', color: '#065F46' },
-  predictionRange: { fontSize: 13, color: '#065F46', marginTop: 4 },
-  predictionNote: { fontSize: 12, color: '#7A6E65', marginTop: 8, textAlign: 'center', fontStyle: 'italic' },
-  predictorInfoCard: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 20, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#E8602C' },
-  predictorInfoTitle: { fontSize: 16, fontWeight: '700', color: '#E8602C', marginBottom: 10 },
+  predictorLabel: { fontSize: 13, color: pal.muted, marginBottom: 6 },
+  predictorInput: { borderWidth: 1.5, borderColor: pal.border, borderRadius: 12, padding: 12, fontSize: 16, backgroundColor: pal.surface, color: pal.text },
+  predictorBtn: { backgroundColor: pal.clay, borderRadius: 28, padding: 14, alignItems: 'center', marginTop: 4 },
+  predictorBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: '700' },
+  predictionResult: { backgroundColor: pal.greenLight, borderRadius: 12, padding: 16, marginTop: 16, alignItems: 'center' },
+  predictionLabel: { fontSize: 14, color: pal.greenDark, marginBottom: 4 },
+  predictionValue: { fontSize: 32, fontWeight: 'bold', color: pal.greenDark },
+  predictionRange: { fontSize: 13, color: pal.greenDark, marginTop: 4 },
+  predictionNote: { fontSize: 12, color: pal.muted, marginTop: 8, textAlign: 'center', fontStyle: 'italic' },
+  predictorInfoCard: { backgroundColor: pal.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: pal.clay },
+  predictorInfoTitle: { fontSize: 16, fontWeight: '700', color: pal.clay, marginBottom: 10 },
   // First Measurement Card
-  firstCard: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginTop: 24, borderRadius: 20, padding: 24, alignItems: 'center', shadowColor: '#C4956A', shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
+  firstCard: { backgroundColor: pal.surface, marginHorizontal: 12, marginTop: 24, borderRadius: 20, padding: 24, alignItems: 'center', shadowColor: pal.shadow, shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
   firstCardIcon: { fontSize: 48, marginBottom: 12 },
-  firstCardTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', marginBottom: 6 },
-  firstCardSub: { fontSize: 14, color: '#7A6E65', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  firstLabel: { fontSize: 13, fontWeight: '600', color: '#7A6E65', alignSelf: 'flex-start', marginBottom: 6 },
-  firstInput: { width: '100%', borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 12, paddingHorizontal: 14, padding: 13, fontSize: 18, color: '#1A1A2E', marginBottom: 14, backgroundColor: '#FDF8F2' },
-  firstSaveBtn: { backgroundColor: '#E8602C', borderRadius: 28, paddingVertical: 14, width: '100%', alignItems: 'center', marginTop: 8 },
-  firstSaveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  predictorInfoText: { fontSize: 13, color: '#7A6E65', lineHeight: 20 },
+  firstCardTitle: { fontSize: 22, fontWeight: '800', color: pal.text, marginBottom: 6 },
+  firstCardSub: { fontSize: 14, color: pal.muted, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  firstLabel: { fontSize: 13, fontWeight: '600', color: pal.muted, alignSelf: 'flex-start', marginBottom: 6 },
+  firstInput: { width: '100%', borderWidth: 1.5, borderColor: pal.border, borderRadius: 12, paddingHorizontal: 14, padding: 13, fontSize: 18, color: pal.text, marginBottom: 14, backgroundColor: pal.surface },
+  firstSaveBtn: { backgroundColor: pal.clay, borderRadius: 28, paddingVertical: 14, width: '100%', alignItems: 'center', marginTop: 8 },
+  firstSaveBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: '700' },
+  predictorInfoText: { fontSize: 13, color: pal.muted, lineHeight: 20 },
 });

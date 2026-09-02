@@ -4,6 +4,8 @@
 // Locked state sells the benefit, not the purchase process.
 import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, AppState } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -59,6 +61,8 @@ const FEATURE_BENEFITS: Record<FeatureType, { en: string; ne: string; icon: stri
 };
 
 export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 'immunization' }) => {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const isPremiumFeature = FEATURE_ACCESS[feature] === 'premium';
@@ -132,7 +136,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
       <View style={styles.container}>
         <View style={styles.pendingOverlay}>
           <View style={styles.pendingCard}>
-            <Ionicons name="time-outline" size={40} color="#FF9800" />
+            <Ionicons name="time-outline" size={40} color={t.gold} />
             <Text style={styles.pendingTitle}>
               {isNe ? 'प्रिमियम जाँच हुँदैछ' : 'Premium Being Verified'}
             </Text>
@@ -161,7 +165,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
             {isNe ? benefit.ne : benefit.en}
           </Text>
           <View style={styles.premiumBadge}>
-            <Ionicons name="diamond-outline" size={14} color="#E8602C" />
+            <Ionicons name="diamond-outline" size={14} color={t.clay} />
             <Text style={styles.premiumBadgeText}>PREMIUM</Text>
           </View>
         </View>
@@ -172,6 +176,8 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
 
 export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: boolean }> = ({ children, isLocked = false }) => {
   const { language } = useContext(LanguageContext);
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const isNe = language === 'ne';
   if (!isLocked) return <>{children}</>;
   return (
@@ -179,7 +185,7 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
       <View style={styles.previewContent}>{children}</View>
       <View style={styles.previewOverlay}>
         <View style={styles.previewMessage}>
-          <Ionicons name="star" size={32} color="#F5A623" />
+          <Ionicons name="star" size={32} color={t.gold} />
           <Text style={styles.previewTitle}>{isNe ? 'प्रीमियम सुविधा' : 'Premium Feature'}</Text>
           <Text style={styles.previewText}>
             {isNe
@@ -192,7 +198,7 @@ export const MilestonePreview: React.FC<{ children: React.ReactNode; isLocked?: 
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Palette) => StyleSheet.create({
   container: { flex: 1, position: 'relative' },
   dimmedContent: { flex: 1, opacity: 0.4 },
 
@@ -201,36 +207,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   lockedCard: {
-    backgroundColor: '#FDF8F2', borderRadius: 20, padding: 28, alignItems: 'center',
-    maxWidth: 320, width: '100%', borderWidth: 1.5, borderColor: '#EDE0D4',
-    shadowColor: '#C4956A', shadowOffset: { width: 0, height: 4 },
+    backgroundColor: t.surface, borderRadius: 20, padding: 28, alignItems: 'center',
+    maxWidth: 320, width: '100%', borderWidth: 1.5, borderColor: t.border,
+    shadowColor: t.shadow, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
   },
   lockedIcon: { fontSize: 40, marginBottom: 12 },
-  lockedTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 8 },
-  lockedBenefit: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  lockedTitle: { fontSize: 18, fontWeight: '700', color: t.text, marginBottom: 8 },
+  lockedBenefit: { fontSize: 14, color: t.muted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
   premiumBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF5F0', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: '#E8602C',
+    backgroundColor: t.surfaceWarm, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1, borderColor: t.clay,
   },
-  premiumBadgeText: { fontSize: 11, fontWeight: '800', color: '#E8602C', letterSpacing: 2 },
+  premiumBadgeText: { fontSize: 11, fontWeight: '800', color: t.clay, letterSpacing: 2 },
 
   pendingOverlay: {
     ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center',
     padding: 20, backgroundColor: 'rgba(255,255,255,0.9)',
   },
   pendingCard: {
-    backgroundColor: '#FFF8E1', borderRadius: 20, padding: 28, alignItems: 'center',
-    maxWidth: 320, width: '100%', borderWidth: 2, borderColor: '#FF9800',
+    backgroundColor: t.amberLight, borderRadius: 20, padding: 28, alignItems: 'center',
+    maxWidth: 320, width: '100%', borderWidth: 2, borderColor: t.gold,
   },
-  pendingTitle: { fontSize: 18, fontWeight: '700', color: '#E65100', marginTop: 12, marginBottom: 8 },
-  pendingText: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
+  pendingTitle: { fontSize: 18, fontWeight: '700', color: t.amberDark, marginTop: 12, marginBottom: 8 },
+  pendingText: { fontSize: 14, color: t.muted, textAlign: 'center', lineHeight: 20 },
 
   previewContainer: { position: 'relative', opacity: 0.6 },
   previewContent: { flex: 1 },
   previewOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center' },
   previewMessage: { alignItems: 'center' },
-  previewTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E', marginTop: 12 },
-  previewText: { fontSize: 13, color: '#7A6E65', marginTop: 8, textAlign: 'center' },
+  previewTitle: { fontSize: 16, fontWeight: '700', color: t.text, marginTop: 12 },
+  previewText: { fontSize: 13, color: t.muted, marginTop: 8, textAlign: 'center' },
 });

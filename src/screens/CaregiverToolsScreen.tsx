@@ -1,6 +1,8 @@
 // src/screens/CaregiverToolsScreen.tsx — Explicit shared care, feeding log, clinic visit, and local facility finder.
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -10,9 +12,10 @@ import { supabase } from '../lib/supabase';
 import { createOfflineMutation, flushOfflineQueue } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
 
-const terracotta = '#B85C38';
 
 export default function CaregiverToolsScreen() {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const route = useRoute<any>();
   const child: Child | null = route.params?.child ?? null;
   const { user } = useAuth();
@@ -98,5 +101,9 @@ export default function CaregiverToolsScreen() {
     </ScrollView>
   );
 }
-function Section({ title, children }: { title: string; children: React.ReactNode }) { return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>; }
-const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: '#FFF8F2' }, content: { padding: 18, paddingBottom: 42 }, title: { fontSize: 25, fontWeight: '800', color: '#4A2B20' }, nepali: { color: '#7D5140', marginBottom: 18 }, section: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#F0DED2' }, sectionTitle: { fontSize: 18, fontWeight: '800', color: '#4A2B20', marginBottom: 8 }, helper: { color: '#6D5A52', lineHeight: 20, marginBottom: 10 }, warning: { backgroundColor: '#FFF2CA', padding: 13, borderRadius: 12, marginBottom: 14 }, warningText: { color: '#6E4E00', lineHeight: 20 }, primary: { minHeight: 48, borderRadius: 12, backgroundColor: terracotta, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, primaryText: { color: '#FFF', fontWeight: '800' }, secondary: { minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: terracotta, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, secondaryText: { color: terracotta, fontWeight: '800' }, input: { minHeight: 48, borderWidth: 1, borderColor: '#DABDAE', borderRadius: 10, paddingHorizontal: 12, backgroundColor: '#FFFCFA', marginBottom: 10, color: '#3D302B' }, codeBox: { marginTop: 12, backgroundColor: '#FCECE2', borderRadius: 12, padding: 12 }, codeLabel: { color: '#714D3B', fontSize: 13 }, code: { color: '#71381F', letterSpacing: 1.5, fontWeight: '900', fontSize: 20, marginVertical: 8 }, member: { flexDirection: 'row', justifyContent: 'space-between', minHeight: 44, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F5E7DD', marginTop: 10 }, memberText: { color: '#3D302B' }, revoke: { color: '#A52D20', fontWeight: '700' }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 10 }, chip: { minHeight: 38, paddingHorizontal: 10, justifyContent: 'center', borderRadius: 19, borderWidth: 1, borderColor: '#D7BBAA' }, chipActive: { backgroundColor: '#F6D9C9', borderColor: terracotta }, chipText: { color: '#634C40' }, chipTextActive: { color: '#71381F', fontWeight: '700' }, facility: { borderTopWidth: 1, borderTopColor: '#F5E7DD', paddingVertical: 10 }, facilityName: { color: '#4A2B20', fontWeight: '800' }, disabled: { opacity: 0.45 }, link: { minHeight: 44, justifyContent: 'center', alignItems: 'center' }, linkText: { color: terracotta, fontWeight: '800' } });
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
+  return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;
+}
+const makeStyles = (t: Palette) => StyleSheet.create({ page: { flex: 1, backgroundColor: t.bgWarm }, content: { padding: 18, paddingBottom: 42 }, title: { fontSize: 25, fontWeight: '800', color: t.titleInk }, nepali: { color: t.subInk, marginBottom: 18 }, section: { backgroundColor: t.surface, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.border }, sectionTitle: { fontSize: 18, fontWeight: '800', color: t.titleInk, marginBottom: 8 }, helper: { color: t.muted2, lineHeight: 20, marginBottom: 10 }, warning: { backgroundColor: t.amberLight, padding: 13, borderRadius: 12, marginBottom: 14 }, warningText: { color: t.amberDark, lineHeight: 20 }, primary: { minHeight: 48, borderRadius: 12, backgroundColor: t.terracotta, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, primaryText: { color: t.onAccent, fontWeight: '800' }, secondary: { minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: t.terracotta, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, secondaryText: { color: t.terracotta, fontWeight: '800' }, input: { minHeight: 48, borderWidth: 1, borderColor: t.choiceBorder, borderRadius: 10, paddingHorizontal: 12, backgroundColor: t.surface, marginBottom: 10, color: t.labelInk }, codeBox: { marginTop: 12, backgroundColor: t.actionBg, borderRadius: 12, padding: 12 }, codeLabel: { color: t.actionTextInk, fontSize: 13 }, code: { color: t.actionTitleInk, letterSpacing: 1.5, fontWeight: '900', fontSize: 20, marginVertical: 8 }, member: { flexDirection: 'row', justifyContent: 'space-between', minHeight: 44, alignItems: 'center', borderTopWidth: 1, borderTopColor: t.border, marginTop: 10 }, memberText: { color: t.labelInk }, revoke: { color: t.red, fontWeight: '700' }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 10 }, chip: { minHeight: 38, paddingHorizontal: 10, justifyContent: 'center', borderRadius: 19, borderWidth: 1, borderColor: t.choiceBorder }, chipActive: { backgroundColor: t.actionBg, borderColor: t.terracotta }, chipText: { color: t.labelInk }, chipTextActive: { color: t.actionTitleInk, fontWeight: '700' }, facility: { borderTopWidth: 1, borderTopColor: t.border, paddingVertical: 10 }, facilityName: { color: t.titleInk, fontWeight: '800' }, disabled: { opacity: 0.45 }, link: { minHeight: 44, justifyContent: 'center', alignItems: 'center' }, linkText: { color: t.terracotta, fontWeight: '800' } });

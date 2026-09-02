@@ -1,6 +1,8 @@
 // src/components/Onboarding.tsx
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
@@ -18,10 +20,10 @@ interface Step {
   descNe: string;
 }
 
-const STEPS: Step[] = [
+const makeSteps = (t: Palette): Step[] => ([
   {
     icon: 'happy-outline',
-    color: '#E8602C',
+    color: t.clay,
     titleEn: 'Welcome to Kapoori Ka!',
     titleNe: 'कपूरी कामा स्वागत छ!',
     descEn: "Add your child's profile and photo to get started.",
@@ -45,13 +47,13 @@ const STEPS: Step[] = [
   },
   {
     icon: 'diamond-outline',
-    color: '#43A047',
+    color: t.green,
     titleEn: 'Settings & Premium',
     titleNe: 'सेटिङ र प्रिमियम',
     descEn: 'Manage your account, switch languages (Nepali/English), and unlock premium features via subscription codes.',
     descNe: 'आफ्नो खाता व्यवस्थापन गर्नुहोस्, भाषा (नेपाली/अंग्रेजी) परिवर्तन गर्नुहोस्, र सदस्यता कोडद्वारा प्रिमियम सुविधाहरू अनलक गर्नुहोस्।',
   },
-];
+]);
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -59,6 +61,9 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
+  const { palette: t } = useContext(ThemeContext);
+  const steps = makeSteps(t);
+  const styles = makeStyles(t);
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const [step, setStep] = useState(0);
@@ -84,12 +89,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   };
 
   const handleNext = () => {
-    if (step < STEPS.length - 1) setStep(step + 1);
+    if (step < steps.length - 1) setStep(step + 1);
     else finish();
   };
 
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={finish}>
@@ -111,7 +116,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <Text style={styles.desc}>{isNe ? current.descNe : current.descEn}</Text>
 
           <View style={styles.dots}>
-            {STEPS.map((_, i) => (
+            {steps.map((_, i) => (
               <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
             ))}
           </View>
@@ -131,7 +136,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Palette) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.62)',
@@ -142,7 +147,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#FDF8F2',
+    backgroundColor: t.surface,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -155,7 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  skipText: { color: '#7A6E65', fontWeight: '600', fontSize: 14 },
+  skipText: { color: t.muted, fontWeight: '600', fontSize: 14 },
   iconCircle: {
     width: 108,
     height: 108,
@@ -168,13 +173,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1A1A2E',
+    color: t.text,
     textAlign: 'center',
     marginBottom: 10,
   },
   desc: {
     fontSize: 14.5,
-    color: '#5B4A3A',
+    color: t.muted2,
     textAlign: 'center',
     lineHeight: 21,
     minHeight: 63,
@@ -189,10 +194,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EDE0D4',
+    backgroundColor: t.border,
   },
   dotActive: {
-    backgroundColor: '#E8602C',
+    backgroundColor: t.clay,
     width: 22,
   },
   nextBtn: {
@@ -201,5 +206,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
-  nextText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  nextText: { color: t.onAccent, fontWeight: '700', fontSize: 16 },
 });

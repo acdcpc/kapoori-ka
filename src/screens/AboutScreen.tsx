@@ -4,6 +4,8 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Linking
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LanguageContext } from '../context/LanguageContext';
@@ -14,6 +16,8 @@ import { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'About'>;
 
 export default function AboutScreen({ navigation }: Props) {
+  const { palette: pal } = useContext(ThemeContext);
+  const styles = makeStyles(pal);
   const { language } = useContext(LanguageContext);
   const t = translations[language];
 
@@ -22,7 +26,7 @@ export default function AboutScreen({ navigation }: Props) {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={pal.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t.about}</Text>
         <View style={{ width: 40 }} />
@@ -34,7 +38,7 @@ export default function AboutScreen({ navigation }: Props) {
           <Text style={styles.sectionTitle}>{t.appName}</Text>
           <Text style={styles.appTagline}>{t.appTagline}</Text>
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color="#1a73e8" />
+            <Ionicons name="information-circle" size={20} color={pal.blue} />
             <Text style={styles.infoText}>
               {language === 'en'
                 ? 'A comprehensive digital health companion for Nepali parents to track their child\'s growth, development, and immunization.'
@@ -50,7 +54,7 @@ export default function AboutScreen({ navigation }: Props) {
           <View style={styles.authorCard}>
             <View style={styles.authorHeader}>
               <View style={styles.authorAvatar}>
-                <Ionicons name="person-circle" size={60} color="#1a73e8" />
+                <Ionicons name="person-circle" size={60} color={pal.blue} />
               </View>
               <View style={styles.authorInfo}>
                 <Text style={styles.authorName}>{t.authorName}</Text>
@@ -69,7 +73,7 @@ export default function AboutScreen({ navigation }: Props) {
                 style={styles.contactBtn}
                 onPress={() => Linking.openURL('https://www.youtube.com/@dr.prakashthapa')}
               >
-                <Ionicons name="logo-youtube" size={20} color="#FF0000" />
+                <Ionicons name="logo-youtube" size={20} color={pal.red} />
                 <Text style={styles.contactBtnText}>YouTube</Text>
               </TouchableOpacity>
               
@@ -146,47 +150,47 @@ export default function AboutScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: pal.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 15,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: pal.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: pal.border,
   },
   backBtn: { padding: 5 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#333' },
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: pal.text },
+  container: { flex: 1, backgroundColor: pal.surface },
   contentContainer: { paddingHorizontal: 12, paddingVertical: 16, paddingBottom: 30 },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 12 },
-  appTagline: { fontSize: 14, color: '#666', marginBottom: 12, lineHeight: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: pal.text, marginBottom: 12 },
+  appTagline: { fontSize: 14, color: pal.muted, marginBottom: 12, lineHeight: 20 },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
+    backgroundColor: pal.infoBg,
     borderRadius: 8,
     padding: 12,
     alignItems: 'flex-start',
   },
   infoText: { flex: 1, marginLeft: 10, fontSize: 13, color: '#0D47A1', lineHeight: 20 },
-  authorCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, elevation: 1 },
+  authorCard: { backgroundColor: pal.surface, borderRadius: 12, padding: 16, elevation: 1 },
   authorHeader: { flexDirection: 'row', marginBottom: 16 },
   authorAvatar: { marginRight: 12 },
   authorInfo: { flex: 1 },
-  authorName: { fontSize: 16, fontWeight: '700', color: '#333' },
-  authorTitle: { fontSize: 12, fontWeight: '600', color: '#1a73e8', marginTop: 2 },
-  authorSpecialty: { fontSize: 12, color: '#666', marginTop: 2 },
+  authorName: { fontSize: 16, fontWeight: '700', color: pal.text },
+  authorTitle: { fontSize: 12, fontWeight: '600', color: pal.blue, marginTop: 2 },
+  authorSpecialty: { fontSize: 12, color: pal.muted, marginTop: 2 },
   bioBox: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: pal.surface,
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
   },
-  bioText: { fontSize: 13, color: '#444', lineHeight: 20 },
+  bioText: { fontSize: 13, color: pal.text, lineHeight: 20 },
   contactGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   contactBtn: {
     width: '48%',
@@ -194,29 +198,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: pal.border,
     borderRadius: 8,
     paddingVertical: 10,
     gap: 8,
   },
-  contactBtnText: { fontSize: 12, fontWeight: '600', color: '#333' },
+  contactBtnText: { fontSize: 12, fontWeight: '600', color: pal.text },
   sourceBox: {
-    backgroundColor: '#fff',
+    backgroundColor: pal.surface,
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#1a73e8',
+    borderLeftColor: pal.blue,
   },
-  sourceTitle: { fontSize: 12, fontWeight: '700', color: '#333', marginBottom: 8 },
-  sourceText: { fontSize: 12, color: '#666', marginBottom: 4, lineHeight: 18 },
+  sourceTitle: { fontSize: 12, fontWeight: '700', color: pal.text, marginBottom: 8 },
+  sourceText: { fontSize: 12, color: pal.muted, marginBottom: 4, lineHeight: 18 },
   disclaimerBox: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: pal.amberLight,
     borderRadius: 8,
     padding: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF9800',
+    borderLeftColor: pal.gold,
   },
-  disclaimerText: { fontSize: 12, color: '#E65100', lineHeight: 20 },
-  versionText: { fontSize: 12, color: '#999', textAlign: 'center', marginBottom: 6 },
+  disclaimerText: { fontSize: 12, color: pal.amberDark, lineHeight: 20 },
+  versionText: { fontSize: 12, color: pal.muted, textAlign: 'center', marginBottom: 6 },
 });

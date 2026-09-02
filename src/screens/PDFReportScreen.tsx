@@ -3,6 +3,8 @@ import React, { useState, useContext } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -107,6 +109,8 @@ function adToBs(adDateStr: string): string {
 type Props = NativeStackScreenProps<RootStackParamList, 'PDFReport'>;
 
 export default function PDFReportScreen({ route }: Props) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { user } = useAuth();
   const { child } = route.params || {};
   const { language } = useContext(LanguageContext);
@@ -208,7 +212,7 @@ export default function PDFReportScreen({ route }: Props) {
 
         <TouchableOpacity style={[styles.generateButton, generating && styles.buttonDisabled]} onPress={generatePDF} disabled={generating}>
           {generating ? (
-            <ActivityIndicator color="#fff" size="large" />
+            <ActivityIndicator color={t.onAccent} size="large" />
           ) : (
             <Text style={styles.buttonText}>{isNe ? '📄 PDF रिपोर्ट तयार पार्नुहोस्' : 'Generate & Share PDF'}</Text>
           )}
@@ -221,19 +225,19 @@ export default function PDFReportScreen({ route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
-  container: { flex: 1, padding: 20, backgroundColor: '#F7F1EB', alignItems: 'center', justifyContent: 'center' },
+const makeStyles = (t: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.surface },
+  container: { flex: 1, padding: 20, backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center' },
   docIcon: { fontSize: 56, textAlign: 'center', marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: '800', color: '#1A1A2E', marginBottom: 8, textAlign: 'center' },
-  childName: { fontSize: 16, color: '#7A6E65', marginBottom: 24, textAlign: 'center' },
-  includedCard: { backgroundColor: '#FDF8F2', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#EDE0D4', marginBottom: 24, width: '100%' },
-  includedLabel: { fontSize: 13, fontWeight: '700', color: '#7A6E65', letterSpacing: 0.8, marginBottom: 10 },
+  title: { fontSize: 22, fontWeight: '800', color: t.text, marginBottom: 8, textAlign: 'center' },
+  childName: { fontSize: 16, color: t.muted, marginBottom: 24, textAlign: 'center' },
+  includedCard: { backgroundColor: t.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: t.border, marginBottom: 24, width: '100%' },
+  includedLabel: { fontSize: 13, fontWeight: '700', color: t.muted, letterSpacing: 0.8, marginBottom: 10 },
   includedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  checkmark: { fontSize: 14, fontWeight: '700', color: '#3D8B5E' },
-  includedText: { fontSize: 14, color: '#1A1A2E' },
-  generateButton: { backgroundColor: '#E8602C', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 28, width: '100%', alignItems: 'center', elevation: 3 },
+  checkmark: { fontSize: 14, fontWeight: '700', color: t.green },
+  includedText: { fontSize: 14, color: t.text },
+  generateButton: { backgroundColor: t.clay, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 28, width: '100%', alignItems: 'center', elevation: 3 },
   buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  note: { marginTop: 20, fontSize: 13, color: '#7A6E65', textAlign: 'center', lineHeight: 18 },
+  buttonText: { color: t.onAccent, fontSize: 16, fontWeight: '700' },
+  note: { marginTop: 20, fontSize: 13, color: t.muted, textAlign: 'center', lineHeight: 18 },
 });

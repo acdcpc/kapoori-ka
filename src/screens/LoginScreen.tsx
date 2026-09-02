@@ -4,6 +4,8 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, ScrollView,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuthErrorMessage } from '../utils/authErrors';
 
 export default function LoginScreen() {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { language, setLanguage } = useContext(LanguageContext);
   const isNe = language === 'ne';
 
@@ -86,7 +90,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F1EB' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
       {/* ── TOP ZONE ── */}
       <View style={styles.topZone}>
         <View style={styles.langToggle}>
@@ -110,7 +114,7 @@ export default function LoginScreen() {
         <ScrollView style={styles.bottomCard} contentContainerStyle={styles.bottomCardContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {verificationSent && (
             <View style={styles.verifyBanner}>
-              <Ionicons name="mail-outline" size={20} color="#065F46" />
+              <Ionicons name="mail-outline" size={20} color={t.greenDark} />
               <Text style={styles.verifyBannerText}>{isNe ? 'भेरिफिकेसन इमेल पठाइयो। कृपया आफ्नो इनबक्स जाँच गर्नुहोस्।' : 'Verification email sent! Please check your inbox.'}</Text>
               <TouchableOpacity onPress={handleResendVerification} disabled={isLoading}>
                 <Text style={styles.verifyResendText}>{isNe ? 'पुन: पठाउनुहोस्' : 'Resend'}</Text>
@@ -120,10 +124,10 @@ export default function LoginScreen() {
 
           {authError && (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={18} color="#991B1B" />
+              <Ionicons name="alert-circle" size={18} color={t.redDark} />
               <Text style={styles.errorBannerText}>{authError}</Text>
               <TouchableOpacity onPress={() => setAuthError(null)}>
-                <Ionicons name="close" size={18} color="#991B1B" />
+                <Ionicons name="close" size={18} color={t.redDark} />
               </TouchableOpacity>
             </View>
           )}
@@ -138,7 +142,7 @@ export default function LoginScreen() {
               autoCapitalize="none" autoCorrect={false}
               editable={!isLoading}
               onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
-              placeholderTextColor="#C4956A"
+              placeholderTextColor={t.shadow}
             />
 
             <Text style={styles.label}>{isNe ? 'पासवर्ड' : 'Password'}</Text>
@@ -150,16 +154,16 @@ export default function LoginScreen() {
                 value={password} onChangeText={setPassword}
                 editable={!isLoading}
                 onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)}
-                placeholderTextColor="#C4956A"
+                placeholderTextColor={t.shadow}
               />
               <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="#7A6E65" />
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={t.muted} />
               </TouchableOpacity>
             </View>
 
             {isRegistering && (
               <Text style={styles.pwHint}>
-                <Ionicons name="information-circle-outline" size={14} color="#7A6E65" />
+                <Ionicons name="information-circle-outline" size={14} color={t.muted} />
                 {' '}{isNe ? 'कम्तिमा ८ अक्षर, एक अक्षर र एक अंक आवश्यक' : 'Minimum 8 characters, at least one letter and one number'}
               </Text>
             )}
@@ -181,10 +185,10 @@ export default function LoginScreen() {
                     value={confirmPassword} onChangeText={setConfirmPassword}
                     editable={!isLoading}
                     onFocus={() => setConfirmFocused(true)} onBlur={() => setConfirmFocused(false)}
-                    placeholderTextColor="#C4956A"
+                    placeholderTextColor={t.shadow}
                   />
                   <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#7A6E65" />
+                    <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color={t.muted} />
                   </TouchableOpacity>
                 </View>
               </>
@@ -192,7 +196,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity style={[styles.btn, isLoading && styles.btnDisabled]} onPress={handleEmailAction} disabled={isLoading}>
               {isLoading && !showForgotPassword ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={t.onAccent} size="small" />
               ) : (
                 <Text style={styles.btnText}>{isRegistering ? (isNe ? 'खाता सिर्जना गर्नुहोस्' : 'Create Account') : (isNe ? 'लगइन' : 'Login')}</Text>
               )}
@@ -213,7 +217,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity style={[styles.googleBtn, isLoading && styles.btnDisabled]} onPress={handleGoogleLogin} disabled={isLoading}>
               {isLoading ? (
-                <ActivityIndicator color="#E8602C" size="small" />
+                <ActivityIndicator color={t.clay} size="small" />
               ) : (
                 <>
                   <Ionicons name="logo-google" size={24} color="#DB4437" style={styles.googleIcon} />
@@ -223,13 +227,13 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.guestBtn, isLoading && styles.btnDisabled]} onPress={() => signInAsGuest()} disabled={isLoading}>
-              <Ionicons name="person-outline" size={24} color="#7A6E65" style={styles.googleIcon} />
+              <Ionicons name="person-outline" size={24} color={t.muted} style={styles.googleIcon} />
               <Text style={styles.guestBtnText}>{isNe ? 'अतिथिको रूपमा जारी राख्नुहोस्' : 'Continue as Guest'}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Ionicons name="shield-checkmark" size={16} color="#7A6E65" />
+            <Ionicons name="shield-checkmark" size={16} color={t.muted} />
             <Text style={styles.footerText}>{isNe ? 'तपाईंको डाटा सुरक्षित छ' : 'Your data is secure and private'}</Text>
           </View>
         </ScrollView>
@@ -240,7 +244,7 @@ export default function LoginScreen() {
           <View style={styles.modalCard}>
             {resetSent ? (
               <>
-                <Ionicons name="checkmark-circle" size={48} color="#3D8B5E" />
+                <Ionicons name="checkmark-circle" size={48} color={t.green} />
                 <Text style={styles.modalTitle}>{isNe ? 'इमेल पठाइयो!' : 'Email Sent!'}</Text>
                 <Text style={styles.modalText}>{isNe ? 'रिसेट लिङ्क तपाईंको इमेलमा पठाइएको छ। कृपया ब्राउजरमा पासवर्ड परिवर्तन गरी एपमा फर्केर नयाँ पासवर्डले लगइन गर्नुहोस्।' : 'Check your email to reset your password in your browser. Then return to the app and sign in with your new password.'}</Text>
                 <TouchableOpacity style={styles.modalBtn} onPress={() => { setShowForgotPassword(false); setResetSent(false); setAuthError(null); }}>
@@ -252,9 +256,9 @@ export default function LoginScreen() {
                 <Text style={styles.modalTitle}>{isNe ? 'पासवर्ड रिसेट' : 'Reset Password'}</Text>
                 <Text style={styles.modalText}>{isNe ? 'आफ्नो इमेल प्रविष्ट गर्नुहोस्। हामी तपाईंलाई पासवर्ड रिसेट लिङ्क पठाउनेछौं।' : 'Enter your email and we will send you a reset link.'}</Text>
                 {authError && <View style={styles.modalError}><Text style={styles.modalErrorText}>{authError}</Text></View>}
-                <TextInput style={styles.modalInput} placeholder="email@example.com" keyboardType="email-address" value={resetEmail} onChangeText={setResetEmail} autoCapitalize="none" autoFocus placeholderTextColor="#C4956A" />
+                <TextInput style={styles.modalInput} placeholder="email@example.com" keyboardType="email-address" value={resetEmail} onChangeText={setResetEmail} autoCapitalize="none" autoFocus placeholderTextColor={t.shadow} />
                 <TouchableOpacity style={[styles.modalBtn, isLoading && styles.btnDisabled]} onPress={handleForgotPassword} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalBtnText}>{isNe ? 'रिसेट लिङ्क पठाउनुहोस्' : 'Send Reset Link'}</Text>}
+                  {isLoading ? <ActivityIndicator color={t.onAccent} size="small" /> : <Text style={styles.modalBtnText}>{isNe ? 'रिसेट लिङ्क पठाउनुहोस्' : 'Send Reset Link'}</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.modalCancel} onPress={() => { setShowForgotPassword(false); setAuthError(null); }} disabled={isLoading}>
                   <Text style={styles.modalCancelText}>{isNe ? 'रद्द गर्नुहोस्' : 'Cancel'}</Text>
@@ -268,61 +272,61 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Palette) => StyleSheet.create({
   container: { flex: 1 },
-  topZone: { backgroundColor: '#F7F1EB', paddingTop: 14, paddingHorizontal: 20 },
-  langToggle: { flexDirection: 'row', alignSelf: 'flex-end', borderRadius: 20, borderWidth: 1, borderColor: '#EDE0D4', padding: 2, marginBottom: 28 },
+  topZone: { backgroundColor: t.bg, paddingTop: 14, paddingHorizontal: 20 },
+  langToggle: { flexDirection: 'row', alignSelf: 'flex-end', borderRadius: 20, borderWidth: 1, borderColor: t.border, padding: 2, marginBottom: 28 },
   langBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 18 },
-  langBtnActive: { backgroundColor: '#E8602C' },
-  langBtnText: { color: '#7A6E65', fontWeight: '600', fontSize: 14 },
-  langBtnTextActive: { color: '#1A1A2E' },
+  langBtnActive: { backgroundColor: t.clay },
+  langBtnText: { color: t.muted, fontWeight: '600', fontSize: 14 },
+  langBtnTextActive: { color: t.text },
   brandBlock: { alignItems: 'center', paddingTop: 28, paddingBottom: 28 },
-  title: { fontSize: 30, fontWeight: '800', color: '#1A1A2E', textAlign: 'center', letterSpacing: -0.3 },
-  titleEnglish: { fontSize: 14, color: '#7A6E65', textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 12, fontStyle: 'italic', color: '#7A6E65', textAlign: 'center' },
-  bottomCard: { backgroundColor: '#FDF8F2', borderTopLeftRadius: 28, borderTopRightRadius: 28, flex: 1 },
+  title: { fontSize: 30, fontWeight: '800', color: t.text, textAlign: 'center', letterSpacing: -0.3 },
+  titleEnglish: { fontSize: 14, color: t.muted, textAlign: 'center', marginBottom: 4 },
+  subtitle: { fontSize: 12, fontStyle: 'italic', color: t.muted, textAlign: 'center' },
+  bottomCard: { backgroundColor: t.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, flex: 1 },
   bottomCardContent: { paddingTop: 24, paddingHorizontal: 22, paddingBottom: 36 },
-  verifyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#3D8B5E' },
-  verifyBannerText: { flex: 1, fontSize: 13, color: '#065F46', lineHeight: 18 },
-  verifyResendText: { fontSize: 13, fontWeight: '700', color: '#E8602C' },
-  pwHint: { fontSize: 12, color: '#7A6E65', marginBottom: 8, lineHeight: 18 },
-  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#C0392B' },
-  errorBannerText: { flex: 1, fontSize: 13, color: '#991B1B', lineHeight: 18 },
+  verifyBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.greenLight, borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: t.green },
+  verifyBannerText: { flex: 1, fontSize: 13, color: t.greenDark, lineHeight: 18 },
+  verifyResendText: { fontSize: 13, fontWeight: '700', color: t.clay },
+  pwHint: { fontSize: 12, color: t.muted, marginBottom: 8, lineHeight: 18 },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.redLight, borderRadius: 10, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: t.red },
+  errorBannerText: { flex: 1, fontSize: 13, color: t.redDark, lineHeight: 18 },
   form: { width: '100%' },
-  label: { fontSize: 13, fontWeight: '600', color: '#7A6E65', marginBottom: 6 },
-  input: { borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 12, paddingHorizontal: 14, padding: 13, fontSize: 15, color: '#1A1A2E', marginBottom: 10, backgroundColor: '#F7F1EB' },
-  inputFocused: { borderColor: '#E8602C' },
-  inputError: { borderColor: '#C0392B' },
+  label: { fontSize: 13, fontWeight: '600', color: t.muted, marginBottom: 6 },
+  input: { borderWidth: 1.5, borderColor: t.border, borderRadius: 12, paddingHorizontal: 14, padding: 13, fontSize: 15, color: t.text, marginBottom: 10, backgroundColor: t.bg },
+  inputFocused: { borderColor: t.clay },
+  inputError: { borderColor: t.red },
   pwContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, position: 'relative' },
   pwInput: { flex: 1, marginBottom: 0, paddingRight: 50 },
   eyeBtn: { position: 'absolute', right: 12, top: 16 },
   forgotBtn: { alignSelf: 'flex-end', paddingVertical: 6, marginBottom: 6 },
-  forgotText: { color: '#E8602C', fontSize: 12 },
-  btn: { backgroundColor: '#E8602C', height: 55, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  forgotText: { color: t.clay, fontSize: 12 },
+  btn: { backgroundColor: t.clay, height: 55, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#1A1A2E', fontSize: 16, fontWeight: '700' },
+  btnText: { color: t.text, fontSize: 16, fontWeight: '700' },
   orDivider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  orLine: { flex: 1, height: 1, backgroundColor: '#EDE0D4' },
-  orText: { marginHorizontal: 16, fontSize: 13, color: '#7A6E65', fontWeight: '600' },
-  googleBtn: { backgroundColor: '#fff', height: 55, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1.5, borderColor: '#EDE0D4' },
-  googleBtnText: { color: '#1A1A2E', fontSize: 16, fontWeight: '700' },
-  guestBtn: { height: 55, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#EDE0D4' },
-  guestBtnText: { color: '#7A6E65', fontSize: 16, fontWeight: '700' },
+  orLine: { flex: 1, height: 1, backgroundColor: t.border },
+  orText: { marginHorizontal: 16, fontSize: 13, color: t.muted, fontWeight: '600' },
+  googleBtn: { backgroundColor: t.surface, height: 55, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1.5, borderColor: t.border },
+  googleBtnText: { color: t.text, fontSize: 16, fontWeight: '700' },
+  guestBtn: { height: 55, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: t.border },
+  guestBtnText: { color: t.muted, fontSize: 16, fontWeight: '700' },
   googleIcon: { marginRight: 10 },
   toggleBtn: { padding: 15, alignItems: 'center' },
-  toggleText: { color: '#7A6E65', fontSize: 15 },
-  toggleLink: { color: '#E8602C', fontWeight: '700' },
+  toggleText: { color: t.muted, fontSize: 15 },
+  toggleLink: { color: t.clay, fontWeight: '700' },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 40 },
-  footerText: { fontSize: 12, color: '#7A6E65', marginLeft: 6 },
+  footerText: { fontSize: 12, color: t.muted, marginLeft: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 30 },
-  modalCard: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 28, width: '100%', alignItems: 'center', maxWidth: 400 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A2E', marginTop: 12, marginBottom: 8 },
-  modalText: { fontSize: 14, color: '#7A6E65', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  modalInput: { width: '100%', borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 16, color: '#1A1A2E', marginBottom: 16, backgroundColor: '#F7F1EB' },
-  modalError: { width: '100%', backgroundColor: '#FEE2E2', borderRadius: 8, padding: 10, marginBottom: 12 },
-  modalErrorText: { fontSize: 13, color: '#991B1B', textAlign: 'center' },
-  modalBtn: { width: '100%', backgroundColor: '#E8602C', height: 50, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  modalBtnText: { color: '#1A1A2E', fontSize: 16, fontWeight: '700' },
+  modalCard: { backgroundColor: t.surface, borderRadius: 16, padding: 28, width: '100%', alignItems: 'center', maxWidth: 400 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: t.text, marginTop: 12, marginBottom: 8 },
+  modalText: { fontSize: 14, color: t.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  modalInput: { width: '100%', borderWidth: 1.5, borderColor: t.border, borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 16, color: t.text, marginBottom: 16, backgroundColor: t.bg },
+  modalError: { width: '100%', backgroundColor: t.redLight, borderRadius: 8, padding: 10, marginBottom: 12 },
+  modalErrorText: { fontSize: 13, color: t.redDark, textAlign: 'center' },
+  modalBtn: { width: '100%', backgroundColor: t.clay, height: 50, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  modalBtnText: { color: t.text, fontSize: 16, fontWeight: '700' },
   modalCancel: { marginTop: 16, padding: 8 },
-  modalCancelText: { color: '#7A6E65', fontSize: 14, fontWeight: '500' },
+  modalCancelText: { color: t.muted, fontSize: 14, fontWeight: '500' },
 });

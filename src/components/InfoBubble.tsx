@@ -1,6 +1,8 @@
 // src/components/InfoBubble.tsx
 import React, { useContext, useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Modal, View, ScrollView } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 
@@ -13,7 +15,10 @@ interface InfoBubbleProps {
   iconColor?: string;
 }
 
-export default function InfoBubble({ titleEn, titleNe, bodyEn, bodyNe, iconSize = 13, iconColor = '#7A6E65' }: InfoBubbleProps) {
+export default function InfoBubble({ titleEn, titleNe, bodyEn, bodyNe, iconSize = 13, iconColor }: InfoBubbleProps) {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
+  const icon = iconColor ?? t.muted;
   const { language } = useContext(LanguageContext);
   const isNe = language === 'ne';
   const [visible, setVisible] = useState(false);
@@ -21,7 +26,7 @@ export default function InfoBubble({ titleEn, titleNe, bodyEn, bodyNe, iconSize 
   return (
     <>
       <TouchableOpacity onPress={() => setVisible(true)} style={styles.iconBtn}>
-        <Ionicons name="information-circle-outline" size={iconSize} color={iconColor} />
+        <Ionicons name="information-circle-outline" size={iconSize} color={icon} />
       </TouchableOpacity>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setVisible(false)}>
@@ -38,12 +43,12 @@ export default function InfoBubble({ titleEn, titleNe, bodyEn, bodyNe, iconSize 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Palette) => StyleSheet.create({
   iconBtn: { padding: 4 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  sheet: { backgroundColor: '#FDF8F2', borderRadius: 16, padding: 24, maxHeight: '60%' },
-  sheetTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A2E', marginBottom: 10 },
-  sheetBody: { fontSize: 14, color: '#7A6E65', lineHeight: 22 },
-  closeBtn: { backgroundColor: '#E8602C', borderRadius: 28, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
-  closeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  sheet: { backgroundColor: t.surface, borderRadius: 16, padding: 24, maxHeight: '60%' },
+  sheetTitle: { fontSize: 17, fontWeight: '700', color: t.text, marginBottom: 10 },
+  sheetBody: { fontSize: 14, color: t.muted, lineHeight: 22 },
+  closeBtn: { backgroundColor: t.clay, borderRadius: 28, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
+  closeBtnText: { color: t.onAccent, fontSize: 16, fontWeight: '700' },
 });

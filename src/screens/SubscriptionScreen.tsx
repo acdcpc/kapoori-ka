@@ -7,6 +7,8 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
   ActivityIndicator, TextInput,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
@@ -52,6 +54,8 @@ const PAID_FEATURES_NE = [
 ];
 
 export default function SubscriptionScreen() {
+  const { palette: t } = useContext(ThemeContext);
+  const styles = makeStyles(t);
   const { language } = useContext(LanguageContext);
   const { subscription, redeemCode, refreshUserData, loading: authLoading } = useAuth();
   const isNe = language === 'ne';
@@ -96,7 +100,7 @@ export default function SubscriptionScreen() {
   };
 
   if (authLoading || redeeming) {
-    return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1 }} />;
+    return <ActivityIndicator size="large" color={t.clay} style={{ flex: 1 }} />;
   }
 
   return (
@@ -105,7 +109,7 @@ export default function SubscriptionScreen() {
       {/* Active Subscription Status */}
       {isActive && (
         <View style={styles.statusCard}>
-          <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+          <Ionicons name="checkmark-circle" size={28} color={t.green} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.statusActive}>
               {subscription.plan === 'monthly'
@@ -127,7 +131,7 @@ export default function SubscriptionScreen() {
       {/* Pending Verification Status */}
       {isPending && (
         <View style={styles.pendingCard}>
-          <Ionicons name="time-outline" size={28} color="#FF9800" />
+          <Ionicons name="time-outline" size={28} color={t.gold} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.pendingTitle}>
               {isNe ? 'भुक्तानी जाँच हुँदैछ' : 'Payment Being Verified'}
@@ -160,15 +164,15 @@ export default function SubscriptionScreen() {
         </View>
 
         <View style={[styles.featureCard, styles.featureCardPremium]}>
-          <View style={[styles.featureCardHeader, { backgroundColor: '#E8602C' }]}>
-            <Text style={[styles.featureCardTitle, { color: '#fff' }]}>
+          <View style={[styles.featureCardHeader, { backgroundColor: t.clay }]}>
+            <Text style={[styles.featureCardTitle, { color: t.onAccent }]}>
               ⭐ {isNe ? 'प्रिमियम' : 'Premium'}
             </Text>
           </View>
           {paidFeatures.map((f, i) => (
-            <View key={i} style={[styles.featureRow, { borderBottomColor: '#F7F1EB' }]}>
+            <View key={i} style={[styles.featureRow, { borderBottomColor: t.bg }]}>
               <Text style={styles.featureIcon}>{f.icon}</Text>
-              <Text style={[styles.featureText, { color: '#E8602C' }]}>{f.text}</Text>
+              <Text style={[styles.featureText, { color: t.clay }]}>{f.text}</Text>
             </View>
           ))}
         </View>
@@ -192,7 +196,7 @@ export default function SubscriptionScreen() {
                 <Text style={styles.bestBadgeText}>{isNe ? 'सर्वोत्तम' : 'BEST'}</Text>
               </View>
               <Text style={styles.pricePlan}>{isNe ? 'वार्षिक' : 'Yearly'}</Text>
-              <Text style={[styles.priceAmount, { color: '#E8602C' }]}>NPR 500</Text>
+              <Text style={[styles.priceAmount, { color: t.clay }]}>NPR 500</Text>
               <Text style={styles.pricePeriod}>/ {isNe ? 'वर्ष' : 'year'}</Text>
               <Text style={styles.priceSave}>
                 {isNe ? '५८% बचत!' : '58% saving!'}
@@ -202,7 +206,7 @@ export default function SubscriptionScreen() {
 
           {/* Neutral compliance message — no links, no URLs, no payment instructions */}
           <View style={styles.complianceNote}>
-            <Ionicons name="information-circle-outline" size={20} color="#C4956A" />
+            <Ionicons name="information-circle-outline" size={20} color={t.shadow} />
             <Text style={styles.complianceText}>
               {isNe
                 ? 'प्रिमियम हाल हाम्रो आधिकारिक माध्यमहरू मार्फत उपलब्ध छ।'
@@ -219,7 +223,7 @@ export default function SubscriptionScreen() {
             <TextInput
               style={styles.redeemInput}
               placeholder={isNe ? 'एक्टिभेसन कोड लेख्नुहोस्' : 'Enter your activation code'}
-              placeholderTextColor="#C4956A"
+              placeholderTextColor={t.shadow}
               value={redemptionCode}
               onChangeText={setRedemptionCode}
               autoCapitalize="characters"
@@ -242,91 +246,91 @@ export default function SubscriptionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FDF8F2' },
-  container: { flex: 1, backgroundColor: '#FDF8F2' },
+const makeStyles = (t: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.surface },
+  container: { flex: 1, backgroundColor: t.surface },
   statusCard: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 12, marginTop: 16, marginBottom: 8,
-    backgroundColor: '#E8F5E9', borderRadius: 14, padding: 16,
-    borderWidth: 1.5, borderColor: '#4CAF50',
+    backgroundColor: t.greenLight, borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderColor: t.green,
   },
-  statusActive: { fontSize: 16, fontWeight: '700', color: '#2E7D32' },
-  statusExpiry: { fontSize: 12, color: '#666', marginTop: 4 },
+  statusActive: { fontSize: 16, fontWeight: '700', color: t.greenDark },
+  statusExpiry: { fontSize: 12, color: t.muted, marginTop: 4 },
   pendingCard: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 12, marginTop: 16, marginBottom: 8,
-    backgroundColor: '#FFF8E1', borderRadius: 14, padding: 16,
-    borderWidth: 1.5, borderColor: '#FF9800',
+    backgroundColor: t.amberLight, borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderColor: t.gold,
   },
-  pendingTitle: { fontSize: 16, fontWeight: '700', color: '#E65100' },
-  pendingText: { fontSize: 13, color: '#666', marginTop: 4, lineHeight: 18 },
+  pendingTitle: { fontSize: 16, fontWeight: '700', color: t.amberDark },
+  pendingText: { fontSize: 13, color: t.muted, marginTop: 4, lineHeight: 18 },
 
   sectionLabel: {
-    fontSize: 13, fontWeight: '700', color: '#C4956A',
+    fontSize: 13, fontWeight: '700', color: t.shadow,
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
     textTransform: 'uppercase', letterSpacing: 1,
   },
 
   featuresRow: { flexDirection: 'row', marginHorizontal: 12, gap: 10, marginBottom: 8 },
   featureCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14,
-    overflow: 'hidden', elevation: 2, shadowColor: '#C4956A',
+    flex: 1, backgroundColor: t.surface, borderRadius: 14,
+    overflow: 'hidden', elevation: 2, shadowColor: t.shadow,
     shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4,
   },
-  featureCardPremium: { borderWidth: 1.5, borderColor: '#E8602C' },
-  featureCardHeader: { backgroundColor: '#F7F1EB', padding: 10, alignItems: 'center' },
-  featureCardTitle: { fontSize: 13, fontWeight: '800', color: '#333' },
+  featureCardPremium: { borderWidth: 1.5, borderColor: t.clay },
+  featureCardHeader: { backgroundColor: t.bg, padding: 10, alignItems: 'center' },
+  featureCardTitle: { fontSize: 13, fontWeight: '800', color: t.text },
   featureRow: {
     flexDirection: 'row', alignItems: 'flex-start', padding: 8,
-    borderBottomWidth: 1, borderBottomColor: '#EDE0D4', gap: 6,
+    borderBottomWidth: 1, borderBottomColor: t.border, gap: 6,
   },
   featureIcon: { fontSize: 14, width: 22 },
-  featureText: { flex: 1, fontSize: 11, color: '#555', lineHeight: 16 },
+  featureText: { flex: 1, fontSize: 11, color: t.text, lineHeight: 16 },
 
   // Pricing
   pricingRow: { flexDirection: 'row', marginHorizontal: 12, gap: 10, marginBottom: 16 },
   priceCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14,
+    flex: 1, backgroundColor: t.surface, borderRadius: 14,
     padding: 16, alignItems: 'center',
-    borderWidth: 2, borderColor: '#EDE0D4',
+    borderWidth: 2, borderColor: t.border,
   },
   priceCardBest: {
-    borderColor: '#E8602C', backgroundColor: '#FFF5F0',
+    borderColor: t.clay, backgroundColor: t.surfaceWarm,
   },
   bestBadge: {
     position: 'absolute', top: -10, backgroundColor: '#FFD700',
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8,
   },
   bestBadgeText: { fontSize: 10, fontWeight: '900', color: '#000' },
-  pricePlan: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 6 },
-  priceAmount: { fontSize: 24, fontWeight: '800', color: '#333' },
-  pricePeriod: { fontSize: 12, color: '#999', marginTop: 2 },
-  priceSave: { fontSize: 12, color: '#4CAF50', fontWeight: '700', marginTop: 6 },
+  pricePlan: { fontSize: 14, fontWeight: '600', color: t.muted, marginBottom: 6 },
+  priceAmount: { fontSize: 24, fontWeight: '800', color: t.text },
+  pricePeriod: { fontSize: 12, color: t.muted, marginTop: 2 },
+  priceSave: { fontSize: 12, color: t.green, fontWeight: '700', marginTop: 6 },
 
   // Compliance note — no links, no URLs
   complianceNote: {
     flexDirection: 'row', alignItems: 'flex-start',
     marginHorizontal: 12, marginTop: 8, marginBottom: 4,
-    backgroundColor: '#F7F1EB', borderRadius: 12, padding: 14, gap: 8,
+    backgroundColor: t.bg, borderRadius: 12, padding: 14, gap: 8,
   },
-  complianceText: { flex: 1, fontSize: 13, color: '#C4956A', lineHeight: 18 },
+  complianceText: { flex: 1, fontSize: 13, color: t.shadow, lineHeight: 18 },
 
   // Redemption
   redeemBox: {
     flexDirection: 'row', marginHorizontal: 12, marginTop: 8,
-    backgroundColor: '#fff', borderRadius: 14, padding: 8,
-    borderWidth: 1.5, borderColor: '#E8602C', gap: 8,
+    backgroundColor: t.surface, borderRadius: 14, padding: 8,
+    borderWidth: 1.5, borderColor: t.clay, gap: 8,
   },
   redeemInput: {
-    flex: 1, fontSize: 16, color: '#333',
+    flex: 1, fontSize: 16, color: t.text,
     paddingHorizontal: 12, paddingVertical: 12,
     letterSpacing: 2, fontWeight: '600',
   },
   redeemBtn: {
-    backgroundColor: '#E8602C', borderRadius: 10,
+    backgroundColor: t.clay, borderRadius: 10,
     paddingHorizontal: 24, justifyContent: 'center',
   },
-  redeemBtnDisabled: { backgroundColor: '#EDE0D4' },
-  redeemBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  redeemBtnDisabled: { backgroundColor: t.border },
+  redeemBtnText: { color: t.onAccent, fontWeight: '700', fontSize: 15 },
 });

@@ -4,6 +4,8 @@ import {
   View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, ScrollView, Alert, Modal, FlatList, StatusBar, Platform
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -117,6 +119,8 @@ function ScrollPicker({ items, selectedValue, onSelect }: {
   selectedValue: number | string;
   onSelect: (v: any) => void;
 }) {
+  const { palette: t } = useContext(ThemeContext);
+  const pickerSt = pickerStFactory(t);
   const initIdx = Math.max(0, items.findIndex(i => i.value === selectedValue));
   return (
     <FlatList
@@ -140,14 +144,16 @@ function ScrollPicker({ items, selectedValue, onSelect }: {
     />
   );
 }
-const pickerSt = StyleSheet.create({
+const pickerStFactory = (t: Palette) => StyleSheet.create({
   item: { height: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8 },
-  itemSel: { backgroundColor: '#FDE8E0' },
-  itemTxt: { fontSize: 15, color: '#444' },
-  itemTxtSel: { color: '#E8602C', fontWeight: '700' },
+  itemSel: { backgroundColor: t.actionBg },
+  itemTxt: { fontSize: 15, color: t.text },
+  itemTxtSel: { color: t.clay, fontWeight: '700' },
 });
 
 export default function AddChildScreen({ navigation }: AddChildScreenProps) {
+  const { palette: pal } = useContext(ThemeContext);
+  const styles = makeStyles(pal);
   const { user } = useAuth();
   const { language } = useContext(LanguageContext);
   const t = translations[language];
@@ -307,7 +313,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF8F2' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: pal.surface }}>
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.form}>
@@ -327,16 +333,16 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
               </TouchableOpacity>
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Ionicons name="person-outline" size={40} color="#C4956A" />
+                <Ionicons name="person-outline" size={40} color={pal.shadow} />
               </View>
             )}
             <View style={styles.photoActions}>
               <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(true)}>
-                <Ionicons name="camera" size={16} color="#E8602C" />
+                <Ionicons name="camera" size={16} color={pal.clay} />
                 <Text style={styles.photoBtnText}>{isNe ? 'फोटो खिच्नुहोस्' : 'Camera'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(false)}>
-                <Ionicons name="images-outline" size={16} color="#E8602C" />
+                <Ionicons name="images-outline" size={16} color={pal.clay} />
                 <Text style={styles.photoBtnText}>{isNe ? 'ग्यालरी' : 'Gallery'}</Text>
               </TouchableOpacity>
             </View>
@@ -423,40 +429,40 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F1EB' },
-  formHeader: { backgroundColor: '#E8602C', paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 8 },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: pal.bg },
+  formHeader: { backgroundColor: pal.clay, paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 8 },
   formHeaderIcon: { fontSize: 40, marginBottom: 8 },
-  formHeaderTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  formHeaderTitle: { fontSize: 20, fontWeight: '800', color: pal.onAccent },
   formHeaderSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4, textAlign: 'center' },
   form: { padding: 20, paddingBottom: 120 },
-  label: { fontSize: 14, fontWeight: '700', color: '#1A1A2E', marginBottom: 6, marginTop: 16 },
-  input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#EDE0D4', borderRadius: 10, padding: 14, fontSize: 16, color: '#222' },
+  label: { fontSize: 14, fontWeight: '700', color: pal.text, marginBottom: 6, marginTop: 16 },
+  input: { backgroundColor: pal.surface, borderWidth: 1.5, borderColor: pal.border, borderRadius: 10, padding: 14, fontSize: 16, color: pal.text },
   row: { flexDirection: 'row', gap: 10 },
   col: { flex: 1 },
   sexContainer: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  sexBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#FDF8F2', alignItems: 'center' },
-  sexBtnActive: { backgroundColor: '#E8602C' },
-  sexBtnText: { fontWeight: '600', color: '#7A6E65' },
-  sexBtnTextActive: { color: '#fff' },
-  dateBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8602C', borderRadius: 10, padding: 14, alignItems: 'center' },
-  dateBtnText: { fontSize: 16, color: '#E8602C', fontWeight: '700' },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#E8602C', textAlign: 'center', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  saveBtn: { backgroundColor: '#E8602C', borderRadius: 14, padding: 18, marginTop: 36, alignItems: 'center', elevation: 4, shadowColor: '#E8602C', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10 },
+  sexBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: pal.surface, alignItems: 'center' },
+  sexBtnActive: { backgroundColor: pal.clay },
+  sexBtnText: { fontWeight: '600', color: pal.muted },
+  sexBtnTextActive: { color: pal.onAccent },
+  dateBtn: { backgroundColor: pal.surface, borderWidth: 1.5, borderColor: pal.clay, borderRadius: 10, padding: 14, alignItems: 'center' },
+  dateBtnText: { fontSize: 16, color: pal.clay, fontWeight: '700' },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: pal.clay, textAlign: 'center', marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  saveBtn: { backgroundColor: pal.clay, borderRadius: 14, padding: 18, marginTop: 36, alignItems: 'center', elevation: 4, shadowColor: pal.clay, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10 },
 
   photoContainer: { alignItems: 'center', marginBottom: 16 },
-  photoPreview: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#E8602C' },
-  photoPlaceholder: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#EDE0D4', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  photoPreview: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: pal.clay },
+  photoPlaceholder: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: pal.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   photoActions: { flexDirection: 'row', gap: 12 },
-  photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#EDE0D4' },
-  photoBtnText: { fontSize: 12, color: '#7A6E65', fontWeight: '600' },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: pal.border },
+  photoBtnText: { fontSize: 12, color: pal.muted, fontWeight: '600' },
+  saveBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FDF8F2', width: '90%', borderRadius: 16, padding: 20 },
+  modalContent: { backgroundColor: pal.surface, width: '90%', borderRadius: 16, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
   pickerRow: { flexDirection: 'row', height: 200 },
   pickerCol: { flex: 1 },
-  doneBtn: { backgroundColor: '#E8602C', borderRadius: 8, padding: 14, marginTop: 20, alignItems: 'center' },
-  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  hintText: { fontSize: 11, color: '#888', marginTop: 4, marginBottom: 4 },
+  doneBtn: { backgroundColor: pal.clay, borderRadius: 8, padding: 14, marginTop: 20, alignItems: 'center' },
+  doneBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: '700' },
+  hintText: { fontSize: 11, color: pal.muted, marginTop: 4, marginBottom: 4 },
 });

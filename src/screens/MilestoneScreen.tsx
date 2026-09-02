@@ -5,6 +5,8 @@ import {
   StyleSheet, Alert, ActivityIndicator, ScrollView, StatusBar,
   Modal, Image, Animated,
 } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import dayjs from 'dayjs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -23,14 +25,17 @@ import { supabase } from '../lib/supabase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Milestone'>;
 
-const DOMAIN_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  motor:    { bg: '#FEE2E2', text: '#C0392B', icon: '🏃' },
-  language: { bg: '#FEF3C7', text: '#92400E', icon: '💬' },
-  social:   { bg: '#D1FAE5', text: '#065F46', icon: '🤝' },
-  cognitive:{ bg: '#E8E0F0', text: '#6B21A8', icon: '🧠' },
-};
+const makeDomainColors = (pal: Palette): Record<string, { bg: string; text: string; icon: string }> => ({
+  motor:    { bg: pal.redLight, text: pal.red, icon: '🏃' },
+  language: { bg: pal.amberLight, text: pal.amberDark, icon: '💬' },
+  social:   { bg: pal.greenLight, text: pal.greenDark, icon: '🤝' },
+  cognitive:{ bg: pal.purpleLight, text: pal.purpleDark, icon: '🧠' },
+});
 
 export default function MilestoneScreen({ route, navigation }: Props) {
+  const { palette: pal } = useContext(ThemeContext);
+  const domainColors = makeDomainColors(pal);
+  const styles = makeStyles(pal);
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const t = translations[language];
@@ -117,7 +122,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
     const isAchieved = achievedIds.has(item.id);
     const isDenied = deniedIds.has(item.id);
     const showWarning = (isRedFlag && isAchieved) || (!isRedFlag && isDenied);
-    const domain = DOMAIN_COLORS[item.domain] || DOMAIN_COLORS.motor;
+    const domain = domainColors[item.domain] || makeDomainColors(pal).motor;
 
     const isThisCelebrating = celebratingId === item.id;
     const CardWrapper = isThisCelebrating ? Animated.View : View;
@@ -136,7 +141,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
           <Text style={[styles.descText, { flex: 1 }]}>{isNe ? item.descriptionNepali : item.description}</Text>
           <TouchableOpacity onPress={(e: any) => { e.stopPropagation?.(); Speech.speak(isNe ? item.descriptionNepali : item.description); }}>
-            <Ionicons name="volume-high" size={16} color="#7A6E65" />
+            <Ionicons name="volume-high" size={16} color={pal.muted} />
           </TouchableOpacity>
         </View>
 
@@ -175,15 +180,15 @@ export default function MilestoneScreen({ route, navigation }: Props) {
     );
   };
 
-  if (loading) return <ActivityIndicator size="large" color="#E8602C" style={{ flex: 1, backgroundColor: '#F7F1EB' }} />;
+  if (loading) return <ActivityIndicator size="large" color={pal.clay} style={{ flex: 1, backgroundColor: pal.bg }} />;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Ionicons name="arrow-back" size={24} color="#7A6E65" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Ionicons name="arrow-back" size={24} color={pal.muted} /></TouchableOpacity>
         <Text style={styles.headerTitle}>{t.milestones}</Text>
-        <TouchableOpacity onPress={() => setShowFullChart(true)} style={styles.fullBtn}><Ionicons name="calendar" size={20} color="#fff" /><Text style={styles.fullBtnText}>{isNe ? 'तालिका' : 'Full'}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowFullChart(true)} style={styles.fullBtn}><Ionicons name="calendar" size={20} color={pal.onAccent} /><Text style={styles.fullBtnText}>{isNe ? 'तालिका' : 'Full'}</Text></TouchableOpacity>
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -210,16 +215,16 @@ export default function MilestoneScreen({ route, navigation }: Props) {
         {positiveMilestones.map(m => renderMilestoneItem(m, false))}
 
         <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-          <Text style={[styles.sectionTitle, { color: '#C0392B' }]}>{isNe ? 'चेतावनीका संकेतहरू' : 'Red Flags to Watch For'}</Text>
+          <Text style={[styles.sectionTitle, { color: pal.red }]}>{isNe ? 'चेतावनीका संकेतहरू' : 'Red Flags to Watch For'}</Text>
           <Text style={styles.sectionSub}>{isNe ? 'यदि यी लक्षण देखिएमा डाक्टरसँग सल्लाह लिनुहोस्' : 'Consult a doctor if you notice these'}</Text>
         </View>
         {redFlagMilestones.map(m => renderMilestoneItem(m, true))}
       </ScrollView>
 
       <Modal visible={showFullChart} animationType="slide">
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF8F2' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: pal.surface }}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowFullChart(false)}><Ionicons name="close" size={28} color="#7A6E65" /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowFullChart(false)}><Ionicons name="close" size={28} color={pal.muted} /></TouchableOpacity>
             <Text style={styles.modalTitle}>{t.milestoneFullChart}</Text>
             <View style={{ width: 28 }} />
           </View>
@@ -229,7 +234,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
                 <Text style={styles.bandTitle}>{band} {isNe ? 'महिना' : 'Months'}</Text>
                 {MILESTONES.filter(m => m.ageMonthsMax === band).map(m => (
                   <View key={m.id} style={styles.miniItem}>
-                    <Text style={[styles.miniDot, { backgroundColor: m.flagLevel === 'red' ? '#C0392B' : '#3D8B5E' }]} />
+                    <Text style={[styles.miniDot, { backgroundColor: m.flagLevel === 'red' ? pal.red : pal.green }]} />
                     <Text style={styles.miniText}>{isNe ? m.descriptionNepali : m.description}</Text>
                   </View>
                 ))}
@@ -242,59 +247,59 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F7F1EB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#FDF8F2', shadowColor: '#C4956A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: pal.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: pal.surface, shadowColor: pal.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   backBtn: { padding: 5 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A2E' },
-  fullBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8602C', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
-  fullBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: pal.text },
+  fullBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: pal.clay, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
+  fullBtnText: { color: pal.onAccent, fontSize: 12, fontWeight: 'bold' },
   container: { flex: 1 },
-  topWarningBanner: { backgroundColor: '#FEF3C7', padding: 15, margin: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#F5A623' },
-  topWarningText: { color: '#92400E', fontWeight: 'bold', textAlign: 'center', fontSize: 13 },
+  topWarningBanner: { backgroundColor: pal.amberLight, padding: 15, margin: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: pal.gold },
+  topWarningText: { color: pal.amberDark, fontWeight: 'bold', textAlign: 'center', fontSize: 13 },
 
   // Progress
   progressSection: { paddingHorizontal: 15, marginTop: 16, marginBottom: 6 },
-  progressLabel: { fontSize: 13, color: '#7A6E65', fontWeight: '600', marginBottom: 6 },
-  progressBar: { height: 6, borderRadius: 3, backgroundColor: '#EDE0D4', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#E8602C' },
+  progressLabel: { fontSize: 13, color: pal.muted, fontWeight: '600', marginBottom: 6 },
+  progressBar: { height: 6, borderRadius: 3, backgroundColor: pal.border, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: pal.clay },
 
   sectionHeader: { paddingHorizontal: 15, marginTop: 20, marginBottom: 10 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#1A1A2E' },
-  sectionSub: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: pal.text },
+  sectionSub: { fontSize: 12, color: pal.muted, marginTop: 2 },
 
-  card: { backgroundColor: '#FDF8F2', marginHorizontal: 12, marginBottom: 10, borderRadius: 16, padding: 16, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  redCard: { borderLeftWidth: 4, borderLeftColor: '#C0392B' },
-  warningCard: { borderLeftWidth: 4, borderLeftColor: '#F5A623' },
+  card: { backgroundColor: pal.surface, marginHorizontal: 12, marginBottom: 10, borderRadius: 16, padding: 16, shadowColor: pal.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  redCard: { borderLeftWidth: 4, borderLeftColor: pal.red },
+  warningCard: { borderLeftWidth: 4, borderLeftColor: pal.gold },
 
   domainPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 10, gap: 4 },
   domainPillIcon: { fontSize: 12 },
   domainPillText: { fontSize: 11, fontWeight: '700' },
 
-  descText: { fontSize: 15, fontWeight: '600', color: '#1A1A2E', lineHeight: 22, marginBottom: 14 },
+  descText: { fontSize: 15, fontWeight: '600', color: pal.text, lineHeight: 22, marginBottom: 14 },
 
-  warningBox: { backgroundColor: '#FEF3C7', padding: 10, borderRadius: 8, marginBottom: 14, borderLeftWidth: 2, borderLeftColor: '#F5A623' },
-  warningText: { fontSize: 12, color: '#92400E', fontWeight: '600' },
+  warningBox: { backgroundColor: pal.amberLight, padding: 10, borderRadius: 8, marginBottom: 14, borderLeftWidth: 2, borderLeftColor: pal.gold },
+  warningText: { fontSize: 12, color: pal.amberDark, fontWeight: '600' },
 
-  toggleRow: { flexDirection: 'row', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#EDE0D4' },
-  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FDF8F2' },
-  toggleLeft: { borderRightWidth: 1, borderRightColor: '#EDE0D4' },
+  toggleRow: { flexDirection: 'row', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: pal.border },
+  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pal.surface },
+  toggleLeft: { borderRightWidth: 1, borderRightColor: pal.border },
   toggleRight: {},
-  toggleAchieved: { backgroundColor: '#3D8B5E' },
-  toggleDenied: { backgroundColor: '#EDE0D4' },
-  toggleRed: { backgroundColor: '#C0392B' },
-  toggleGreen: { backgroundColor: '#3D8B5E' },
-  toggleBtnText: { fontSize: 14, fontWeight: '600', color: '#7A6E65' },
-  toggleBtnTextActive: { color: '#fff' },
-  toggleBtnTextDenied: { color: '#1A1A2E' },
+  toggleAchieved: { backgroundColor: pal.green },
+  toggleDenied: { backgroundColor: pal.border },
+  toggleRed: { backgroundColor: pal.red },
+  toggleGreen: { backgroundColor: pal.green },
+  toggleBtnText: { fontSize: 14, fontWeight: '600', color: pal.muted },
+  toggleBtnTextActive: { color: pal.onAccent },
+  toggleBtnTextDenied: { color: pal.text },
 
   // Photo attachment
 
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EDE0D4' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A2E' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: pal.border },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: pal.text },
   bandRow: { marginBottom: 20 },
-  bandTitle: { fontSize: 16, fontWeight: 'bold', color: '#E8602C', marginBottom: 10 },
+  bandTitle: { fontSize: 16, fontWeight: 'bold', color: pal.clay, marginBottom: 10 },
   miniItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, paddingLeft: 10 },
   miniDot: { width: 6, height: 6, borderRadius: 3, marginRight: 10 },
-  miniText: { fontSize: 13, color: '#1A1A2E', flex: 1 },
+  miniText: { fontSize: 13, color: pal.text, flex: 1 },
 });

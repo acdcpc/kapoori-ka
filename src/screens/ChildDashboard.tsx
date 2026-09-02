@@ -1,6 +1,8 @@
 // src/screens/ChildDashboard.tsx
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar, Alert } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import { Palette } from '../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +27,8 @@ import { getFollowUpReminder } from '../lib/clinicalSafety';
 type Props = NativeStackScreenProps<RootStackParamList, 'ChildDashboard'>;
 
 export default function ChildDashboard({ route, navigation }: Props) {
+  const { palette: pal } = useContext(ThemeContext);
+  const styles = makeStyles(pal);
   const { child } = route.params;
   const { language } = useContext(LanguageContext);
   const { subscription, user } = useAuth();
@@ -114,14 +118,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
   }, [child.id, language]);
 
   const menuItems = [
-    { title: t.growthChart,    icon: '📈', color: '#E8602C', screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
-    { title: t.milestones,     icon: '🧠', color: '#6B21A8', screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
+    { title: t.growthChart,    icon: '📈', color: pal.clay, screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
+    { title: t.milestones,     icon: '🧠', color: pal.purpleDark, screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
     { title: t.immunization,   icon: '💉', color: '#1565C0', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र सम्झनाहरू' : 'Vaccine schedule & reminders', premium: true },
-    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: '#3D8B5E', screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
-    { title: t.mchat,          icon: '🔍', color: '#C0392B', screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
+    { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: pal.green, screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
+    { title: t.mchat,          icon: '🔍', color: pal.red, screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'पूर्ण रिपोर्ट डाउनलोड' : 'Download full report', premium: true },
-    { title: isNe ? 'क्लिनिक सारांश' : 'Clinic summary', icon: '🩺', color: '#8B5E34', screen: 'ClinicSummary' as const, desc: isNe ? 'छानिएका रेकर्ड PDF मा सेयर गर्नुहोस्' : 'Share selected records as a PDF', premium: false },
-    { title: isNe ? 'हेरचाह टोली' : 'Care team & care log', icon: '🤝', color: '#B85C38', screen: 'CaregiverTools' as const, desc: isNe ? 'विश्वासिलो हेरचाहकर्ता र खाना/क्लिनिक रेकर्ड' : 'Trusted caregiver, feeding and clinic log', premium: false },
+    { title: isNe ? 'क्लिनिक सारांश' : 'Clinic summary', icon: '🩺', color: pal.muted2, screen: 'ClinicSummary' as const, desc: isNe ? 'छानिएका रेकर्ड PDF मा सेयर गर्नुहोस्' : 'Share selected records as a PDF', premium: false },
+    { title: isNe ? 'हेरचाह टोली' : 'Care team & care log', icon: '🤝', color: pal.terracotta, screen: 'CaregiverTools' as const, desc: isNe ? 'विश्वासिलो हेरचाहकर्ता र खाना/क्लिनिक रेकर्ड' : 'Trusted caregiver, feeding and clinic log', premium: false },
   ];
 
   const handleChangePhoto = async () => {
@@ -204,14 +208,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
         {/* Top bar: back + delete pill */}
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#7A6E65" />
+            <Ionicons name="arrow-back" size={24} color={pal.muted} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <TouchableOpacity onPress={() => navigation.navigate('Preferences')} style={styles.settingsPill} accessibilityLabel={isNe ? 'सेटिङ' : 'Settings'}>
-              <Ionicons name="settings-outline" size={16} color="#7A4E36" />
+              <Ionicons name="settings-outline" size={16} color={pal.subInk} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDelete} style={styles.deletePill}>
-              <Ionicons name="trash-outline" size={16} color="#C0392B" />
+              <Ionicons name="trash-outline" size={16} color={pal.red} />
               <Text style={styles.deletePillText}>{isNe ? 'मेटाउनुहोस्' : 'Delete'}</Text>
             </TouchableOpacity>
           </View>
@@ -223,14 +227,14 @@ export default function ChildDashboard({ route, navigation }: Props) {
             <>
               <ChildPhoto uri={child.photoUri} style={styles.avatarPhoto} />
               <View style={styles.avatarEditOverlay}>
-                <Ionicons name="camera" size={14} color="#FFF" />
+                <Ionicons name="camera" size={14} color={pal.onAccent} />
               </View>
             </>
           ) : (
             <View style={styles.avatarPlaceholderWrap}>
               <Text style={styles.avatarInitials}>{initials}</Text>
               <View style={styles.avatarEditOverlay}>
-                <Ionicons name="camera-outline" size={16} color="#7A6E65" />
+                <Ionicons name="camera-outline" size={16} color={pal.muted} />
               </View>
             </View>
           )}
@@ -242,7 +246,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
         <Text style={styles.childDob}>{isNe ? 'जन्म' : 'Born'}: {child.dateOfBirth}</Text>
         {growthReminder && (
           <View style={[styles.growthReminder, preferences.highContrast && styles.growthReminderHighContrast]} accessibilityRole="summary">
-            <Ionicons name="calendar-outline" size={18} color="#7A4E36" />
+            <Ionicons name="calendar-outline" size={18} color={pal.subInk} />
             <Text style={styles.growthReminderText}>{growthReminder}</Text>
           </View>
         )}
@@ -292,54 +296,54 @@ export default function ChildDashboard({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F7F1EB' },
+const makeStyles = (pal: Palette) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: pal.bg },
   container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, marginBottom: 8 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backBtn: { padding: 8 },
-  settingsPill: { minWidth: 36, minHeight: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#EAD2C2', backgroundColor: '#FFF9F4' },
-  deletePill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: '#FEE2E2', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#FFF5F5' },
-  deletePillText: { fontSize: 12, fontWeight: '600', color: '#C0392B' },
+  settingsPill: { minWidth: 36, minHeight: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: pal.actionBg, backgroundColor: pal.bgWarm },
+  deletePill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: pal.redLight, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: pal.redLight },
+  deletePillText: { fontSize: 12, fontWeight: '600', color: pal.red },
 
   // Avatar
-  avatarCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E8602C', alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
-  avatarInitials: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  avatarCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: pal.clay, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  avatarInitials: { fontSize: 24, fontWeight: '800', color: pal.onAccent },
   avatarPhoto: { width: 64, height: 64, borderRadius: 32 },
 
-  childName: { fontSize: 17, fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginTop: 12 },
-  childAge: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginTop: 4 },
-  childDob: { fontSize: 13, color: '#7A6E65', textAlign: 'center', marginTop: 2 },
-  growthReminder: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginHorizontal: 16, padding: 10, borderRadius: 10, backgroundColor: '#FCECE2' },
-  growthReminderHighContrast: { borderWidth: 2, borderColor: '#4A2B20', backgroundColor: '#FFF' },
-  growthReminderText: { flex: 1, color: '#653B2A', fontSize: 13, lineHeight: 18 },
+  childName: { fontSize: 17, fontWeight: '700', color: pal.text, textAlign: 'center', marginTop: 12 },
+  childAge: { fontSize: 13, color: pal.muted, textAlign: 'center', marginTop: 4 },
+  childDob: { fontSize: 13, color: pal.muted, textAlign: 'center', marginTop: 2 },
+  growthReminder: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginHorizontal: 16, padding: 10, borderRadius: 10, backgroundColor: pal.actionBg },
+  growthReminderHighContrast: { borderWidth: 2, borderColor: pal.titleInk, backgroundColor: pal.surface },
+  growthReminderText: { flex: 1, color: pal.muted2, fontSize: 13, lineHeight: 18 },
 
   statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, paddingHorizontal: 16 },
-  statChip: { backgroundColor: '#FDF8F2', borderRadius: 12, borderWidth: 1, borderColor: '#EDE0D4', paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center' },
-  statValue: { fontWeight: '700', fontSize: 16, color: '#1A1A2E' },
-  statLabel: { fontSize: 12, color: '#7A6E65', marginTop: 2 },
+  statChip: { backgroundColor: pal.surface, borderRadius: 12, borderWidth: 1, borderColor: pal.border, paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center' },
+  statValue: { fontWeight: '700', fontSize: 16, color: pal.text },
+  statLabel: { fontSize: 12, color: pal.muted, marginTop: 2 },
 
   // Traffic-light summary
-  summaryCard: { backgroundColor: '#FDF8F2', marginHorizontal: 15, marginBottom: 16, borderRadius: 16, padding: 16, shadowColor: '#C4956A', shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  summaryTitle: { fontSize: 12, fontWeight: '700', color: '#7A6E65', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F7F1EB' },
+  summaryCard: { backgroundColor: pal.surface, marginHorizontal: 15, marginBottom: 16, borderRadius: 16, padding: 16, shadowColor: pal.shadow, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  summaryTitle: { fontSize: 12, fontWeight: '700', color: pal.muted, letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pal.bg },
   summaryDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  summaryLabel: { fontSize: 14, fontWeight: '600', color: '#1A1A2E', width: 80 },
+  summaryLabel: { fontSize: 14, fontWeight: '600', color: pal.text, width: 80 },
   summaryValue: { flex: 1, fontSize: 13, fontWeight: '600', textAlign: 'right' },
-  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: '#7A6E65', textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, marginBottom: 4 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FDF8F2', padding: 14, marginHorizontal: 15, marginBottom: 10, borderRadius: 16, shadowColor: '#C4956A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: pal.muted, textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, marginBottom: 4 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: pal.surface, padding: 14, marginHorizontal: 15, marginBottom: 10, borderRadius: 16, shadowColor: pal.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   menuIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   menuIcon: { fontSize: 20 },
   menuTextBox: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  menuTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
-  premiumBadge: { backgroundColor: '#F5A623', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  premiumBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  menuDesc: { fontSize: 13, color: '#7A6E65', marginTop: 2 },
-  chevron: { fontSize: 16, color: '#C4956A', fontWeight: '600' },
-  subBanner: { margin: 15, backgroundColor: '#E8602C', borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
-  subBannerText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  menuTitle: { fontSize: 16, fontWeight: '700', color: pal.text },
+  premiumBadge: { backgroundColor: pal.gold, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  premiumBadgeText: { color: pal.onAccent, fontSize: 10, fontWeight: 'bold' },
+  menuDesc: { fontSize: 13, color: pal.muted, marginTop: 2 },
+  chevron: { fontSize: 16, color: pal.shadow, fontWeight: '600' },
+  subBanner: { margin: 15, backgroundColor: pal.clay, borderRadius: 16, padding: 16, alignItems: 'center', elevation: 2 },
+  subBannerText: { color: pal.onAccent, fontWeight: '700', fontSize: 14 },
   avatarEditOverlay: {
     position: 'absolute', bottom: 0, right: 0,
     backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12,
