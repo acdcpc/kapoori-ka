@@ -25,3 +25,5 @@ firestore-security-rules.txt
 # Dead backup files from migration
 src/context/AuthContext.tsx.firebase-backup
 src/utils/growthCalculations.py.consolidate
+# local agent scratch (never ship)
+.openclaw/
