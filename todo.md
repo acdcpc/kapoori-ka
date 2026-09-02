@@ -36,6 +36,8 @@
 - [x] Validate all user-facing strings, navigation, accessibility labels, and language switching for the updated flows.
 - [x] Create and commit an agent handoff report describing the localization changes and validation evidence.
 - [x] Push the Nepali localization commit to the remote main branch after verifying GitHub access and fast-forward safety.
+- [x] Build dark mode: palette factory + ThemeContext (system/light/dark, persisted), app shell theming, appearance picker in Settings, all screens/components converted; PDF exports intentionally stay light.
+- [x] Validate dark mode: tsc 0, expo-doctor 21/21, caregiver-features + release-security checks passed, web export OK.
 - [x] Create a protected review branch and establish the caregiver-feature implementation scope.
 - [x] Add child membership, consent, clinical-content, and privacy foundations with database-enforced access controls.
 - [x] Add accessibility settings, caregiver tools, clinic-summary export, growth guidance, and immunization safety support.
