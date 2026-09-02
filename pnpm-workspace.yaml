@@ -5,24 +5,29 @@ overrides:
   undici: 6.28.0
   nanoid: 3.3.18
 minimumReleaseAgeExclude:
-  - '@expo/cli@56.1.24'
+  - '@expo/cli@56.1.24 || 57.0.21'
   - '@expo/config-plugins@56.0.15'
   - '@expo/prebuild-config@56.0.22'
-  - '@expo/router-server@56.0.18'
-  - expo-asset@56.0.23
-  - expo-constants@56.0.24
+  - '@expo/router-server@56.0.18 || 57.0.9'
+  - expo-asset@56.0.23 || 57.0.16
+  - expo-constants@56.0.24 || 57.0.17
   - expo-file-system@56.0.10
   - expo-modules-autolinking@56.0.22
-  - expo-modules-core@56.0.24
+  - expo-modules-core@56.0.24 || 57.0.15
   - expo-server@56.0.6
-  - expo@56.0.20
-  - expo-auth-session@56.0.17
-  - expo-build-properties@56.0.26
-  - expo-dev-client@56.0.25
-  - expo-dev-launcher@56.0.26
-  - expo-dev-menu@56.0.22
-  - expo-image-manipulator@56.0.25
-  - expo-image-picker@56.0.24
-  - expo-linking@56.0.17
-  - expo-notifications@56.0.24
-  - expo-sharing@56.0.25
+  - expo@56.0.20 || 57.0.19
+  - expo-auth-session@56.0.17 || 57.0.11
+  - expo-build-properties@56.0.26 || 57.0.16
+  - expo-dev-client@56.0.25 || 57.0.18
+  - expo-dev-launcher@56.0.26 || 57.0.19
+  - expo-dev-menu@56.0.22 || 57.0.18
+  - expo-image-manipulator@56.0.25 || 57.0.15
+  - expo-image-picker@56.0.24 || 57.0.15
+  - expo-linking@56.0.17 || 57.0.9
+  - expo-notifications@56.0.24 || 57.0.16
+  - expo-sharing@56.0.25 || 57.0.17
+  - '@expo/fingerprint@0.20.12'
+  - babel-preset-expo@57.0.10
+  - expo-font@57.0.3
+  - expo-modules-jsi@57.0.7
+  - expo-secure-store@57.0.3
