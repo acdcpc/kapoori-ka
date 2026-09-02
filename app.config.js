@@ -8,7 +8,7 @@ export default {
     version: process.env.APP_VERSION || "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
-    userInterfaceStyle: "light",
+    userInterfaceStyle: "automatic",
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
@@ -79,7 +79,7 @@ export default {
     ],
     extra: {
       eas: {
-        projectId: "ff4bbeee-5c99-426d-97cf-01b78dca9e72"
+        projectId: "51153a78-d87f-45fd-8464-d81b1e04253a"
       },
       firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
       firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,

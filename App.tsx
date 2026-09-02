@@ -1,12 +1,14 @@
 // App.tsx
 import 'react-native-get-random-values';
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LanguageContext } from './src/context/LanguageContext';
+import { ThemeContext, ThemeMode } from './src/context/ThemeContext';
+import { makePalette } from './src/theme';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, Platform } from 'react-native';
+import { ActivityIndicator, View, Platform, useColorScheme } from 'react-native';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,11 +40,25 @@ const navigationRef = { current: null as any };
 function Navigation() {
   const { user, loading, subscription } = useAuth();
   const { language } = useContext(LanguageContext);
+  const { palette, isDark } = useContext(ThemeContext);
+
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme : DefaultTheme).colors,
+      primary: palette.clay,
+      background: palette.bg,
+      card: palette.surface,
+      text: palette.text,
+      border: palette.border,
+      notification: palette.red,
+    },
+  };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#E8602C" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: palette.bg }}>
+        <ActivityIndicator size="large" color={palette.clay} />
       </View>
     );
   }
@@ -50,13 +66,13 @@ function Navigation() {
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <StatusBar style="auto" />
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: '#FDF8F2' },
-          headerTintColor: '#1A1A2E',
-          headerTitleStyle: { fontWeight: '700', fontSize: 17, color: '#1A1A2E' },
+          headerStyle: { backgroundColor: palette.surface },
+          headerTintColor: palette.text,
+          headerTitleStyle: { fontWeight: '700', fontSize: 17, color: palette.text },
           headerShadowVisible: false,
           headerBackTitleVisible: false,
         }}
@@ -91,7 +107,11 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function App() {
   const [language, setLanguage] = useState<'en' | 'ne'>('ne');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [isReady, setIsReady] = useState(false);
+  const systemColorScheme = useColorScheme();
+  const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
+  const palette = makePalette(isDark);
 
   useEffect(() => {
     const prepare = async () => {
@@ -100,6 +120,10 @@ export default function App() {
         const savedLang = await AsyncStorage.getItem('user_language');
         if (savedLang === 'en' || savedLang === 'ne') {
           setLanguage(savedLang);
+        }
+        const savedTheme = await AsyncStorage.getItem('user_theme_mode');
+        if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
+          setThemeMode(savedTheme);
         }
         await registerForPushNotifications().catch(() => {});
       } catch (e) {
@@ -163,10 +187,19 @@ export default function App() {
     }
   };
 
+  const handleSetThemeMode = async (mode: ThemeMode) => {
+    setThemeMode(mode);
+    try {
+      await AsyncStorage.setItem('user_theme_mode', mode);
+    } catch (e) {
+      console.error('Failed to save theme mode', e);
+    }
+  };
+
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#E8602C" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: palette.bg }}>
+        <ActivityIndicator size="large" color={palette.clay} />
       </View>
     );
   }
@@ -174,11 +207,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
-        <AccessibilityProvider>
-          <AuthProvider>
-            <Navigation />
-          </AuthProvider>
-        </AccessibilityProvider>
+        <ThemeContext.Provider value={{ mode: themeMode, setMode: handleSetThemeMode, isDark, palette }}>
+          <AccessibilityProvider>
+            <AuthProvider>
+              <Navigation />
+            </AuthProvider>
+          </AccessibilityProvider>
+        </ThemeContext.Provider>
       </LanguageContext.Provider>
     </SafeAreaProvider>
   );
