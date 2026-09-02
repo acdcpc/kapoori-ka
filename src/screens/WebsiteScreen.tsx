@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import {
   Image,
   Linking,
@@ -63,6 +63,26 @@ export default function WebsiteScreen() {
   const t = copy[language as Lang] || copy.ne;
   const { width } = useWindowDimensions();
   const compact = width < 760;
+  const isNe = language === 'ne';
+
+  // SEO/social: per-language title, description, and Open Graph tags. OG image
+  // needs the final production domain — add it when the site is deployed.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.title = isNe ? 'कपूरी क (Kapoori Ka) — तपाईंको बच्चाको डिजिटल स्वास्थ्य किताब' : 'Kapoori Ka — Your child’s digital health book';
+    const setMeta = (attr: string, key: string, content: string) => {
+      let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); }
+      el.setAttribute('content', content);
+    };
+    setMeta('name', 'description', t.body);
+    setMeta('property', 'og:title', t.title);
+    setMeta('property', 'og:description', t.body);
+    setMeta('property', 'og:type', 'website');
+    setMeta('property', 'og:site_name', 'Kapoori Ka');
+    setMeta('property', 'og:locale', isNe ? 'ne_NP' : 'en_US');
+    document.documentElement.lang = isNe ? 'ne' : 'en';
+  }, [isNe, t]);
 
   const jump = (id: string) => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -75,7 +95,7 @@ export default function WebsiteScreen() {
           <Image source={require('../../assets/kapoori_ka_logo_1.png')} style={styles.logo} />
           <View><Text style={styles.brandNepali}>कपूरी क</Text><Text style={styles.brandLatin}>Kapoori Ka</Text></View>
         </Pressable>
-        {!compact && <View style={styles.navLinks}><Pressable onPress={() => jump('features')}><Text style={styles.navText}>{t.navFeatures}</Text></Pressable><Pressable onPress={() => jump('how')}><Text style={styles.navText}>{t.navHow}</Text></Pressable><Pressable onPress={() => jump('trust')}><Text style={styles.navText}>{t.navTrust}</Text></Pressable></View>}
+        {!compact && <View style={styles.navLinks}><Pressable onPress={() => jump('features')} accessibilityRole="link" accessibilityLabel={t.navFeatures}><Text style={styles.navText}>{t.navFeatures}</Text></Pressable><Pressable onPress={() => jump('how')} accessibilityRole="link" accessibilityLabel={t.navHow}><Text style={styles.navText}>{t.navHow}</Text></Pressable><Pressable onPress={() => jump('trust')} accessibilityRole="link" accessibilityLabel={t.navTrust}><Text style={styles.navText}>{t.navTrust}</Text></Pressable></View>}
         <View style={styles.navRight}><Pressable onPress={() => setLanguage(language === 'ne' ? 'en' : 'ne')} style={styles.lang}><Text style={styles.langText}>{language === 'ne' ? 'EN' : 'नेपाली'}</Text></Pressable><Pressable onPress={() => jump('start')} style={styles.navCta}><Text style={styles.navCtaText}>{t.navStart}</Text></Pressable></View>
       </View>
 
