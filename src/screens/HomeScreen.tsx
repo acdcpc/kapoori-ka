@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
 import { LanguageContext } from '../context/LanguageContext';
+import { useAccessibility } from '../context/AccessibilityContext';
 import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { formatAge, getAgeInMonths } from '../utils/growthCalculations';
@@ -51,7 +52,9 @@ function getGreeting(isNe: boolean): string {
 }
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { palette: pal } = useContext(ThemeContext);
+  const { palette: pal, mode: themeMode, setMode: setThemeMode } = useContext(ThemeContext);
+  const { preferences: a11yPrefs, setPreferences: setA11yPrefs } = useAccessibility();
+  const updateTextScale = (textScale: 'standard' | 'large' | 'extra_large') => { setA11yPrefs({ ...a11yPrefs, textScale }); };
   const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user } = useAuth();
@@ -331,9 +334,38 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </TouchableOpacity>
             </View>
           </View>
+          <View style={styles.settingsRow}>
+            <Ionicons name="contrast-outline" size={18} color={pal.muted} />
+            <Text style={styles.settingsLabel}>{isNe ? 'रूप' : 'Theme'}</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {([['system', 'प्रणाली', 'System'], ['light', 'उज्यालो', 'Light'], ['dark', 'अँध्यारो', 'Dark']] as const).map(([m, ne, en]) => (
+                <TouchableOpacity key={m} accessibilityRole="radio" accessibilityState={{ selected: themeMode === m }} onPress={() => setThemeMode(m)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, backgroundColor: themeMode === m ? pal.clay : pal.border }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: themeMode === m ? pal.onAccent : pal.muted2 }}>{isNe ? ne : en}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={styles.settingsRow}>
+            <Ionicons name="text-outline" size={18} color={pal.muted} />
+            <Text style={styles.settingsLabel}>{isNe ? 'अक्षरको आकार' : 'Text size'}</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>
+              {([['standard', 'A', 'सामान्य', 'Standard'], ['large', 'A+', 'ठूलो', 'Large'], ['extra_large', 'A++', 'अझ ठूलो', 'Extra large']] as const).map(([scale, chip, ne, en]) => (
+                <TouchableOpacity key={scale} accessibilityRole="radio" accessibilityLabel={isNe ? ne : en} accessibilityState={{ selected: a11yPrefs.textScale === scale }} onPress={() => updateTextScale(scale)}
+                  style={{ minWidth: 40, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, backgroundColor: a11yPrefs.textScale === scale ? pal.clay : pal.border }}>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: a11yPrefs.textScale === scale ? pal.onAccent : pal.muted2 }}>{chip}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Subscription'); }}>
             <Ionicons name="diamond-outline" size={18} color={pal.clay} />
             <Text style={styles.settingsLabel}>{isNe ? 'प्रिमियम सदस्यता' : 'Premium Subscription'}</Text>
+            <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Preferences'); }}>
+            <Ionicons name="options-outline" size={18} color={pal.muted} />
+            <Text style={styles.settingsLabel}>{isNe ? 'सबै सेटिङ' : 'All settings'}</Text>
             <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
