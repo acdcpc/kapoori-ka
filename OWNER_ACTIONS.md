@@ -53,7 +53,7 @@ Delete the old Firestore-based Cloud Functions from the Firebase console
 ### 5. OAuth / Auth console
 - Supabase → Authentication → Redirect URLs: add `https://<domain>/auth/callback` + `https://<domain>`.
 - Google Cloud → OAuth client → Authorized redirect URIs: same `/auth/callback`.
-- `mailer_autoconfirm` dashboard toggle (email confirmation is currently ON).
+- [x] `mailer_autoconfirm` dashboard toggle — **DONE 2026-09-03** (email confirmation OFF; verified via live signup returning a session). Tradeoff accepted: no email-ownership proof at signup; password + RLS still protect data.
 
 ### 6. Android + device
 - `eas login` (as `alokthapas-team`) → `eas build --profile preview --platform android` (SDK 57 path unverified since upgrade).
