@@ -33,3 +33,11 @@ Scope: full live-database review (24 tables, 33 policies, 3 storage buckets, ind
 
 ## 6. Executive summary (the CEO lens)
 The security model is genuinely defensible: RLS everywhere, hash-only codes, private storage, audited admin actions, server-side-only secrets. The failure mode at scale is not architecture — it is **operational budget** (Supabase tier + backups) and **observability** (add crash reporting before mass rollout). Both are purchase/configuration decisions, not rewrites.
+
+
+## 7. Growth data clinical accuracy audit (2026-09-09, follow-up)
+- Full cross-check of every growth table row (weight/height/BMI/HC, both sexes, every declared age) against the official WHO 2006 Standards + WHO 2007 Reference day-level datasets (via the AnthStat WHO2006/WHO2007 data, used by USAID/FANTA nutrition tools).
+- **Found and fixed**: the original height-for-age table was wrong above 24 months (24mo median 85.7 vs official 87.1; 60mo 106.0 vs official 110.0; 10y 129.3 vs 137.8 — up to 20 cm drift by adolescence), and weight/BMI tables drifted at older ages.
+- **Fix**: all four tables (weight 0–120mo, height 0–216mo, BMI 24–216mo, head circumference 0–60mo) regenerated EXACTLY from official LMS data, with exact L/M/S parameters exported alongside the SD columns; z-scores now computed with the WHO LMS formula (z = ((v/M)^L − 1)/(L·S)) instead of approximations.
+- **Verification**: `scripts/audit-growth-tables.py` reports **0 discrepancies** against official data; `scripts/validate-hc-calculations.mjs` passes all published WHO anchors and real-data cases.
+- Note: head-circumference-for-age is defined by WHO for 0–60 months only; the app hides the HC tab beyond 5 years.
