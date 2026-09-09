@@ -180,6 +180,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 
   const [birthWeight, setBirthWeight] = useState('');
   const [birthLength, setBirthLength] = useState('');
+  const [birthHeadCirc, setBirthHeadCirc] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
   const [currentHeight, setCurrentHeight] = useState('');
   const [saving, setSaving] = useState(false);
@@ -276,6 +277,7 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
             bs_date: bsDateStr || null,
             weight: birthWeight ? parseFloat(birthWeight) : null,
             height: birthLength ? parseFloat(birthLength) : null,
+            head_circumference: birthHeadCirc ? parseFloat(birthHeadCirc) : null,
             notes: isNe ? 'जन्मको नाप' : 'Birth measurement',
             recorded_at: dayjs().toISOString(),
           });
@@ -371,6 +373,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
             <View style={styles.col}>
               <Text style={styles.label}>{isNe ? 'जन्मको तौल (किग्रा)' : 'Birth Weight (kg)'}</Text>
               <TextInput style={styles.input} keyboardType="decimal-pad" value={birthWeight} onChangeText={setBirthWeight} placeholder="e.g., 3.2" />
+              <Text style={styles.label}>Head circumference (cm, optional)</Text>
+              <TextInput style={styles.input} keyboardType="decimal-pad" value={birthHeadCirc} onChangeText={setBirthHeadCirc} placeholder="e.g., 34.5" />
             </View>
             <View style={styles.col}>
               <Text style={styles.label}>{isNe ? 'जन्मको लम्बाइ (सेमी)' : 'Birth Length (cm)'}</Text>

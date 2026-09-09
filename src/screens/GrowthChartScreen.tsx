@@ -16,10 +16,11 @@ import {
 import { LanguageContext } from '../context/LanguageContext';
 import { translations } from '../i18n/translations';
 import { GrowthRecord } from '../types';
-import { getAgeInMonths, classifyGrowthStatus, getIdealRanges } from '../utils/growthCalculations';
+import { getAgeInMonths, classifyGrowthStatus, getIdealRanges, classifyHC } from '../utils/growthCalculations';
 import { WHO_WFA_BOYS, WHO_WFA_GIRLS } from '../data/whoWFA';
 import { WHO_HFA_BOYS, WHO_HFA_GIRLS } from '../data/whoHFA';
 import { WHO_BFA_BOYS, WHO_BFA_GIRLS } from '../data/whoBFA';
+import { WHO_HCFA_BOYS, WHO_HCFA_GIRLS } from '../data/whoHCFA';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,16 +58,18 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
+  const [headCirc, setHeadCirc] = useState('');
   const [bsDate, setBsDate] = useState<NepaliDate>(new NepaliDate());
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [chartType, setChartType] = useState<'weight' | 'height' | 'bmi'>('weight');
+  const [chartType, setChartType] = useState<'weight' | 'height' | 'bmi' | 'hc'>('weight');
   const [activeTab, setActiveTab] = useState<'chart' | 'predictor'>('chart');
   const [fatherHeight, setFatherHeight] = useState('');
   const [motherHeight, setMotherHeight] = useState('');
   const [showPrediction, setShowPrediction] = useState(false);
   const [firstWeight, setFirstWeight] = useState('');
   const [firstHeight, setFirstHeight] = useState('');
+  const [firstHeadCirc, setFirstHeadCirc] = useState('');
   const [firstSaving, setFirstSaving] = useState(false);
 
   const todayAd = dayjs().format('YYYY-MM-DD');
@@ -146,11 +149,12 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
       const adDateStr = `${adDateObj.year}-${String(adDateObj.month + 1).padStart(2, '0')}-${String(adDateObj.date).padStart(2, '0')}`;
       const bsDateStr = bsDate.format('YYYY-MM-DD');
       const ageMonths = getAgeInMonths(child.dateOfBirth, adDateStr);
+      const hc = parseFloat(headCirc);
       const { error: sbError } = await supabase
         .from('growth_records')
-        .insert({ child_id: child.id, user_id: user?.uid || '', date: adDateStr, bs_date: bsDateStr, weight: w, height: isNaN(h) ? 0 : h, age_months: ageMonths, notes: '', recorded_at: dayjs().toISOString() });
+        .insert({ child_id: child.id, user_id: user?.uid || '', date: adDateStr, bs_date: bsDateStr, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageMonths, notes: '', recorded_at: dayjs().toISOString() });
       if (sbError) throw sbError;
-      setWeight(''); setHeight(''); setBsDate(new NepaliDate()); setShowForm(false); loadRecords();
+      setWeight(''); setHeight(''); setHeadCirc(''); setBsDate(new NepaliDate()); setShowForm(false); loadRecords();
     } catch { Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.'); }
     finally { setSaving(false); }
   };
@@ -162,11 +166,12 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
     try {
       
       const h = parseFloat(firstHeight);
+      const hc = parseFloat(firstHeadCirc);
       const today = dayjs().format('YYYY-MM-DD');
       const ageM = getAgeInMonths(child.dateOfBirth, today);
       const { error: sbError } = await supabase
         .from('growth_records')
-        .insert({ child_id: child.id, user_id: user?.uid || '', date: today, weight: w, height: isNaN(h) ? 0 : h, age_months: ageM, notes: '', recorded_at: dayjs().toISOString() });
+        .insert({ child_id: child.id, user_id: user?.uid || '', date: today, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageM, notes: '', recorded_at: dayjs().toISOString() });
       if (sbError) throw sbError;
       setFirstWeight(''); setFirstHeight('');
       loadRecords();
@@ -176,6 +181,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
 
   const chartData = useMemo(() => {
     if (chartType === 'bmi') return records.filter(r => r.weight && r.height && (r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date)) >= 24).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: calculateBMI(r.weight, r.height || 0) })).filter(d => d.y > 0);
+    if (chartType === 'hc') return records.filter(r => r.headCircumference).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: r.headCircumference as number }));
     return records.map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: (chartType === 'weight' ? r.weight : r.height) || 0 })).filter(d => d.y > 0);
   }, [records, chartType, child.dateOfBirth]);
 
@@ -189,12 +195,15 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const sharedRanges = getIdealRanges(displayAgeMonths, child.sex);
   const status = (chartType === 'bmi' && latestBMIRecord?.bmi)
     ? classifyGrowthStatus(latestRecord?.weight, latestRecord?.height, displayAgeMonths, child.sex, { metric: 'bmi', bmiValue: latestBMIRecord.bmi })
+    : chartType === 'hc'
+    ? classifyHC(latestRecord?.headCircumference, displayAgeMonths, child.sex)
     : (latestRecord ? classifyGrowthStatus(latestRecord.weight, latestRecord.height, displayAgeMonths, child.sex) : null);
   const trendFlags = useMemo(() => getGrowthTrendFlags(records, isNe ? 'ne' : 'en'), [records, isNe]);
 
   const getActiveCurves = () => {
     if (chartType === 'weight') return child.sex === 'male' ? WHO_WFA_BOYS : WHO_WFA_GIRLS;
     if (chartType === 'height') return child.sex === 'male' ? WHO_HFA_BOYS : WHO_HFA_GIRLS;
+    if (chartType === 'hc') return child.sex === 'male' ? WHO_HCFA_BOYS : WHO_HCFA_GIRLS;
     return child.sex === 'male' ? WHO_BFA_BOYS : WHO_BFA_GIRLS;
   };
   const activeCurves = getActiveCurves();
@@ -233,6 +242,8 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
           <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ३.२' : 'e.g. 3.2'} keyboardType="numeric" value={firstWeight} onChangeText={setFirstWeight} autoFocus editable={!firstSaving} placeholderTextColor={pal.shadow} />
           <Text style={styles.firstLabel}>{isNe ? 'उचाइ (सेमी)' : 'Height (cm)'}</Text>
           <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ५०' : 'e.g. 50'} keyboardType="numeric" value={firstHeight} onChangeText={setFirstHeight} editable={!firstSaving} placeholderTextColor={pal.shadow} />
+          <Text style={styles.firstLabel}>{isNe ? 'टाउको परिधि (सेमी, ऐच्छिक)' : 'Head circumference (cm, optional)'}</Text>
+          <TextInput style={styles.firstInput} placeholder={isNe ? 'जस्तै: ३४.५' : 'e.g. 34.5'} keyboardType="numeric" value={firstHeadCirc} onChangeText={setFirstHeadCirc} editable={!firstSaving} placeholderTextColor={pal.shadow} />
           <TouchableOpacity style={[styles.firstSaveBtn, firstSaving && { opacity: 0.6 }]} onPress={saveFirstMeasurement} disabled={firstSaving}>
             {firstSaving ? <ActivityIndicator color={pal.onAccent} size="small" /> : <Text style={styles.firstSaveBtnText}>{isNe ? 'बचत गर्नुहोस्' : 'Save'}</Text>}
           </TouchableOpacity>
@@ -302,6 +313,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
             <View style={styles.currentInfoRow}>
               <View style={styles.statChip}><Text style={styles.statChipLabel}>{isNe ? 'तौल' : 'Weight'}</Text><Text style={styles.statChipValue}>{latestRecord?.weight ? `${latestRecord.weight} kg` : (isNe ? 'N/A' : 'N/A')}</Text></View>
               <View style={styles.statChip}><Text style={styles.statChipLabel}>{isNe ? 'उचाइ' : 'Height'}</Text><Text style={styles.statChipValue}>{latestRecord?.height ? `${latestRecord.height} cm` : (isNe ? 'N/A' : 'N/A')}</Text></View>
+              {childAgeMonths <= 60 && <View style={styles.statChip}><Text style={styles.statChipLabel}>{isNe ? 'टाउको' : 'Head'}</Text><Text style={styles.statChipValue}>{latestRecord?.headCircumference ? `${latestRecord.headCircumference} cm` : (isNe ? 'N/A' : 'N/A')}</Text></View>}
               <View style={styles.statChip}><Text style={styles.statChipLabel}>{isNe ? 'उमेर' : 'Age'}</Text><Text style={styles.statChipValue}>{childAgeMonths} {isNe ? 'म' : 'mo'}</Text></View>
             </View>
             {latestRecord && (
@@ -336,14 +348,19 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
             <TouchableOpacity style={[styles.underlineBtn, chartType === 'bmi' && styles.underlineBtnActive, !bmiAvailable && { opacity: 0.4 }]} onPress={() => bmiAvailable && setChartType('bmi')} disabled={!bmiAvailable}>
               <Text style={[styles.underlineBtnText, chartType === 'bmi' && styles.underlineBtnTextActive]}>BMI {!bmiAvailable ? '(2y+)' : ''}</Text>
             </TouchableOpacity>
+            {childAgeMonths <= 60 && (
+              <TouchableOpacity style={[styles.underlineBtn, chartType === 'hc' && styles.underlineBtnActive]} onPress={() => setChartType('hc')}>
+                <Text style={[styles.underlineBtnText, chartType === 'hc' && styles.underlineBtnTextActive]}>{isNe ? 'टाउको' : 'Head'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Chart */}
           <View style={styles.chartWrapper}>
-            <Text style={styles.chartTitle}>{chartType === 'weight' ? (isNe ? 'तौल चार्ट (WHO)' : 'Weight Chart (WHO)') : chartType === 'height' ? (isNe ? 'उचाइ चार्ट (WHO)' : 'Height Chart (WHO)') : (isNe ? 'BMI चार्ट (WHO)' : 'BMI Chart (WHO)')}</Text>
+            <Text style={styles.chartTitle}>{chartType === 'weight' ? (isNe ? 'तौल चार्ट (WHO)' : 'Weight Chart (WHO)') : chartType === 'height' ? (isNe ? 'उचाइ चार्ट (WHO)' : 'Height Chart (WHO)') : chartType === 'hc' ? (isNe ? 'टाउको परिधि चार्ट (WHO)' : 'Head Circumference Chart (WHO)') : (isNe ? 'BMI चार्ट (WHO)' : 'BMI Chart (WHO)')}</Text>
             <VictoryChart width={CHART_WIDTH} height={CHART_HEIGHT} theme={VictoryTheme.material} padding={{ top: 20, bottom: 40, left: 50, right: 20 }}>
               <VictoryAxis label={isNe ? 'उमेर (महिना)' : 'Age (months)'} style={{ axisLabel: { padding: 30, fontSize: 10 } }} />
-              <VictoryAxis dependentAxis label={`${chartType === 'weight' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : chartType === 'height' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : 'BMI (kg/m²)'}`} style={{ axisLabel: { padding: 40, fontSize: 10 } }} />
+              <VictoryAxis dependentAxis label={`${chartType === 'weight' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : chartType === 'height' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : chartType === 'hc' ? (isNe ? 'टाउको परिधि (सेमी)' : 'Head circ. (cm)') : 'BMI (kg/m²)'}`} style={{ axisLabel: { padding: 40, fontSize: 10 } }} />
               <VictoryArea data={sd3p} y0={(d: any) => sd3n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.redLight, fillOpacity: 0.3 } }} />
               <VictoryArea data={sd2p} y0={(d: any) => sd2n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.greenLight, fillOpacity: 0.4 } }} />
               <VictoryLine data={med} style={{ data: { stroke: pal.green, strokeWidth: 1.5, strokeDasharray: '4,4' } }} />
@@ -366,7 +383,7 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
               {records.slice(-5).reverse().map((record, i) => (
                 <View key={record.id || i} style={[styles.recordRow, i > 0 && styles.recordRowBorder]}>
                   <Text style={styles.recordDateText}>{(record as any).bsDate || dayjs(record.date).format('YYYY-MM-DD')}</Text>
-                  <Text style={styles.recordValue}>{record.weight} kg{record.height && record.height > 0 ? ` · ${record.height} cm` : ''}</Text>
+                  <Text style={styles.recordValue}>{record.weight} kg{record.height && record.height > 0 ? ` · ${record.height} cm` : ''}{record.headCircumference ? ` · HC ${record.headCircumference} cm` : ''}</Text>
                 </View>
               ))}
             </View>
@@ -413,6 +430,12 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
                 )}
                 <TextInput style={styles.input} placeholder={isNe ? 'तौल (केजी)' : 'Weight (kg)'} keyboardType="numeric" value={weight} onChangeText={setWeight} placeholderTextColor={pal.shadow} />
                 <TextInput style={styles.input} placeholder={isNe ? 'उचाइ (सेमी)' : 'Height (cm) - optional'} keyboardType="numeric" value={height} onChangeText={setHeight} placeholderTextColor={pal.shadow} />
+                {childAgeMonths <= 60 && (
+                  <>
+                    <TextInput style={styles.input} placeholder={isNe ? 'टाउको परिधि (सेमी)' : 'Head circumference (cm) - optional'} keyboardType="numeric" value={headCirc} onChangeText={setHeadCirc} placeholderTextColor={pal.shadow} />
+                    <Text style={{ fontSize: 11, color: pal.muted, marginTop: -6, marginBottom: 8 }}>{isNe ? 'कानमाथि सबैभन्दा फराकिलो भागमा नाप्नुहोस्' : 'Measure around the widest point above the ears'}</Text>
+                  </>
+                )}
                 <View style={styles.modalBtns}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}><Text style={styles.cancelBtnText}>{isNe ? 'रद्द' : 'Cancel'}</Text></TouchableOpacity>
                   <TouchableOpacity style={styles.saveBtn} onPress={saveRecord} disabled={saving}><Text style={styles.saveBtnText}>{saving ? '...' : (isNe ? 'बचत' : 'Save')}</Text></TouchableOpacity>
