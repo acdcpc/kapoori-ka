@@ -28,6 +28,7 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import CaregiverToolsScreen from './src/screens/CaregiverToolsScreen';
 import ClinicSummaryScreen from './src/screens/ClinicSummaryScreen';
 import PreferencesScreen from './src/screens/PreferencesScreen';
+import AdminPaymentsScreen from './src/screens/AdminPaymentsScreen';
 import WebsiteScreen from './src/screens/WebsiteScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AccessibilityProvider } from './src/context/AccessibilityContext';
@@ -94,6 +95,7 @@ function Navigation() {
             <Stack.Screen name="CaregiverTools" component={CaregiverToolsScreen} options={{ title: 'हेरचाह टोली | Care team' }} />
             <Stack.Screen name="ClinicSummary" component={ClinicSummaryScreen} options={{ title: 'क्लिनिक सारांश | Clinic summary' }} />
             <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'सेटिङ | Settings' }} />
+            <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'भुक्तानी समीक्षा | Payments' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

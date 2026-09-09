@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import dayjs from 'dayjs';
+import { supabase } from '../lib/supabase';
 
 // Web does not support expo-notifications (no web-push bridge). Guard everything so the
 // module is a safe no-op on web instead of throwing at import/call time.
@@ -52,6 +53,20 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
   }
 
   const token = (await Notifications.getExpoPushTokenAsync()).data;
+
+  // Persist for payment/admin notifications (no-op when signed out).
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      await supabase.from('push_tokens').upsert({
+        user_id: user.id,
+        token,
+        platform: Platform.OS,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  } catch { /* non-fatal */ }
+
   return token;
 };
 

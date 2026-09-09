@@ -11,6 +11,7 @@ import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
+import { registerForPushNotifications } from '../utils/notifications';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 // ── Bridge type: Supabase user → familiar shape for screens ──
@@ -174,6 +175,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((_ev, s) => {
       if (!mounted) return;
       // console.log PII removed: auth event with user id
+      if (_ev === 'SIGNED_IN' || _ev === 'INITIAL_SESSION') {
+        // Persist this device's push token now that we have a session
+        // (payment approvals notify admins through it).
+        registerForPushNotifications().catch(() => undefined);
+      }
       if (s?.user) {
         const appUser = toAppUser(s.user);
         setUser(prev => {

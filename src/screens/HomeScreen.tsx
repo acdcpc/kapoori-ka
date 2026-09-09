@@ -58,6 +58,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    (async () => {
+      if (!user?.uid) return;
+      try { const { data } = await supabase.rpc('is_app_admin', { p_actor_id: user.uid }); setIsAdmin(data === true); } catch { setIsAdmin(false); }
+    })();
+  }, [user?.uid]);
   const t = translations[language];
   const isNe = language === 'ne';
   const [children, setChildren] = useState<Child[]>([]);
@@ -368,6 +375,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Text style={styles.settingsLabel}>{isNe ? 'सबै सेटिङ' : 'All settings'}</Text>
             <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
           </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('AdminPayments'); }}>
+              <Ionicons name="receipt-outline" size={18} color={pal.clay} />
+              <Text style={styles.settingsLabel}>{isNe ? 'भुक्तानी समीक्षा' : 'Payment review'}</Text>
+              <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
             <Ionicons name="information-circle-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>{t.about}</Text>

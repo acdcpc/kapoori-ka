@@ -125,5 +125,37 @@ Deno.serve(async (request) => {
     return response({ error: duplicate ? 'This transaction ID has already been submitted.' : throttled ? 'Too many submissions. Please wait before trying again.' : 'Unable to submit payment proof.' }, duplicate ? 409 : throttled ? 429 : 400, cors);
   }
 
+  // Notify app admins (owner) via Expo push — fire and forget, never blocks
+  // or fails the submission.
+  notifyAdmins(adminClient, {
+    name,
+    plan: plan as string,
+    transactionId,
+    paymentId,
+  }).catch(() => undefined);
+
   return response({ success: true, payment_id: paymentId }, 201, cors);
 });
+
+async function notifyAdmins(adminClient: ReturnType<typeof createClient>, info: { name: string; plan: string; transactionId: string; paymentId: string }) {
+  const { data: admins, error: adminErr } = await adminClient
+    .from('app_admins').select('user_id').eq('revoked_at', 'is.null');
+  if (adminErr || !admins?.length) return;
+  const ids = admins.map((a: { user_id: string }) => a.user_id);
+  const { data: rows, error: tokenErr } = await adminClient
+    .from('push_tokens').select('token').in('user_id', ids);
+  if (tokenErr || !rows?.length) return;
+  const amount = info.plan === 'yearly' ? 'NPR 500' : 'NPR 100';
+  const messages = rows.map((r: { token: string }) => ({
+    to: r.token,
+    title: 'New payment to verify',
+    body: `${amount} · ${info.name} · ref ${info.transactionId}`,
+    data: { type: 'payment_pending', payment_id: info.paymentId },
+    sound: 'default',
+  }));
+  await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(messages),
+  });
+}

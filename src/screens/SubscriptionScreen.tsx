@@ -1,11 +1,12 @@
 // src/screens/SubscriptionScreen.tsx
-// v2: Google Play compliant — NO payment links, buttons, or instructions in-app.
-// Shows premium benefits + status (Locked / Pending / Active).
-// Activation code redemption for the web-based payment flow.
-import React, { useContext, useState } from 'react';
+// v3 (sideload distribution): in-app payment submission — QR + eSewa/Khalti
+// reference, straight to the submit-payment Edge Function; status check and
+// automatic code redemption after the owner approves. The web payment page
+// remains as a fallback channel.
+import React, { useContext, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
-  ActivityIndicator, TextInput,
+  ActivityIndicator, TextInput, Image, Modal, Platform,
 } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { Palette } from '../theme';
@@ -13,6 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ESEWA_QR = require('../../assets/esewa-qr.png');
 
 const MONTHLY_PRICE_NPR = 100;
 const YEARLY_PRICE_NPR = 500;
@@ -63,11 +69,114 @@ export default function SubscriptionScreen() {
   const [redemptionCode, setRedemptionCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
+  // In-app payment submission
+  const [paySheetVisible, setPaySheetVisible] = useState(false);
+  const [payPlan, setPayPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [txnId, setTxnId] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [screenshot, setScreenshot] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
   const freeFeatures = isNe ? FREE_FEATURES_NE : FREE_FEATURES_EN;
   const paidFeatures = isNe ? PAID_FEATURES_NE : PAID_FEATURES_EN;
 
   const isActive = subscription?.status === 'active';
   const isPending = subscription?.status === 'pending';
+
+  const authHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error(isNe ? 'कृपया पहिले लगइन गर्नुहोस्।' : 'Please sign in first.');
+    return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` };
+  };
+
+  const checkPaymentStatus = useCallback(async () => {
+    if (isActive) return;
+    setCheckingStatus(true);
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/my-activation-code`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const json = await res.json();
+      if (json?.status === 'approved' && json?.code) {
+        await redeemCode(json.code);
+        if (refreshUserData) await refreshUserData();
+        Alert.alert(
+          isNe ? 'सफल!' : 'Success!',
+          isNe ? 'भुक्तानी पुष्टि भयो — प्रिमियम सक्रिय भयो! 🎉' : 'Payment verified — Premium is now active! 🎉',
+        );
+      } else if (json?.status === 'pending') {
+        Alert.alert(
+          isNe ? 'जाँच हुँदैछ' : 'Still verifying',
+          isNe ? 'तपाईंको भुक्तानी अझै जाँचिँदैछ। केही समयपछि फेरि प्रयास गर्नुहोस्।' : 'Your payment is still being verified. Please check again shortly.',
+        );
+      }
+    } catch (err: any) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', err?.message || (isNe ? 'जाँच गर्न सकिएन।' : 'Could not check status.'));
+    } finally {
+      setCheckingStatus(false);
+    }
+  }, [isActive, isNe, redeemCode, refreshUserData]);
+
+  useEffect(() => {
+    // Auto-fetch + redeem once the owner approves (no code typing).
+    if (!isActive && !isPending) checkPaymentStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pickScreenshot = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(isNe ? 'अनुमति चाहियो' : 'Permission needed', isNe ? 'ग्यालेरी पहुँच अनुमति दिनुहोस्।' : 'Please allow gallery access.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsMultipleSelection: false });
+    if (!res.canceled && res.assets?.[0]) setScreenshot(res.assets[0]);
+  };
+
+  const submitPayment = async () => {
+    const ref = txnId.trim();
+    if (ref.length < 6) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'eSewa/Khalti Transaction ID पूरा लेख्नुहोस्।' : 'Enter the full eSewa/Khalti transaction ID.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const headers = await authHeaders();
+      const form = new FormData();
+      const { data: { user } } = await supabase.auth.getUser();
+      form.append('name', user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Parent');
+      form.append('email', user?.email ?? '');
+      form.append('mobile', mobile.trim());
+      form.append('plan', payPlan);
+      form.append('transaction_id', ref);
+      if (screenshot) {
+        const uri = screenshot.uri;
+        const ext = (uri.split('.').pop() || 'jpg').toLowerCase();
+        form.append('screenshot', { uri: Platform.OS === 'ios' && uri.startsWith('file:') ? uri.replace('file://', '') : uri, name: `receipt.${ext}`, type: screenshot.mimeType || 'image/jpeg' } as any);
+      }
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-payment`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+        body: form,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || (isNe ? 'पठाउन सकिएन।' : 'Submission failed.'));
+      Alert.alert(
+        isNe ? 'पठाइयो' : 'Submitted',
+        isNe ? 'तपाईंको भुक्तानी विवरण पठाइयो। स्वीकृत भएपछि एप आफैँ सक्रिय हुनेछ।' : 'Your payment details were submitted. The app will activate automatically once approved.',
+      );
+      setPaySheetVisible(false); setTxnId(''); setMobile(''); setScreenshot(null);
+    } catch (err: any) {
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', err?.message || (isNe ? 'पठाउन सकिएन।' : 'Submission failed.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleRedeem = async () => {
     if (!redemptionCode.trim()) {
@@ -141,6 +250,12 @@ export default function SubscriptionScreen() {
                 ? 'तपाईंको भुक्तानी जाँच भइरहेको छ। यसले केहि घण्टा लिन सक्छ।'
                 : 'Your payment is being verified. This usually takes a few hours.'}
             </Text>
+            <TouchableOpacity onPress={checkPaymentStatus} disabled={checkingStatus}
+              style={{ marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: t.border }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: t.text }}>
+                {checkingStatus ? (isNe ? 'जाँच हुँदैछ…' : 'Checking…') : (isNe ? 'स्थिति जाँच्नुहोस्' : 'Check status now')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -204,14 +319,24 @@ export default function SubscriptionScreen() {
             </View>
           </View>
 
-          {/* Neutral compliance message — no links, no URLs, no payment instructions */}
+          {/* In-app payment (sideload distribution) */}
           <View style={styles.complianceNote}>
-            <Ionicons name="information-circle-outline" size={20} color={t.shadow} />
+            <Ionicons name="card-outline" size={20} color={t.shadow} />
             <Text style={styles.complianceText}>
               {isNe
-                ? 'प्रिमियम हाल हाम्रो आधिकारिक माध्यमहरू मार्फत उपलब्ध छ।'
-                : 'Premium is currently available through our official channels.'}
+                ? 'तलको बटन थिच्नुहोस् — eSewa/खल्तीबाट भुक्तानी गरी एपभित्रै विवरण पठाउनुहोस्।'
+                : 'Tap a button below — pay via eSewa/Khalti and submit the details right inside the app.'}
             </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 12, marginBottom: 8 }}>
+            <TouchableOpacity style={[styles.payBtn, { flex: 1 }]} onPress={() => { setPayPlan('monthly'); setPaySheetVisible(true); }}>
+              <Ionicons name="flash-outline" size={18} color={t.onAccent} />
+              <Text style={styles.payBtnText}>{isNe ? 'मासिक तिर्नुहोस्' : 'Pay monthly'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.payBtn, styles.payBtnYearly, { flex: 1 }]} onPress={() => { setPayPlan('yearly'); setPaySheetVisible(true); }}>
+              <Ionicons name="flash-outline" size={18} color={t.onAccent} />
+              <Text style={styles.payBtnText}>{isNe ? 'वार्षिक तिर्नुहोस्' : 'Pay yearly'}</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Activation Code Redemption (neutral — not a payment solicitation) */}
@@ -241,6 +366,52 @@ export default function SubscriptionScreen() {
           </View>
         </>
       )}
+      {/* ── In-app payment sheet ── */}
+      <Modal visible={paySheetVisible} transparent animationType="slide" onRequestClose={() => setPaySheetVisible(false)}>
+        <View style={styles.sheetOverlay}>
+          <View style={styles.sheet}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.sheetTitle}>{isNe ? 'भुक्तानी गर्नुहोस्' : 'Complete your payment'}</Text>
+              <Text style={styles.sheetAmount}>
+                {payPlan === 'yearly' ? (isNe ? 'वार्षिक — NPR 500' : 'Yearly — NPR 500') : (isNe ? 'मासिक — NPR 100' : 'Monthly — NPR 100')}
+              </Text>
+              <Image source={ESEWA_QR} style={styles.qr} resizeMode="contain" />
+              <Text style={styles.sheetStep}>
+                {isNe
+                  ? '१. eSewa/खल्ती एप खोल्नुहोस् र माथिको QR स्क्यान गरी रकम पठाउनुहोस्।'
+                  : '1. Open your eSewa/Khalti app and scan this QR to send the amount.'}
+              </Text>
+              <Text style={styles.sheetStep}>
+                {isNe
+                  ? '२. तल तपाईंको Transaction ID लेखी पठाउनुहोस् — स्वीकृत भएपछि एप आफैँ सक्रिय हुनेछ।'
+                  : '2. Enter the transaction ID below — the app activates automatically once approved.'}
+              </Text>
+
+              <Text style={styles.fieldLabel}>{isNe ? 'Transaction ID (eSewa/खल्ती) *' : 'Transaction ID (eSewa/Khalti) *'}</Text>
+              <TextInput style={styles.sheetInput} placeholder="e.g. 004A1B2C3D" placeholderTextColor={t.shadow}
+                value={txnId} onChangeText={setTxnId} autoCapitalize="characters" autoCorrect={false} />
+              <Text style={styles.fieldLabel}>{isNe ? 'मोबाइल (ऐच्छिक)' : 'Mobile (optional)'}</Text>
+              <TextInput style={styles.sheetInput} placeholder="9800000000" placeholderTextColor={t.shadow}
+                value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
+              <TouchableOpacity style={styles.pickBtn} onPress={pickScreenshot}>
+                <Ionicons name="image-outline" size={18} color={t.clay} />
+                <Text style={styles.pickBtnText}>
+                  {screenshot ? (isNe ? 'स्क्रिनसट छानिएको ✓' : 'Screenshot attached ✓') : (isNe ? 'स्क्रिनसट थप्नुहोस् (ऐच्छिक)' : 'Attach screenshot (optional)')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.submitBtn, submitting && styles.redeemBtnDisabled]} onPress={submitPayment} disabled={submitting}>
+                {submitting
+                  ? <ActivityIndicator color={t.onAccent} />
+                  : <Text style={styles.submitBtnText}>{isNe ? 'भुक्तानी विवरण पठाउनुहोस्' : 'Submit payment details'}</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setPaySheetVisible(false)}>
+                <Text style={styles.cancelBtnText}>{isNe ? 'रद्द गर्नुहोस्' : 'Cancel'}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
     </SafeAreaView>
   );
@@ -333,4 +504,22 @@ const makeStyles = (t: Palette) => StyleSheet.create({
   },
   redeemBtnDisabled: { backgroundColor: t.border },
   redeemBtnText: { color: t.onAccent, fontWeight: '700', fontSize: 15 },
+
+  payBtn: { minHeight: 50, borderRadius: 12, backgroundColor: t.clay, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
+  payBtnYearly: { backgroundColor: t.green },
+  payBtnText: { color: t.onAccent, fontWeight: '800', fontSize: 14 },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: t.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%', paddingHorizontal: 18, paddingTop: 20, paddingBottom: 30 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: t.titleInk, textAlign: 'center' },
+  sheetAmount: { fontSize: 16, fontWeight: '700', color: t.clay, textAlign: 'center', marginTop: 6 },
+  qr: { width: 220, height: 220, alignSelf: 'center', marginVertical: 14, borderRadius: 12 },
+  sheetStep: { fontSize: 13, color: t.muted2, lineHeight: 19, marginBottom: 8 },
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: t.labelInk, marginTop: 8, marginBottom: 4 },
+  sheetInput: { borderWidth: 1.5, borderColor: t.border, borderRadius: 10, backgroundColor: t.bg, paddingHorizontal: 12, minHeight: 46, fontSize: 15, color: t.text },
+  pickBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingVertical: 10 },
+  pickBtnText: { color: t.clay, fontWeight: '700', fontSize: 14 },
+  submitBtn: { minHeight: 52, borderRadius: 12, backgroundColor: t.clay, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  submitBtnText: { color: t.onAccent, fontWeight: '800', fontSize: 15 },
+  cancelBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  cancelBtnText: { color: t.muted2, fontWeight: '700' },
 });

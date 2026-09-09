@@ -18,4 +18,5 @@ export type RootStackParamList = {
   CaregiverTools: { child: Child };
   ClinicSummary: { child: Child };
   Preferences: undefined;
+  AdminPayments: undefined;
 };
