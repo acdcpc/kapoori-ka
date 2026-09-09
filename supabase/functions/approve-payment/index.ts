@@ -88,7 +88,7 @@ Deno.serve(async (request) => {
   if (!/^[0-9a-fA-F-]{36}$/.test(paymentId)) return response({ error: 'A valid payment_id is required.' }, 400, cors);
 
   const { data: payment, error: payErr } = await adminClient
-    .from('payments').select('id, status, plan').eq('id', paymentId).single();
+    .from('payments').select('id, user_id, status, plan').eq('id', paymentId).single();
   if (payErr || !payment) return response({ error: 'Payment not found.' }, 404, cors);
   if (payment.status !== 'pending') return response({ error: 'Payment has already been processed.' }, 409, cors);
 
@@ -110,6 +110,26 @@ Deno.serve(async (request) => {
   } catch {
     return response({ error: 'Approved, but storing the in-app code failed. Use the web admin panel to view it.' }, 500, cors);
   }
+
+  // Tell the parent immediately — their app will auto-redeem on next open.
+  try {
+    const { data: tokenRows } = await adminClient
+      .from('push_tokens').select('token').eq('user_id', payment.user_id);
+    if (tokenRows?.length) {
+      const messages = tokenRows.map((r: { token: string }) => ({
+        to: r.token,
+        title: '🎉 Premium activated! प्रिमियम सक्रिय भयो!',
+        body: 'Enjoy Kapoori Ka Premium · कपूरी क प्रिमियमको आनन्द लिनुहोस्।',
+        data: { type: 'premium_activated', payment_id: paymentId },
+        sound: 'default',
+      }));
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(messages),
+      });
+    }
+  } catch { /* non-fatal: the in-app auto-redeem still works */ }
 
   return response({ ok: true, plan: payment.plan }, 200, cors);
 });
