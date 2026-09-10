@@ -120,7 +120,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const menuItems = [
     { title: t.growthChart,    icon: '📈', color: pal.clay, screen: 'GrowthChart' as const,  desc: isNe ? 'तौल र उचाइ ट्र्याक गर्नुहोस्' : 'Track weight & height', premium: true },
     { title: t.milestones,     icon: '🧠', color: pal.purpleDark, screen: 'Milestone' as const,    desc: isNe ? 'विकासका मापदण्ड जाँच्नुहोस्' : 'Check developmental milestones', premium: true },
-    { title: t.immunization,   icon: '💉', color: '#1565C0', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका र सम्झनाहरू' : 'Vaccine schedule & reminders', premium: true },
+    { title: t.immunization,   icon: '💉', color: '#1565C0', screen: 'Immunization' as const, desc: isNe ? 'खोप तालिका, सम्झना र ट्र्याकिङ — सबैका लागि निःशुल्क' : 'Vaccine schedule, reminders & tracking — free for all', premium: false },
     { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: pal.green, screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: pal.red, screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'WHO चार्ट, व्याख्या र पूर्ण रिपोर्ट PDF' : 'WHO charts, interpretation & full report PDF', premium: true },

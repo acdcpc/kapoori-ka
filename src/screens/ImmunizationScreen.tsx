@@ -15,7 +15,6 @@ import { VaccineRecord } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import InfoBubble from '../components/InfoBubble';
-import { PremiumGuard } from '../components/PremiumGuard';
 import { supabase } from '../lib/supabase';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Speech from 'expo-speech';
@@ -157,7 +156,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const [bsMonth, setBsMonth] = useState(4);
   const [bsDay, setBsDay] = useState(1);
   const [selectedADDate, setSelectedADDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const loadRecords = async () => {
     try {
@@ -210,10 +208,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const handleSetStatus = (vaccine: ComputedVaccine, status: 'given' | 'missed') => {
     // Premium gate: free users cannot set status for upcoming/missed vaccines
-    if (!isPremium && (vaccine.status === 'upcoming' || vaccine.status === 'missed')) {
-      setShowPremiumModal(true);
-      return;
-    }
+
     if (status === 'given') {
       setPendingVaccine(vaccine); setShowDatePicker(true); setSelectedADDate(dayjs().format('YYYY-MM-DD'));
       if (isNe) { try { const bs = new NepaliDate(new Date()); setBsYear(bs.getYear()); setBsMonth(bs.getMonth() + 1); setBsDay(bs.getDay()); } catch {} }
@@ -336,13 +331,13 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
                 {isNe ? 'सबै' : 'All'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('upcoming') : setShowPremiumModal(true)}>
-              <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'upcoming') ? undefined : styles.filterPillTextActive]}>
+            <TouchableOpacity style={[styles.filterPill, trackerFilter !== 'upcoming' && styles.filterPillOutline]} onPress={() => setTrackerFilter('upcoming')}>
+              <Text style={[styles.filterPillText, (trackerFilter === 'upcoming') ? styles.filterPillTextActive : undefined]}>
                 {isNe ? 'आउँदो' : 'Upcoming'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.filterPill, !isPremium && styles.filterPillOutline]} onPress={() => isPremium ? setTrackerFilter('missed') : setShowPremiumModal(true)}>
-              <Text style={[styles.filterPillText, (!isPremium || trackerFilter !== 'missed') ? undefined : styles.filterPillTextActive]}>
+            <TouchableOpacity style={[styles.filterPill, trackerFilter !== 'missed' && styles.filterPillOutline]} onPress={() => setTrackerFilter('missed')}>
+              <Text style={[styles.filterPillText, (trackerFilter === 'missed') ? styles.filterPillTextActive : undefined]}>
                 {isNe ? 'छुट्यो' : 'Missed'}
               </Text>
             </TouchableOpacity>
@@ -464,25 +459,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       )}
 
       {/* Premium Modal — shown when free users tap Upcoming/Missed */}
-      <Modal visible={showPremiumModal} transparent animationType="fade" onRequestClose={() => setShowPremiumModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { alignItems: 'center' }]}>
-            <Ionicons name="diamond-outline" size={48} color={pal.clay} style={{ marginBottom: 12 }} />
-            <Text style={styles.modalTitle}>{isNe ? 'प्रिमियम सुविधा' : 'Premium Feature'}</Text>
-            <Text style={[styles.modalSubtitle, { marginBottom: 20, lineHeight: 22 }]}>
-              {isNe
-                ? 'आउँदो र छुटेका खोपहरूको विस्तृत ट्र्याकिङ्ग प्रिमियम सदस्यता सहित उपलब्ध छ।'
-                : 'Upcoming & missed vaccine tracking with detailed schedules is available with a premium subscription.'}
-            </Text>
-            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%' }]} onPress={() => setShowPremiumModal(false)}>
-              <Text style={styles.modalConfirmBtnText}>{isNe ? 'बुझें' : 'Got it'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalConfirmBtn, { width: '100%', backgroundColor: pal.clay, marginTop: 10 }]} onPress={() => { setShowPremiumModal(false); }}>
-              <Text style={[styles.modalConfirmBtnText, { color: pal.onAccent }]}>{isNe ? 'प्रिमियम लिनुहोस्' : 'Upgrade to Premium'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="slide">

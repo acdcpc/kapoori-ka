@@ -3,7 +3,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import dayjs from 'dayjs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { NEPAL_NIP_SCHEDULE } from '../data/nepaliVaccines';
 
 // Web does not support expo-notifications (no web-push bridge). Guard everything so the
 // module is a safe no-op on web instead of throwing at import/call time.
@@ -82,7 +84,7 @@ export const scheduleVaccineReminders = async (
   if (IS_WEB) return;
   await cancelVaccineReminders(childName);
 
-  const toSchedule = vaccines.filter(v => v.status === 'due' || v.status === 'upcoming');
+  const toSchedule = vaccines.filter(v => v.status === 'due' || v.status === 'upcoming' || v.status === 'missed');
 
   for (const vaccine of toSchedule.slice(0, 10)) {
     const dueDate = dayjs(vaccine.scheduledDate);
@@ -109,7 +111,7 @@ export const scheduleVaccineReminders = async (
             : `${vaccine.nameNe || vaccine.name} को मिति ${dueDate.format('YYYY-MM-DD')} छ। तयारी गर्नुहोस्!`,
           data: { type: 'vaccine', vaccineId: vaccine.id, childName },
         },
-        trigger: { date: reminder7Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
+        trigger: { channelId: 'vaccine-reminders', date: reminder7Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
       });
     }
 
@@ -124,9 +126,8 @@ export const scheduleVaccineReminders = async (
             ? `${vaccine.name} is due on ${vaccine.scheduledDate}. Please prepare to visit the health post.`
             : `${vaccine.nameNe} को मिति ${vaccine.scheduledDate} छ। स्वास्थ्य चौकी जाने तयारी गर्नुहोला।`,
           data: { type: 'vaccine', vaccineId: vaccine.id, childName },
-          // channelId removed in SDK 56 — channels created at startup in registerForPushNotifications()
         },
-        trigger: { date: reminder2Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
+        trigger: { channelId: 'vaccine-reminders', date: reminder2Days.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
       });
     }
 
@@ -141,9 +142,27 @@ export const scheduleVaccineReminders = async (
             ? `Today is the scheduled date for ${vaccine.name}. Don't miss it!`
             : `आज ${childName}लाई ${vaccine.nameNe} लगाउने दिन हो। छुटाउनु नहोस्!`,
           data: { type: 'vaccine', vaccineId: vaccine.id, childName },
-          // channelId removed in SDK 56 — channels created at startup in registerForPushNotifications()
         },
-        trigger: { date: reminderDayOf.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
+        trigger: { channelId: 'vaccine-reminders', date: reminderDayOf.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
+      });
+    }
+    // Nepal reality: parents often come later than the scheduled date.
+    // For overdue vaccines (not yet given) remind tomorrow morning — catch-up
+    // is always possible, and the reminder re-arms each time the app runs.
+    if (vaccine.status === 'missed') {
+      const catchUp = dayjs().add(1, 'day').hour(9).minute(0).second(0);
+      await Notifications.scheduleNotificationAsync({
+        identifier: `vaccine_catchup_${childName}_${vaccine.id}`,
+        content: {
+          title: language === 'en'
+            ? `💉 Vaccine overdue — ${childName}`
+            : `💉 खोप बाँकी छ — ${childName}`,
+          body: language === 'en'
+            ? `${vaccine.name} was due on ${vaccine.scheduledDate}. It is safe to get it now — visit your health post when you can.`
+            : `${vaccine.nameNe} को मिति ${vaccine.scheduledDate} थियो। अहिले पनि लगाउन सकिन्छ — सक्दा स्वास्थ्य चौकी जानुहोस्।`,
+          data: { type: 'vaccine', vaccineId: vaccine.id, childName },
+        },
+        trigger: { channelId: 'vaccine-reminders', date: catchUp.toDate(), type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
       });
     }
   }
@@ -217,4 +236,71 @@ export const scheduleGrowthAlert = async (
     },
     trigger: { date: alertTime, type: Notifications.SchedulableTriggerInputTypes.DATE } as Notifications.NotificationTriggerInput,
   });
+};
+
+
+// ── Arm reminders for every child at app startup ────────────────────────────
+// Mirrors ImmunizationScreen's schedule logic (including parent-adjusted
+// dates), so reminders exist even if the Immunization tab is never opened.
+let armedForUser: string | null = null;
+
+export const armAllVaccineRemindersForUser = async (userId: string): Promise<void> => {
+  if (IS_WEB) return;
+  if (armedForUser === userId) return; // once per session per user
+  armedForUser = userId;
+
+  try {
+    let language: 'en' | 'ne' = 'ne';
+    try {
+      const saved = await AsyncStorage.getItem('user_language');
+      if (saved === 'en' || saved === 'ne') language = saved;
+    } catch { /* default */ }
+
+    const { data: children, error: childErr } = await supabase
+      .from('children')
+      .select('id, name, date_of_birth')
+      .eq('user_id', userId);
+    if (childErr || !children?.length) return;
+
+    const childIds = children.map((c: any) => c.id);
+    const { data: vaccinations, error: vErr } = await supabase
+      .from('vaccinations')
+      .select('*')
+      .in('child_id', childIds);
+    if (vErr) return;
+
+    const byChild: Record<string, any[]> = {};
+    for (const v of vaccinations || []) {
+      (byChild[v.child_id] = byChild[v.child_id] || []).push(v);
+    }
+
+    const today = dayjs().startOf('day');
+    for (const child of children) {
+      const records = byChild[child.id] || [];
+      const recordMap = new Map(records.map((r: any) => [r.vaccine_name, r]));
+      const givenIds = new Set(records.filter((r: any) => r.is_given).map((r: any) => r.vaccine_name));
+      const missedIds = new Set(records.filter((r: any) => r.is_missed).map((r: any) => r.vaccine_name));
+
+      const computed = NEPAL_NIP_SCHEDULE.map((v) => {
+        const record = recordMap.get(v.id);
+        const scheduledDate = record?.scheduled_date
+          ? dayjs(record.scheduled_date).startOf('day')
+          : dayjs(child.date_of_birth).add(v.ageInDays, 'day').startOf('day');
+        const daysUntilDue = scheduledDate.diff(today, 'day');
+        const isGiven = givenIds.has(v.id), isMissed = missedIds.has(v.id);
+        let status: 'given' | 'due' | 'upcoming' | 'missed';
+        if (isGiven) status = 'given';
+        else if (isMissed) status = 'missed';
+        else if (daysUntilDue < 0) status = 'missed';
+        else if (daysUntilDue <= 14) status = 'due';
+        else status = 'upcoming';
+        return { id: v.id, name: v.name, nameNe: v.nameNepali, scheduledDate: scheduledDate.format('YYYY-MM-DD'), status, daysUntilDue };
+      });
+
+      const childName = child.name || (language === 'ne' ? 'बच्चा' : 'Your Child');
+      await scheduleVaccineReminders(childName, computed, language);
+    }
+  } catch (err) {
+    console.warn('[notifications] armAllVaccineReminders failed:', err);
+  }
 };

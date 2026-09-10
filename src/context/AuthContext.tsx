@@ -11,7 +11,7 @@ import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
-import { registerForPushNotifications } from '../utils/notifications';
+import { registerForPushNotifications, armAllVaccineRemindersForUser } from '../utils/notifications';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 // ── Bridge type: Supabase user → familiar shape for screens ──
@@ -179,6 +179,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Persist this device's push token now that we have a session
         // (payment approvals notify admins through it).
         registerForPushNotifications().catch(() => undefined);
+        // Arm vaccine reminders for every child at startup — they fire even
+        // when the app is closed, so parents never miss an immunization.
+        if (s?.user?.id) armAllVaccineRemindersForUser(s.user.id).catch(() => undefined);
       }
       if (s?.user) {
         const appUser = toAppUser(s.user);
