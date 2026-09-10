@@ -145,7 +145,7 @@ export default function SubscriptionScreen() {
   const submitPayment = async () => {
     const ref = txnId.trim();
     if (ref.length < 6) {
-      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'eSewa/Khalti Transaction ID पूरा लेख्नुहोस्।' : 'Enter the full eSewa/Khalti transaction ID.');
+      Alert.alert(isNe ? 'त्रुटि' : 'Error', isNe ? 'Transaction ID पूरा लेख्नुहोस् (eSewa/खल्ती/बैंक)।' : 'Enter the full transaction ID (eSewa/Khalti/Bank).');
       return;
     }
     setSubmitting(true);
