@@ -71,7 +71,8 @@ Deno.serve(async (request) => {
   const mobile = validString(form.get('mobile'), 0, 24) ?? '';
   const remarks = validString(form.get('remarks'), 0, 500) ?? '';
   const rawTransaction = validString(form.get('transaction_id'), 6, 128);
-  const plan = form.get('plan') === 'monthly' ? 'monthly' : form.get('plan') === 'yearly' ? 'yearly' : null;
+  const planRaw = String(form.get('plan') ?? '');
+  const plan = ['monthly', '6months', 'yearly'].includes(planRaw) ? planRaw : null;
   const submittedEmail = validString(form.get('email'), 3, 254)?.toLowerCase();
 
   if (!name || !rawTransaction || !plan || !submittedEmail || submittedEmail !== user.email.toLowerCase()) {
