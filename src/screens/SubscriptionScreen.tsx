@@ -23,6 +23,12 @@ const ESEWA_QR = require('../../assets/esewa-qr.png');
 const MONTHLY_PRICE_NPR = 100;
 const YEARLY_PRICE_NPR = 500;
 
+// Plans shown for purchase (Nepal pricing, 2026-09)
+const PLANS = [
+  { id: '6months' as const, labelNe: '६ महिना', labelEn: '6 Months', priceNPR: 650, perMonth: 108, tag: null as string | null },
+  { id: 'yearly' as const, labelNe: 'वार्षिक', labelEn: 'Yearly', priceNPR: 850, perMonth: 71, tag: 'BEST VALUE — सर्वोत्तम' },
+];
+
 const FREE_FEATURES_EN = [
   { icon: '👶', text: '1 child profile' },
   { icon: '📈', text: 'Basic growth chart (weight & height)' },
@@ -40,23 +46,21 @@ const FREE_FEATURES_NE = [
 ];
 
 const PAID_FEATURES_EN = [
-  { icon: '👨👩👧👦', text: 'Unlimited children profiles' },
-  { icon: '📊', text: 'Full WHO growth diagnostics (Stunted/Wasted/Obese)' },
-  { icon: '📄', text: 'PDF growth & health reports' },
-  { icon: '🧠', text: 'Full developmental milestone tracker' },
-  { icon: '🔍', text: 'M-CHAT autism screening' },
-  { icon: '📱', text: 'Priority WhatsApp support' },
-  { icon: '🩺', text: 'Doctor referral guidance' },
+  { icon: '📊', title: 'See what the numbers mean', text: 'Your child\u2019s weight, height and head size mapped onto WHO charts — with clear, calm guidance on every measurement.' },
+  { icon: '📈', title: 'Beautiful growth charts', text: 'Watch your child\u2019s own curve grow against the WHO standard — perfect to bring to every check-up.' },
+  { icon: '📄', title: 'Doctor-ready PDF reports', text: 'One tap creates a professional health report with charts and interpretation, ready to share with any pediatrician.' },
+  { icon: '🧠', title: 'Full milestone tracking', text: 'Track every developmental milestone, with guidance on what comes next and when to ask for help.' },
+  { icon: '🔍', title: 'M-CHAT autism screening', text: 'A validated early screening tool built into the app — early awareness changes lives.' },
+  { icon: '💬', title: 'Priority WhatsApp support', text: 'Stuck or worried? Message the team that built the app and get a real answer.' },
 ];
 
 const PAID_FEATURES_NE = [
-  { icon: '👨👩👧👦', text: 'असीमित बच्चाको प्रोफाइल' },
-  { icon: '📊', text: 'पूर्ण WHO वृद्धि निदान (Stunted/Wasted/Obese)' },
-  { icon: '📄', text: 'PDF वृद्धि र स्वास्थ्य रिपोर्ट' },
-  { icon: '🧠', text: 'पूर्ण विकास मापदण्ड ट्र्याकर' },
-  { icon: '🔍', text: 'M-CHAT अटिजम स्क्रिनिङ' },
-  { icon: '📱', text: 'प्राथमिकता WhatsApp सहायता' },
-  { icon: '🩺', text: 'चिकित्सक रेफरल मार्गदर्शन' },
+  { icon: '📊', title: 'अंकको अर्थ बुझ्नुहोस्', text: 'तपाईंको बच्चाको तौल, उचाइ र टाउकोको नाप WHO चार्टमा — हरेक मापनसँग स्पष्ट, शान्त मार्गदर्शन।' },
+  { icon: '📈', title: 'सुन्दर वृद्धि चार्ट', text: 'WHO मापदण्डसँग तुलना गर्दै बच्चाको आफ्नै वृद्धि रेखा हेर्नुहोस् — हरेक जाँचमा लैजान मिल्ने।' },
+  { icon: '📄', title: 'डाक्टर-तयार PDF रिपोर्ट', text: 'एक ट्यापमा चार्ट र व्याख्यासहित पेशेवर स्वास्थ्य रिपोर्ट — जुनसुकै बाल रोग विशेषज्ञसँग सेयर गर्न मिल्छ।' },
+  { icon: '🧠', title: 'पूर्ण विकास ट्र्याकिङ', text: 'हरेक विकास चरण ट्र्याक गर्नुहोस् — के अपेक्षा गर्ने र कहिले सहयोग माग्ने भन्ने मार्गदर्शनसहित।' },
+  { icon: '🔍', title: 'M-CHAT अटिजम स्क्रिनिङ', text: 'एपभित्रै प्रमाणित सुरुवाती जाँच — समयमै चेतनाले जीवन बदल्छ।' },
+  { icon: '💬', title: 'प्राथमिकता WhatsApp सहयोग', text: 'अड्किनुभयो वा चिन्ता छ? सिधै हामीलाई म्यासेज गर्नुहोस् — एप बनाउने टिमबाटै जवाफ।' },
 ];
 
 export default function SubscriptionScreen() {
@@ -71,7 +75,7 @@ export default function SubscriptionScreen() {
 
   // In-app payment submission
   const [paySheetVisible, setPaySheetVisible] = useState(false);
-  const [payPlan, setPayPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [payPlan, setPayPlan] = useState<'6months' | 'yearly'>('yearly');
   const [txnId, setTxnId] = useState('');
   const [mobile, setMobile] = useState('');
   const [screenshot, setScreenshot] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -260,86 +264,69 @@ export default function SubscriptionScreen() {
         </View>
       )}
 
-      {/* Free vs Premium */}
-      <Text style={styles.sectionLabel}>
-        {isNe ? '🆓 निःशुल्क  vs  ⭐ प्रिमियम' : "🆓 What's Free vs ⭐ Premium"}
-      </Text>
-
-      <View style={styles.featuresRow}>
-        <View style={styles.featureCard}>
-          <View style={styles.featureCardHeader}>
-            <Text style={styles.featureCardTitle}>🆓 {isNe ? 'निःशुल्क' : 'Free'}</Text>
-          </View>
-          {freeFeatures.map((f, i) => (
-            <View key={i} style={styles.featureRow}>
-              <Text style={styles.featureIcon}>{f.icon}</Text>
-              <Text style={styles.featureText}>{f.text}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.featureCard, styles.featureCardPremium]}>
-          <View style={[styles.featureCardHeader, { backgroundColor: t.clay }]}>
-            <Text style={[styles.featureCardTitle, { color: t.onAccent }]}>
-              ⭐ {isNe ? 'प्रिमियम' : 'Premium'}
-            </Text>
-          </View>
-          {paidFeatures.map((f, i) => (
-            <View key={i} style={[styles.featureRow, { borderBottomColor: t.bg }]}>
-              <Text style={styles.featureIcon}>{f.icon}</Text>
-              <Text style={[styles.featureText, { color: t.clay }]}>{f.text}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Pricing */}
+      {/* What you unlock */}
       {!isActive && (
         <>
-          <Text style={styles.sectionLabel}>
-            {isNe ? 'मूल्य' : 'Pricing'}
-          </Text>
+          <View style={styles.valueHeader}>
+            <Text style={styles.valueTitle}>{isNe ? '⭐ प्रिमियममा के-के खुल्छ?' : '⭐ What you unlock with Premium'}</Text>
+            <Text style={styles.valueSub}>{isNe ? 'एकपटक भुक्तानी — कहिल्यै अटो-चार्ज हुँदैन। हरेक सुविधा तपाईंको बच्चाको स्वास्थ्य यात्राका लागि बनेको।' : 'Pay once — never auto-charged. Every feature is built for your child\u2019s health journey.'}</Text>
+          </View>
 
-          <View style={styles.pricingRow}>
-            <View style={styles.priceCard}>
-              <Text style={styles.pricePlan}>{isNe ? 'मासिक' : 'Monthly'}</Text>
-              <Text style={styles.priceAmount}>NPR 100</Text>
-              <Text style={styles.pricePeriod}>/ {isNe ? 'महिना' : 'month'}</Text>
-            </View>
-            <View style={[styles.priceCard, styles.priceCardBest]}>
-              <View style={styles.bestBadge}>
-                <Text style={styles.bestBadgeText}>{isNe ? 'सर्वोत्तम' : 'BEST'}</Text>
+          {paidFeatures.map((f, i) => (
+            <View key={i} style={styles.benefitRow}>
+              <View style={styles.benefitIconBox}><Text style={styles.benefitIcon}>{f.icon}</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.benefitTitle}>{f.title}</Text>
+                <Text style={styles.benefitText}>{f.text}</Text>
               </View>
-              <Text style={styles.pricePlan}>{isNe ? 'वार्षिक' : 'Yearly'}</Text>
-              <Text style={[styles.priceAmount, { color: t.clay }]}>NPR 500</Text>
-              <Text style={styles.pricePeriod}>/ {isNe ? 'वर्ष' : 'year'}</Text>
-              <Text style={styles.priceSave}>
-                {isNe ? '५८% बचत!' : '58% saving!'}
-              </Text>
             </View>
+          ))}
+
+          <Text style={styles.sectionLabel}>{isNe ? 'योजना छान्नुहोस्' : 'Choose your plan'}</Text>
+          {PLANS.map((plan) => (
+            <TouchableOpacity key={plan.id} style={[styles.planCard, payPlan === plan.id && styles.planCardActive]} onPress={() => setPayPlan(plan.id)} activeOpacity={0.8}>
+              {!!plan.tag && (
+                <View style={styles.planTag}><Text style={styles.planTagText}>{plan.tag}</Text></View>
+              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.planName}>{isNe ? plan.labelNe : plan.labelEn}</Text>
+                  <Text style={styles.planPer}>{isNe ? 'मासिक औसत' : 'averages'} NPR {plan.perMonth}/{isNe ? 'महिना' : 'month'}</Text>
+                </View>
+                <Text style={styles.planPrice}>NPR {plan.priceNPR}</Text>
+              </View>
+              <TouchableOpacity style={styles.planPayBtn} onPress={() => { setPayPlan(plan.id); setPaySheetVisible(true); }} accessibilityRole="button">
+                <Text style={styles.planPayBtnText}>{isNe ? 'अहिले तिर्नुहोस्' : 'Pay now'}</Text>
+                <Ionicons name="arrow-forward" size={16} color={t.onAccent} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+
+          <View style={styles.trustStrip}>
+            <Text style={styles.trustItem}>🔒 {isNe ? 'एकपटक भुक्तानी' : 'One-time payment'}</Text>
+            <Text style={styles.trustItem}>🚫 {isNe ? 'अटो-चार्ज छैन' : 'No auto-charge'}</Text>
+            <Text style={styles.trustItem}>📴 {isNe ? 'अफलाइन पनि' : 'Works offline'}</Text>
           </View>
 
-          {/* In-app payment (sideload distribution) */}
-          <View style={styles.complianceNote}>
-            <Ionicons name="card-outline" size={20} color={t.shadow} />
-            <Text style={styles.complianceText}>
-              {isNe
-                ? 'तलको बटन थिच्नुहोस् — eSewa/खल्तीबाट भुक्तानी गरी एपभित्रै विवरण पठाउनुहोस्।'
-                : 'Tap a button below — pay via eSewa/Khalti and submit the details right inside the app.'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 12, marginBottom: 8 }}>
-            <TouchableOpacity style={[styles.payBtn, { flex: 1 }]} onPress={() => { setPayPlan('monthly'); setPaySheetVisible(true); }}>
-              <Ionicons name="flash-outline" size={18} color={t.onAccent} />
-              <Text style={styles.payBtnText}>{isNe ? 'मासिक तिर्नुहोस्' : 'Pay monthly'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.payBtn, styles.payBtnYearly, { flex: 1 }]} onPress={() => { setPayPlan('yearly'); setPaySheetVisible(true); }}>
-              <Ionicons name="flash-outline" size={18} color={t.onAccent} />
-              <Text style={styles.payBtnText}>{isNe ? 'वार्षिक तिर्नुहोस्' : 'Pay yearly'}</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionLabel}>{isNe ? 'कसरी काम गर्छ?' : 'How it works'}</Text>
+          {[
+            ['1', isNe ? 'योजना छान्नुहोस्' : 'Choose a plan', isNe ? '६ महिना वा वार्षिक — तपाईंको रोजाइ।' : '6 months or yearly — your choice.'],
+            ['2', isNe ? 'QR स्क्यान गरी तिर्नुहोस्' : 'Pay via the QR', isNe ? 'eSewa/खल्तीबाट तिरी Transaction ID यहाँ राख्नुहोस्।' : 'Pay with eSewa/Khalti and enter the transaction ID here.'],
+            ['3', isNe ? 'एप आफैँ सक्रिय हुन्छ' : 'Premium activates itself', isNe ? 'हामी पुष्टि गरेपछि एप आफैँ प्रिमियम बन्छ — कोड टाइप गर्नै पर्दैन।' : 'Once we verify, the app upgrades itself — no code typing.'],
+          ].map(([n, ttl, txt]) => (
+            <View key={n} style={styles.stepRow}>
+              <View style={styles.stepNum}><Text style={styles.stepNumText}>{n}</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.stepTitle}>{ttl}</Text>
+                <Text style={styles.stepText}>{txt}</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
 
-          {/* Activation Code Redemption (neutral — not a payment solicitation) */}
+      {!isActive && (<>
+      {/* Activation Code Redemption */}
           <Text style={styles.sectionLabel}>
             {isNe ? '🔑 एक्टिभेसन कोड छ? सक्रिय गर्नुहोस्' : '🔑 Have an activation code? Redeem it'}
           </Text>
@@ -373,7 +360,7 @@ export default function SubscriptionScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.sheetTitle}>{isNe ? 'भुक्तानी गर्नुहोस्' : 'Complete your payment'}</Text>
               <Text style={styles.sheetAmount}>
-                {payPlan === 'yearly' ? (isNe ? 'वार्षिक — NPR 500' : 'Yearly — NPR 500') : (isNe ? 'मासिक — NPR 100' : 'Monthly — NPR 100')}
+                {(() => { const plan = PLANS.find(pl => pl.id === payPlan)!; return `${isNe ? plan.labelNe : plan.labelEn} — NPR ${plan.priceNPR}`; })()}
               </Text>
               <Image source={ESEWA_QR} style={styles.qr} resizeMode="contain" />
               <Text style={styles.sheetStep}>
@@ -522,4 +509,29 @@ const makeStyles = (t: Palette) => StyleSheet.create({
   submitBtnText: { color: t.onAccent, fontWeight: '800', fontSize: 15 },
   cancelBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   cancelBtnText: { color: t.muted2, fontWeight: '700' },
+
+  valueHeader: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
+  valueTitle: { fontSize: 20, fontWeight: '800', color: t.text },
+  valueSub: { fontSize: 13, color: t.muted2, marginTop: 4, lineHeight: 19 },
+  benefitRow: { flexDirection: 'row', gap: 12, marginHorizontal: 12, marginBottom: 12, backgroundColor: t.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: t.border },
+  benefitIconBox: { width: 42, height: 42, borderRadius: 21, backgroundColor: t.actionBg, alignItems: 'center', justifyContent: 'center' },
+  benefitIcon: { fontSize: 20 },
+  benefitTitle: { fontSize: 15, fontWeight: '800', color: t.text },
+  benefitText: { fontSize: 12.5, color: t.muted2, lineHeight: 18, marginTop: 3 },
+  planCard: { marginHorizontal: 12, marginBottom: 14, borderRadius: 18, padding: 16, borderWidth: 2, borderColor: t.border, backgroundColor: t.surface },
+  planCardActive: { borderColor: t.clay, backgroundColor: t.actionBg },
+  planTag: { position: 'absolute', top: -10, right: 14, backgroundColor: t.clay, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  planTagText: { color: t.onAccent, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  planName: { fontSize: 17, fontWeight: '800', color: t.text },
+  planPer: { fontSize: 12, color: t.muted2, marginTop: 2 },
+  planPrice: { fontSize: 22, fontWeight: '900', color: t.clay },
+  planPayBtn: { minHeight: 46, borderRadius: 10, backgroundColor: t.clay, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
+  planPayBtnText: { color: t.onAccent, fontWeight: '800', fontSize: 14 },
+  trustStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginHorizontal: 12, marginVertical: 10, justifyContent: 'center' },
+  trustItem: { fontSize: 12, fontWeight: '700', color: t.muted2 },
+  stepRow: { flexDirection: 'row', gap: 12, marginHorizontal: 16, marginBottom: 12, alignItems: 'flex-start' },
+  stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: t.clay, alignItems: 'center', justifyContent: 'center' },
+  stepNumText: { color: t.onAccent, fontWeight: '900', fontSize: 12 },
+  stepTitle: { fontWeight: '800', color: t.text, fontSize: 14 },
+  stepText: { fontSize: 12.5, color: t.muted2, lineHeight: 18, marginTop: 2 },
 });

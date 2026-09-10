@@ -88,8 +88,7 @@ BEGIN
 
   RETURN v_payment_id;
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.redeem_activation_code(p_code text)
  RETURNS jsonb
@@ -172,5 +171,4 @@ BEGIN
 
   RETURN jsonb_build_object('success', true, 'plan', v_plan, 'end_date', v_end_date);
 END;
-$function$
-
+$function$;
