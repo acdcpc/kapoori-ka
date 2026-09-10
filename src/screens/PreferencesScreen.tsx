@@ -7,6 +7,7 @@ import { ThemeContext, ThemeMode } from '../context/ThemeContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { PrivacyPreferences } from '../types';
 import { Palette } from '../theme';
+import { FEATURE_CARE_TEAM } from '../config/featureFlags';
 import { loadPrivacyPreferences, savePrivacyPreferences } from '../lib/featureAnalytics';
 import { createOfflineMutation, flushOfflineQueue } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
@@ -84,6 +85,7 @@ export default function PreferencesScreen() {
         <Text style={styles.helper}>{tr('प्रणालीले तपाईंको फोनको उज्यालो/अँध्यारो सेटिङ पालना गर्छ।', 'System follows your phone’s light/dark setting.')}</Text>
       </Section>
 
+      {FEATURE_CARE_TEAM && (
       <Section title={tr('हेरचाह र साझा पहुँच', 'Care and sharing')}>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={tr('हेरचाहकर्ता पहुँच र हेरचाह रेकर्ड खोल्नुहोस्', 'Open caregiver access and care log')} onPress={() => Alert.alert(tr('बच्चाको प्रोफाइल खोल्नुहोस्', 'Open a child profile'), tr('पहिले बच्चाको प्रोफाइल खोल्नुहोस्, त्यसपछि “हेरचाह टोली र हेरचाह रेकर्ड” छानेर पहुँच व्यवस्थापन गर्नुहोस् वा रेकर्ड थप्नुहोस्।', 'Open a child profile, then select “Care team & care log” to manage caregiver access or care entries.'))} style={styles.action}>
           <Text style={styles.actionTitle}>{tr('हेरचाहकर्ता पहुँच र हेरचाह रेकर्ड', 'Caregiver access and care log')}</Text>
@@ -91,6 +93,7 @@ export default function PreferencesScreen() {
         </TouchableOpacity>
         <Text style={styles.helper}>{tr('हेरचाहकर्ता कोड बनाउन वा खुवाइ तथा क्लिनिकका टिपोट थप्न पहिले बच्चाको प्रोफाइल खोल्नुहोस्।', 'Open a child profile first to create a caregiver code or add feeding and clinic notes.')}</Text>
       </Section>
+      )}
 
       <Section title={tr('गोपनीयता रोजाइ', 'Privacy choices')}>
         <Text style={styles.helper}>{tr('ऐच्छिक प्रयोगसम्बन्धी सङ्ख्याले एप सुधार्न मद्दत गर्छ। यसमा बच्चाको नाम, बच्चाको ID, टिपोट, मापन, फोटो वा ठ्याक्कै स्थान समावेश हुँदैन।', 'Optional usage counts improve the app. They never include child names, child IDs, notes, measurements, photos, or precise location.')}</Text>

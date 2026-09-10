@@ -124,7 +124,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
     { title: isNe ? 'पोषण' : 'Nutrition', icon: '🥦', color: pal.green, screen: 'Nutrition' as const, params: { child }, desc: isNe ? 'उमेर अनुसार खाना गाइड' : 'Age-wise feeding guide', premium: true },
     { title: t.mchat,          icon: '🔍', color: pal.red, screen: 'MChat' as const,        desc: isNe ? 'अटिजम स्क्रिनिङ' : 'Autism screening tool', premium: true },
     { title: t.pdfReport,      icon: '📄', color: '#607D8B', screen: 'PDFReport' as const,    desc: isNe ? 'WHO चार्ट, व्याख्या र पूर्ण रिपोर्ट PDF' : 'WHO charts, interpretation & full report PDF', premium: true },
-    { title: isNe ? 'हेरचाह टोली' : 'Care team & care log', icon: '🤝', color: pal.terracotta, screen: 'CaregiverTools' as const, desc: isNe ? 'विश्वासिलो हेरचाहकर्ता र खाना/क्लिनिक रेकर्ड' : 'Trusted caregiver, feeding and clinic log', premium: false },
+    ...(FEATURE_CARE_TEAM ? [{ title: isNe ? 'हेरचाह टोली' : 'Care team & care log', icon: '🤝', color: pal.terracotta, screen: 'CaregiverTools' as const, desc: isNe ? 'विश्वासिलो हेरचाहकर्ता र खाना/क्लिनिक रेकर्ड' : 'Trusted caregiver, feeding and clinic log', premium: false }] : []),
   ];
 
   const handleChangePhoto = async () => {
@@ -352,3 +352,4 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
     width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
   },
 });
+import { FEATURE_CARE_TEAM } from '../config/featureFlags';
