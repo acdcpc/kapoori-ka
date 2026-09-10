@@ -72,7 +72,7 @@ Deno.serve(async (request) => {
   const remarks = validString(form.get('remarks'), 0, 500) ?? '';
   const rawTransaction = validString(form.get('transaction_id'), 6, 128);
   const planRaw = String(form.get('plan') ?? '');
-  const plan = ['monthly', '6months', 'yearly'].includes(planRaw) ? planRaw : null;
+  const plan = ['6months', 'yearly'].includes(planRaw) ? planRaw : null;
   const submittedEmail = validString(form.get('email'), 3, 254)?.toLowerCase();
 
   if (!name || !rawTransaction || !plan || !submittedEmail || submittedEmail !== user.email.toLowerCase()) {
