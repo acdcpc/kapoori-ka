@@ -365,8 +365,8 @@ export default function SubscriptionScreen() {
               <Image source={ESEWA_QR} style={styles.qr} resizeMode="contain" />
               <Text style={styles.sheetStep}>
                 {isNe
-                  ? '१. eSewa/खल्ती एप खोल्नुहोस् र माथिको QR स्क्यान गरी रकम पठाउनुहोस्।'
-                  : '1. Open your eSewa/Khalti app and scan this QR to send the amount.'}
+                  ? '१. eSewa/खल्ती/बैंकको एप खोल्नुहोस् र माथिको QR स्क्यान गरी रकम पठाउनुहोस्।'
+                  : '1. Open your eSewa/Khalti/bank app and scan this QR to send the amount.'}
               </Text>
               <Text style={styles.sheetStep}>
                 {isNe
