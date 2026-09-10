@@ -113,6 +113,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [isReady, setIsReady] = useState(false);
   const systemColorScheme = useColorScheme();
+  const [webEnterApp, setWebEnterApp] = useState(false);
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
   const palette = makePalette(isDark);
 
@@ -212,8 +213,8 @@ export default function App() {
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
         <ThemeContext.Provider value={{ mode: themeMode, setMode: handleSetThemeMode, isDark, palette }}>
           <AccessibilityProvider>
-            {Platform.OS === 'web' ? (
-              <WebsiteScreen />
+            {Platform.OS === 'web' && !webEnterApp ? (
+              <WebsiteScreen onGetStarted={() => setWebEnterApp(true)} />
             ) : (
               <AuthProvider>
                 <Navigation />

@@ -58,7 +58,9 @@ const copy = {
 
 type Lang = 'en' | 'ne';
 
-export default function WebsiteScreen() {
+type WebsiteScreenProps = { onGetStarted?: () => void };
+
+export default function WebsiteScreen({ onGetStarted }: WebsiteScreenProps) {
   const { language, setLanguage } = useContext(LanguageContext);
   const t = copy[language as Lang] || copy.ne;
   const { width } = useWindowDimensions();
@@ -96,11 +98,11 @@ export default function WebsiteScreen() {
           <View><Text style={styles.brandNepali}>कपूरी क</Text><Text style={styles.brandLatin}>Kapoori Ka</Text></View>
         </Pressable>
         {!compact && <View style={styles.navLinks}><Pressable onPress={() => jump('features')} accessibilityRole="link" accessibilityLabel={t.navFeatures}><Text style={styles.navText}>{t.navFeatures}</Text></Pressable><Pressable onPress={() => jump('how')} accessibilityRole="link" accessibilityLabel={t.navHow}><Text style={styles.navText}>{t.navHow}</Text></Pressable><Pressable onPress={() => jump('trust')} accessibilityRole="link" accessibilityLabel={t.navTrust}><Text style={styles.navText}>{t.navTrust}</Text></Pressable></View>}
-        <View style={styles.navRight}><Pressable onPress={() => setLanguage(language === 'ne' ? 'en' : 'ne')} style={styles.lang}><Text style={styles.langText}>{language === 'ne' ? 'EN' : 'नेपाली'}</Text></Pressable><Pressable onPress={() => jump('start')} style={styles.navCta}><Text style={styles.navCtaText}>{t.navStart}</Text></Pressable></View>
+        <View style={styles.navRight}><Pressable onPress={() => setLanguage(language === 'ne' ? 'en' : 'ne')} style={styles.lang}><Text style={styles.langText}>{language === 'ne' ? 'EN' : 'नेपाली'}</Text></Pressable><Pressable onPress={() => (onGetStarted ? onGetStarted() : jump('start'))} style={styles.navCta} accessibilityRole="button"><Text style={styles.navCtaText}>{t.navStart}</Text></Pressable></View>
       </View>
 
       <View nativeID="top" style={[styles.hero, compact && styles.heroCompact]}>
-        <View style={styles.heroCopy}><Text style={styles.eyebrow}>{t.eyebrow}</Text><Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>{t.title}</Text><Text style={styles.heroBody}>{t.body}</Text><View style={[styles.buttonRow, compact && styles.buttonColumn]}><Pressable style={[styles.primaryButton, compact && styles.fullButton]} onPress={() => jump('start')}><Text style={styles.primaryText}>{t.primary}</Text><Text style={styles.buttonArrow}>↗</Text></Pressable><Pressable style={[styles.secondaryButton, compact && styles.fullButton]} onPress={() => jump('features')}><Text style={styles.secondaryText}>{t.secondary}</Text></Pressable></View><Text style={styles.heroNote}>{t.heroNote}</Text></View>
+        <View style={styles.heroCopy}><Text style={styles.eyebrow}>{t.eyebrow}</Text><Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>{t.title}</Text><Text style={styles.heroBody}>{t.body}</Text><View style={[styles.buttonRow, compact && styles.buttonColumn]}><Pressable style={[styles.primaryButton, compact && styles.fullButton]} onPress={() => (onGetStarted ? onGetStarted() : jump('start'))}><Text style={styles.primaryText}>{t.primary}</Text><Text style={styles.buttonArrow}>↗</Text></Pressable><Pressable style={[styles.secondaryButton, compact && styles.fullButton]} onPress={() => jump('features')}><Text style={styles.secondaryText}>{t.secondary}</Text></Pressable></View><Text style={styles.heroNote}>{t.heroNote}</Text></View>
         <View style={styles.heroArt}><View style={styles.sun} /><View style={styles.artCard}><Text style={styles.artKicker}>TODAY / आज</Text><Text style={styles.artTitle}>{language === 'ne' ? 'मायाको स्वास्थ्य किताब' : 'Maya’s health book'}</Text><View style={styles.artLine}><Text style={styles.artIcon}>↗</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'वृद्धि चार्ट' : 'Growth chart'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'पछिल्लो नाप २ हप्ता अघि' : 'Last measurement · 2 weeks ago'}</Text></View></View><View style={styles.artLine}><Text style={styles.artIcon}>✓</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'खोप तयार' : 'Vaccines on track'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'अर्को खोप ३ महिनामा' : 'Next one · 3 months'}</Text></View></View></View><Text style={styles.artCaption}>सुरक्षित · सरल · साथमा</Text></View>
       </View>
 
@@ -110,7 +112,7 @@ export default function WebsiteScreen() {
 
       <View nativeID="trust" style={styles.trust}><View style={styles.trustCopy}><Text style={styles.sectionLabel}>{t.trustLabel}</Text><Text style={styles.sectionTitle}>{t.trustTitle}</Text><Text style={styles.sectionBody}>{t.trustBody}</Text></View><View style={styles.trustList}>{t.trustItems.map(([title, body]) => <View key={title} style={styles.trustItem}><Text style={styles.trustCheck}>✓</Text><View><Text style={styles.trustTitle}>{title}</Text><Text style={styles.trustBodySmall}>{body}</Text></View></View>)}</View></View>
 
-      <View nativeID="start" style={styles.cta}><Text style={styles.ctaTitle}>{t.ctaTitle}</Text><Text style={styles.ctaBody}>{t.ctaBody}</Text><Pressable style={styles.ctaButton} onPress={() => jump('top')}><Text style={styles.ctaButtonText}>{t.cta}</Text><Text style={styles.buttonArrow}>↗</Text></Pressable></View>
+      <View nativeID="start" style={styles.cta}><Text style={styles.ctaTitle}>{t.ctaTitle}</Text><Text style={styles.ctaBody}>{t.ctaBody}</Text><Pressable style={styles.ctaButton} onPress={() => (onGetStarted ? onGetStarted() : jump('top'))}><Text style={styles.ctaButtonText}>{t.cta}</Text><Text style={styles.buttonArrow}>↗</Text></Pressable></View>
       <View style={styles.footer}><View><Text style={styles.footerBrand}>कपूरी क · Kapoori Ka</Text><Text style={styles.footerText}>{t.footer}</Text></View><Pressable onPress={() => Linking.openURL('mailto:kapoori.ka@gmail.com')}><Text style={styles.footerLink}>{t.support}</Text></Pressable><Text style={styles.disclaimer}>{t.disclaimer}</Text></View>
     </ScrollView>
   );
