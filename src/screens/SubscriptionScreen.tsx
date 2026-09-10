@@ -374,7 +374,7 @@ export default function SubscriptionScreen() {
                   : '2. Enter the transaction ID below — the app activates automatically once approved.'}
               </Text>
 
-              <Text style={styles.fieldLabel}>{isNe ? 'Transaction ID (eSewa/खल्ती) *' : 'Transaction ID (eSewa/Khalti) *'}</Text>
+              <Text style={styles.fieldLabel}>{isNe ? 'Transaction ID (eSewa/खल्ती/बैंक) *' : 'Transaction ID (eSewa/Khalti/Bank) *'}</Text>
               <TextInput style={styles.sheetInput} placeholder="e.g. 004A1B2C3D" placeholderTextColor={t.shadow}
                 value={txnId} onChangeText={setTxnId} autoCapitalize="characters" autoCorrect={false} />
               <Text style={styles.fieldLabel}>{isNe ? 'मोबाइल (ऐच्छिक)' : 'Mobile (optional)'}</Text>
