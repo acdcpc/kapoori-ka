@@ -222,11 +222,32 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const bmiAvailable = childAgeMonths >= 24;
 
 const STATUS_COLORS = { green: pal.green, yellow: pal.gold, red: pal.red, grey: pal.muted };
-const STATUS_DESC: Record<string, { en: string; ne: string }> = {
-  green: { en: 'Your child is growing well within WHO standards.', ne: 'बच्चा WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ।' },
-  yellow: { en: 'Growth needs attention. Monitor closely.', ne: 'वृद्धि ध्यान दिनुपर्ने। नजिकबाट निगरानी गर्नुहोस्।' },
-  red: { en: 'Severe growth concern. Please see a doctor.', ne: 'गम्भीर चिन्ता। कृपया डाक्टर देखाउनुहोस्।' },
-  grey: { en: 'Not enough data yet.', ne: 'पर्याप्त डेटा छैन।' },
+// Calm, supportive guidance per metric — never diagnosis words; always a next step.
+const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = {
+  weight: {
+    green: { en: 'Your child is growing well within WHO standards. Keep up the good feeding and care.', ne: 'बच्चा WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ। राम्रो हेरचाह जारी राख्नुहोस्।' },
+    yellow: { en: 'Weight is a little outside the usual range. Small, steady changes in feeding help a lot — mention it at your next visit.', ne: 'तौल सामान्य दायराभन्दा अलि फरक छ। साना र नियमित परिवर्तनले ठूलो फरक पार्छ — अर्को जाँचमा भन्नुहोस्।' },
+    red: { en: 'Weight is well outside the usual range for this age. This is not rare and can often be improved — please visit a pediatrician or your nearest health post soon and bring this chart with you.', ne: 'तौल यो उमेरको सामान्य दायराभन्दा धेरै फरक छ। यो दुर्लभ समस्या होइन र सुधार्न सकिन्छ — सीघै बाल रोग विशेषज्ञ वा नजिकको स्वास्थ्य चौकीमा जानुहोस् र यो चार्ट पनि लैजानुहोस्।' },
+    grey: { en: 'Add a measurement to see the growth status.', ne: 'वृद्धि स्थिति हेर्न मापन थप्नुहोस्।' },
+  },
+  height: {
+    green: { en: 'Height is growing well within WHO standards. Good nutrition now builds a strong future.', ne: 'उचाइ WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ। अहिलेको राम्रो पोषणले भविष्य बनाउँछ।' },
+    yellow: { en: 'Height is a little outside the usual range. Good food, play and sleep help growth — mention it at your next visit.', ne: 'उचाइ सामान्य दायराभन्दा अलि फरक छ। राम्रो खाना, खेल र निद्राले वृद्धिमा मद्दत गर्छ — अर्को जाँचमा भन्नुहोस्।' },
+    red: { en: 'Height is well outside the usual range for this age. Growth check-ups are simple and helpful — please visit a pediatrician or your nearest health post soon and bring this chart with you.', ne: 'उचाइ यो उमेरको सामान्य दायराभन्दा धेरै फरक छ। वृद्धि जाँच सरल र उपयोगी हुन्छ — सीघै बाल रोग विशेषज्ञ वा नजिकको स्वास्थ्य चौकीमा जानुहोस् र यो चार्ट लैजानुहोस्।' },
+    grey: { en: 'Add a measurement to see the growth status.', ne: 'वृद्धि स्थिति हेर्न मापन थप्नुहोस्।' },
+  },
+  bmi: {
+    green: { en: 'Weight matches height well — a healthy balance.', ne: 'तौल उचाइसँग मिल्छ — स्वस्थ सन्तुलन।' },
+    yellow: { en: 'Weight relative to height is a little outside the usual range. Gentle changes to meals and active play help.', ne: 'उचाइको तुलनामा तौल अलि फरक छ। खाना र सक्रिय खेलमा सौम्य परिवर्तनले मद्दत गर्छ।' },
+    red: { en: 'Weight relative to height is well outside the usual range. A health worker can make a simple, kind plan — please visit soon.', ne: 'उचाइको तुलनामा तौल धेरै फरक छ। स्वास्थ्यकर्मीले सरल र मिल्ने योजना बनाइदिन्छन् — सीघै जानुहोस्।' },
+    grey: { en: 'BMI can be measured from 2 years of age.', ne: 'BMI २ वर्षदेखि नाप्न सकिन्छ।' },
+  },
+  hc: {
+    green: { en: 'Head size is growing well within WHO standards.', ne: 'टाउकोको वृद्धि WHO मापदण्ड अनुसार राम्रो छ।' },
+    yellow: { en: 'Head size is a little outside the usual range. It is often normal — a health worker can remeasure it at your next visit.', ne: 'टाउकोको नाप सामान्यभन्दा अलि फरक छ। प्रायः सामान्य हुन्छ — अर्को जाँचमा स्वास्थ्यकर्मीले फेरि नाप्नुहोस्।' },
+    red: { en: 'Head size is well outside the usual range for this age. Please have a health worker measure it again soon — remeasuring is routine and reassuring.', ne: 'टाउकोको नाप यो उमेरको सामान्य दायराभन्दा धेरै फरक छ। स्वास्थ्यकर्मीले फेरि नापेर जाँच्नुहोस् — पुनः नाप सामान्य प्रक्रिया हो।' },
+    grey: { en: 'Add a head measurement to see the status.', ne: 'स्थिति हेर्न टाउकोको नाप थप्नुहोस्।' },
+  },
 };
 
   if (loading) return <ActivityIndicator size="large" color={pal.clay} style={{ flex: 1, backgroundColor: pal.bg }} />;
@@ -291,17 +312,17 @@ const STATUS_DESC: Record<string, { en: string; ne: string }> = {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <InfoBubble titleEn="What is WAZ?" titleNe="WAZ के हो?" bodyEn="Weight-for-Age Z-score compares your child's weight to WHO standards." bodyNe="यो उमेर अनुसारको तौल सूचकांक हो।" iconSize={14} iconColor={pal.muted} />
                   <Text style={styles.statusTitle}>{chartType === 'bmi' ? (isNe ? 'BMI स्थिति' : 'BMI Status') : (isNe ? 'वृद्धि स्थिति' : 'Growth Status')}: </Text>
-                  <TouchableOpacity onPress={() => { Speech.speak(isNe ? STATUS_DESC[status.status].ne : STATUS_DESC[status.status].en); }}>
+                  <TouchableOpacity onPress={() => { const d = (STATUS_DESC[chartType] ?? STATUS_DESC.weight)[status.status]; Speech.speak(isNe ? d.ne : d.en); }}>
                     <Ionicons name="volume-high" size={16} color={pal.muted} />
                   </TouchableOpacity>
                 </View>
                 <Text style={[styles.statusLabel, { color: STATUS_COLORS[status.status] }]}>{isNe ? status.labelNe : status.labelEn}</Text>
               </View>
-              <Text style={styles.statusDesc}>{isNe ? STATUS_DESC[status.status].ne : STATUS_DESC[status.status].en}</Text>
+              <Text style={styles.statusDesc}>{(() => { const d = (STATUS_DESC[chartType] ?? STATUS_DESC.weight)[status.status]; return isNe ? d.ne : d.en; })()}</Text>
               {status.status === 'red' && (
                 <View style={styles.alertBox}>
-                  <Ionicons name="warning" size={20} color={pal.red} />
-                  <Text style={styles.alertText}>{isNe ? 'बाल रोग विशेषज्ञसँग परामर्श लिनुहोस्।' : 'Please have your child evaluated by a pediatrician.'}</Text>
+                  <Ionicons name="medkit-outline" size={20} color={pal.red} />
+                  <Text style={styles.alertText}>{isNe ? 'यो जाँचाउने उपयुक्त समय हो — बाल रोग विशेषज्ञ वा नजिकको स्वास्थ्य चौकीमा जानुहोस् र यो चार्ट साथमा लैजानुहोस्।' : 'This is a good moment to see a pediatrician or your nearest health post. Bring this chart with you.'}</Text>
                 </View>
               )}
             </View>

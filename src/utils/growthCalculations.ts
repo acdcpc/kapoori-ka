@@ -191,9 +191,9 @@ export const classifyGrowthStatus = (
     if (isNaN(z)) return { status: 'grey', labelEn: 'Not yet measurable', labelNe: 'नाप भएको छैन' };
     const band = zBand(z);
     const labels: Record<string, { en: string; ne: string }> = {
-      green: { en: 'Healthy weight', ne: 'स्वस्थ तौल' },
-      yellow: { en: band === 'yellow' && z < 0 ? 'Underweight range' : 'Overweight range', ne: band === 'yellow' && z < 0 ? 'कम तौल दायरा' : 'बढी तौल दायरा' },
-      red: { en: z < 0 ? 'Severely underweight — see a doctor' : 'Obese range — see a doctor', ne: z < 0 ? 'गम्भीर रूपमा कम तौल — डाक्टर देखाउनुहोस्' : 'मोटोपना दायरा — डाक्टर देखाउनुहोस्' },
+      green: { en: 'Healthy weight for height', ne: 'उचाइअनुसार स्वस्थ तौल' },
+      yellow: { en: band !== 'yellow' ? '' : (z < 0 ? 'A little light for this height' : 'A little heavy for this height'), ne: band !== 'yellow' ? '' : (z < 0 ? 'उचाइअनुसार अलि हल्का' : 'उचाइअनुसार अलि बढी') },
+      red: { en: z < 0 ? 'Much lighter than usual — please see a health worker' : 'Much heavier than usual — please see a health worker', ne: z < 0 ? 'सामान्यभन्दा धेरै हल्का — स्वास्थ्यकर्मीलाई देखाउनुहोस्' : 'सामान्यभन्दा धेरै बढी — स्वास्थ्यकर्मीलाई देखाउनुहोस्' },
     };
     return { status: band, labelEn: labels[band].en, labelNe: labels[band].ne };
   }
@@ -203,9 +203,9 @@ export const classifyGrowthStatus = (
     if (isNaN(z)) return { status: 'grey', labelEn: 'Not yet measured', labelNe: 'नाप भएको छैन' };
     const band = zBand(z);
     const labels: Record<string, { en: string; ne: string }> = {
-      green: { en: 'Normal height', ne: 'सामान्य उचाइ' },
-      yellow: { en: z < 0 ? 'Stunting risk — monitor' : 'Taller than typical', ne: z < 0 ? 'पाकेको जोखिम — निगरानी' : 'सामान्यभन्दा अग्लो' },
-      red: { en: z < 0 ? 'Severe stunting — see a doctor' : 'Unusually tall — see a doctor', ne: z < 0 ? 'गम्भीर पाकेको — डाक्टर देखाउनुहोस्' : 'अस्वाभाविक अग्लो — डाक्टर देखाउनुहोस्' },
+      green: { en: 'Growing well', ne: 'राम्रोसँग बढिरहेको छ' },
+      yellow: { en: z < 0 ? 'Growing a little slower than usual' : 'Taller than typical for this age', ne: z < 0 ? 'सामान्यभन्दा अलि ढिलो बढ्दै' : 'उमेरअनुसार अलि अग्लो' },
+      red: { en: z < 0 ? 'Growing slower than usual — please visit a health worker soon' : 'Much taller than usual — worth a check-up', ne: z < 0 ? 'बढ्न ढिलो — सीघै स्वास्थ्यकर्मीसँग जानुहोस्' : 'सामान्यभन्दा धेरै अग्लो — जाँच गराउनुहोस्' },
     };
     return { status: band, labelEn: labels[band].en, labelNe: labels[band].ne };
   }
@@ -216,9 +216,9 @@ export const classifyGrowthStatus = (
     const z = weightZScore(weight, ageMonths, sex);
     const band = zBand(z);
     const labels: Record<string, { en: string; ne: string }> = {
-      green: { en: 'Normal weight', ne: 'सामान्य तौल' },
-      yellow: { en: z < 0 ? 'Underweight range — monitor' : 'Overweight range — monitor', ne: z < 0 ? 'कम तौल दायरा — निगरानी' : 'बढी तौल दायरा — निगरानी' },
-      red: { en: z < 0 ? 'Severely underweight — see a doctor' : 'Overweight — see a doctor', ne: z < 0 ? 'गम्भीर रूपमा कम तौल — डाक्टर देखाउनुहोस्' : 'बढी तौल — डाक्टर देखाउनुहोस्' },
+      green: { en: 'Growing well', ne: 'राम्रोसँग बढिरहेको छ' },
+      yellow: { en: z < 0 ? 'A little below the usual range' : 'A little above the usual range', ne: z < 0 ? 'सामान्य दायराभन्दा अलि कम' : 'सामान्य दायराभन्दा अलि बढी' },
+      red: { en: z < 0 ? 'Much lower than usual — see a health worker soon' : 'Much higher than usual — see a health worker soon', ne: z < 0 ? 'सामान्यभन्दा धेरै कम — सीघै स्वास्थ्यकर्मीलाई देखाउनुहोस्' : 'सामान्यभन्दा धेरै बढी — सीघै स्वास्थ्यकर्मीलाई देखाउनुहोस्' },
     };
     return { status: band, labelEn: labels[band].en, labelNe: labels[band].ne };
   }
@@ -231,11 +231,11 @@ export const classifyGrowthStatus = (
 export const classifyHC = (hc: number | null | undefined, ageMonths: number, sex: 'male' | 'female'): GrowthStatusResult => {
   const z = hc ? hcZScore(hc, ageMonths, sex) : NaN;
   if (isNaN(z)) return { status: 'grey', labelEn: 'Not yet measured', labelNe: 'नाप भएको छैन' };
-  if (z < -2) return { status: 'red', labelEn: 'Microcephaly range — see a doctor', labelNe: 'माइक्रोसेफेली दायरा — डाक्टर देखाउनुहोस्' };
-  if (z > 2) return { status: 'red', labelEn: 'Macrocephaly range — see a doctor', labelNe: 'म्याक्रोसेफेली दायरा — डाक्टर देखाउनुहोस्' };
-  if (z < -1) return { status: 'yellow', labelEn: 'Smaller than typical — mention at next visit', labelNe: 'सामान्यभन्दा सानो — अर्को जाँचमा भन्नुहोस्' };
-  if (z > 1) return { status: 'yellow', labelEn: 'Larger than typical — mention at next visit', labelNe: 'सामान्यभन्दा ठूलो — अर्को जाँचमा भन्नुहोस्' };
-  return { status: 'green', labelEn: 'Normal', labelNe: 'सामान्य' };
+  if (z < -2) return { status: 'red', labelEn: 'Smaller than usual — please have a health worker check it soon', labelNe: 'सामान्यभन्दा सानो — सीघै स्वास्थ्यकर्मीले फेरि नाप्नुहोस्' };
+  if (z > 2) return { status: 'red', labelEn: 'Larger than usual — please have a health worker check it soon', labelNe: 'सामान्यभन्दा ठूलो — सीघै स्वास्थ्यकर्मीले जाँच्नुहोस्' };
+  if (z < -1) return { status: 'yellow', labelEn: 'A little smaller than usual — mention at the next visit', labelNe: 'सामान्यभन्दा अलि सानो — अर्को जाँचमा भन्नुहोस्' };
+  if (z > 1) return { status: 'yellow', labelEn: 'A little larger than usual — mention at the next visit', labelNe: 'सामान्यभन्दा अलि ठूलो — अर्को जाँचमा भन्नुहोस्' };
+  return { status: 'green', labelEn: 'Growing well', labelNe: 'राम्रोसँग बढिरहेको छ' };
 };
 
 // ── Ideal ranges for the dashboard/charts (exact SD cutoffs) ────────────────

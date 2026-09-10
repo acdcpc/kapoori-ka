@@ -254,6 +254,23 @@ export default function PDFReportScreen({ route }: Props) {
           <table class="interp"><tr><th>${isNe ? 'सूचक' : 'Indicator'}</th><th>${isNe ? 'मान' : 'Value'}</th><th>Z-score</th><th>${isNe ? 'प्रतिशत' : 'Percentile'}</th><th>${isNe ? 'व्याख्या' : 'Reading'}</th></tr>
           ${interpRows || `<tr><td colspan="5">${isNe ? 'अझै नाप भएको छैन।' : 'No measurements yet.'}</td></tr>`}
           </table>
+          <div style="background:#FDF8F2;border:1px solid #F0DED2;border-radius:10px;padding:12px 14px;margin:10px 0">
+            <strong style="font-size:12px;color:#4A2B20">${isNe ? 'सरल शब्दमा:' : 'In simple words:'}</strong>
+            <span style="font-size:12px;color:#5D5148">
+            ${interp.length ? interp.map((r: any) => {
+              const zz = r.z as number;
+              if (isNaN(zz)) return '';
+              const metricNe: Record<string, string> = { 'तौल (WFA)': 'तौल', 'उचाइ (HFA)': 'उचाइ', 'टाउको परिधि (HCFA)': 'टाउकोको नाप' };
+              const metricEn: Record<string, string> = { 'तौल (WFA)': 'Weight', 'उचाइ (HFA)': 'Height', 'टाउको परिधि (HCFA)': 'Head size' };
+              const name = isNe ? (metricNe[r.metric] ?? r.metric) : (metricEn[r.metric] ?? r.metric);
+              if (zz >= -2 && zz <= 2) return isNe ? `${name} राम्रोसँग बढिरहेको छ।` : `${name} is growing well.`;
+              if (zz < -2 && zz >= -3) return isNe ? `${name} सामान्यभन्दा अलि कम छ — अर्को जाँचमा स्वास्थ्यकर्मीलाई देखाउनुहोस्।` : `${name} is a little low — please show a health worker at your next visit.`;
+              if (zz > 2 && zz <= 3) return isNe ? `${name} सामान्यभन्दा अलि बढी छ — अर्को जाँचमा कुरा गर्नुहोस्।` : `${name} is a little high — mention it at your next visit.`;
+              if (zz < -3) return isNe ? `${name} सामान्यभन्दा धेरै कम छ — सीघै स्वास्थ्यकर्मीलाई देखाउनुहोस्। यो सुधार्न सकिन्छ।` : `${name} is much lower than usual — please see a health worker soon. This can be helped.`;
+              return isNe ? `${name} सामान्यभन्दा धेरै बढी छ — सीघै स्वास्थ्यकर्मीलाई देखाउनुहोस्।` : `${name} is much higher than usual — please see a health worker soon.`;
+            }).join(' ') : (isNe ? 'अझै नाप भएको छैन।' : 'No measurements yet.')}
+            </span>
+          </div>
           <p style="font-size:11px;color:#777">${isNe ? 'Z-score: WHO औसतबाट मानक विचलन (0 = औसत)। प्रतिशत: १०० जना स्वस्थ बच्चामध्ये तुलनात्मक स्थान।' : 'Z-score: standard deviations from the WHO median (0 = average). Percentile: rank among 100 healthy children.'}</p>
 
           <h2>${isNe ? '३. वृद्धि विवरण' : '3. Growth records'}</h2>
