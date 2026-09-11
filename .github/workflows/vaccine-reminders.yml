@@ -1,0 +1,30 @@
+name: Daily Vaccine Reminders (Web Push)
+
+# Sends vaccine reminders to PWA/browser subscribers (iOS home-screen apps and
+# browsers). Android app builds use OS-scheduled local notifications instead,
+# so this workflow does not affect them.
+# Runs daily at 03:30 UTC = 09:15 Nepal time.
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder sender
+        run: |
+          CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
+            "https://tgnzucqjebnisgrxjfjg.supabase.co/functions/v1/send-vaccine-reminders" \
+            -H "x-reminder-secret: ${{ secrets.REMINDER_CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "HTTP $CODE"
+          cat /tmp/resp.json
+          if [ "$CODE" != "200" ]; then
+            echo "❌ Reminder sender failed"
+            exit 1
+          fi
+          echo "✅ Reminder run complete"

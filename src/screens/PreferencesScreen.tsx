@@ -1,6 +1,6 @@
 // src/screens/PreferencesScreen.tsx — Warm Nepali-first readability, privacy, caregiver, and offline-sync controls; keep ownership and consent boundaries unchanged.
 import React, { useContext, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext, ThemeMode } from '../context/ThemeContext';
@@ -8,6 +8,7 @@ import { useAccessibility } from '../context/AccessibilityContext';
 import { PrivacyPreferences } from '../types';
 import { Palette } from '../theme';
 import { FEATURE_CARE_TEAM } from '../config/featureFlags';
+import { isWebPushSupported, isWebPushEnabled, enableWebPush, disableWebPush } from '../lib/webPush';
 import { loadPrivacyPreferences, savePrivacyPreferences } from '../lib/featureAnalytics';
 import { createOfflineMutation, flushOfflineQueue } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
@@ -21,12 +22,19 @@ export default function PreferencesScreen() {
   const isNe = language === 'ne';
   const tr = (ne: string, en: string) => (isNe ? ne : en);
   const [privacy, setPrivacy] = useState<PrivacyPreferences>({ analyticsOptIn: false, shareCrashDiagnostics: false });
+  const [webPushOn, setWebPushOn] = useState<boolean | null>(null);
+  const webPushAvailable = Platform.OS === 'web' && isWebPushSupported();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
     loadPrivacyPreferences(user.uid).then(setPrivacy).catch(() => undefined);
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (!webPushAvailable) return;
+    isWebPushEnabled().then(setWebPushOn).catch(() => setWebPushOn(false));
+  }, [webPushAvailable]);
 
   const updateAccessibility = async (patch: Partial<typeof preferences>) => {
     const next = { ...preferences, ...patch };
@@ -73,6 +81,44 @@ export default function PreferencesScreen() {
         <Toggle label={tr('मुख्य निर्देशन ठूलो स्वरमा पढ्नुहोस्', 'Read key guidance aloud')} value={preferences.voiceGuidance} onValueChange={(voiceGuidance) => updateAccessibility({ voiceGuidance })} />
         <Toggle label={tr('सरल भाषाका लेबल प्रयोग गर्नुहोस्', 'Simple-language labels')} value={preferences.literacyMode} onValueChange={(literacyMode) => updateAccessibility({ literacyMode })} />
       </Section>
+
+      {webPushAvailable && (
+        <Section title={tr('यो उपकरणमा खोप सम्झना', 'Vaccine reminders on this device')}>
+          <Text style={styles.helper}>
+            {tr(
+              'यो ब्राउजर वा होम-स्क्रिन एपमा खोपका सम्झना पाउनुहोस् — एप बन्द हुँदा पनि आउँछ। (iPhone: पहिले “Add to Home Screen” गर्नुहोस्।)',
+              'Get vaccine reminders on this browser or home-screen app — they arrive even when the app is closed. (iPhone: add to Home Screen first.)',
+            )}
+          </Text>
+          <TouchableOpacity
+            style={[styles.choice, webPushOn ? styles.choiceActive : null, { alignSelf: 'flex-start', paddingHorizontal: 16, minHeight: 46, justifyContent: 'center' }]}
+            onPress={async () => {
+              if (webPushOn) {
+                await disableWebPush();
+                setWebPushOn(false);
+                Alert.alert(tr('बन्द गरियो', 'Turned off'), tr('यो उपकरणमा सम्झना बन्द गरियो।', 'Reminders are off for this device.'));
+                return;
+              }
+              const res = await enableWebPush();
+              if (res.ok) {
+                setWebPushOn(true);
+                Alert.alert(tr('सक्रिय भयो', 'Reminders on'), tr('यो उपकरणमा खोप सम्झना सक्रिय भयो।', 'Vaccine reminders are now enabled on this device.'));
+              } else {
+                Alert.alert(tr('सक्रिय गर्न सकिएन', 'Could not enable reminders'), res.error || '');
+              }
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.choiceText, webPushOn ? styles.choiceTextActive : null]}>
+              {webPushOn === null
+                ? tr('जाँच हुँदैछ…', 'Checking…')
+                : webPushOn
+                  ? tr('सम्झना सक्रिय छ — बन्द गर्नुहोस्', 'Reminders ON — tap to turn off')
+                  : tr('यो उपकरणमा सम्झना सक्रिय गर्नुहोस्', 'Enable reminders on this device')}
+            </Text>
+          </TouchableOpacity>
+        </Section>
+      )}
 
       <Section title={tr('रूप', 'Appearance')}>
         <Text style={styles.label}>{tr('थिम', 'Theme')}</Text>
