@@ -38,21 +38,21 @@ const copy = {
   },
   ne: {
     navFeatures: 'सुविधाहरू', navHow: 'कसरी चल्छ', navTrust: 'गोपनीयता', navStart: 'सुरु गर्नुहोस्',
-    eyebrow: 'सानाको हेरचाह गर्ने शान्त तरिका',
+    eyebrow: 'सानाको हेरचाह गर्ने सहज तरिका',
     title: 'तपाईंको बच्चाको स्वास्थ्य कथा, एउटै सजिलो ठाउँमा।',
-    body: 'कपूरी कले नेपाली अभिभावकलाई वृद्धि, खोप, विकास र दैनिक हेरचाहका कुरा सरल, सुरक्षित र बुझ्न सजिलो तरिकाले राख्न मद्दत गर्छ।',
+    body: 'कपूरी कले नेपाली अभिभावकलाई बच्चाको वृद्धि, खोप, विकास र दैनिक हेरचाहसम्बन्धी जानकारी सरल, सुरक्षित र बुझ्न सजिलो तरिकाले व्यवस्थित गर्न मद्दत गर्छ।',
     primary: 'बच्चाको प्रोफाइल सुरु गर्नुहोस्', secondary: 'एप हेर्नुहोस्',
-    heroNote: 'नेपाली र अंग्रेजीमा · नेपालका परिवारका लागि',
-    sectionLabel: 'झन्झटबिना चाहिने सबै कुरा',
+    heroNote: 'नेपाली र अङ्ग्रेजीमा · नेपालका परिवारका लागि',
+    sectionLabel: 'झन्झटबिना चाहिने सबै जानकारी',
     sectionTitle: 'सानो कदम। स्पष्ट रेकर्ड। राम्रो कुराकानी।',
     sectionBody: 'पहिलो खोपदेखि अर्को स्वास्थ्य जाँचसम्म, कपूरी कले महत्त्वपूर्ण क्षणलाई स्पष्ट स्वास्थ्य कथामा जोड्छ।',
-    features: [['०१', 'वृद्धि एकै नजरमा', 'WHO का परिचित सन्दर्भसँग उचाइ र तौल समयअनुसार राख्नुहोस्।'], ['०२', 'खोप बिर्सनु पर्दैन', 'कुन खोप बाँकी छ, आउँदैछ र दिइसकिएको छ भन्ने हेर्नुहोस्।'], ['०३', 'विकासलाई सन्दर्भसहित', 'बच्चाको विकास हेर्नुहोस् र विशेषज्ञसँग कहिले कुरा गर्ने बुझ्नुहोस्।'], ['०४', 'हेरचाह सधैं साथमा', 'पोषण सामग्री र क्लिनिकमा लैजान मिल्ने रिपोर्ट एउटै ठाउँमा राख्नुहोस्।']],
-    howLabel: 'हरेक अभिभावकका लागि सरल तरिका', howTitle: 'एकपटक सुरु गर्नुहोस्। आवश्यक पर्दा फेरि खोल्नुहोस्।',
-    steps: [['प्रोफाइल बनाउनुहोस्', 'केही सजिला चरणमा बच्चाको आधारभूत जानकारी राख्नुहोस्।'], ['जानकारी थप्दै जानुहोस्', 'जीवनसँगै नाप, खोप, विकास र हेरचाहका कुरा राख्नुहोस्।'], ['विश्वासका साथ साझा गर्नुहोस्', 'स्वास्थ्यकर्मीसँगको अर्को कुराकानीमा स्पष्ट सारांश लैजानुहोस्।']],
+    features: [['०१', 'वृद्धि एकै नजरमा', 'WHO का परिचित मापदण्डसँग उचाइ र तौल समयअनुसार अभिलेख राख्नुहोस्।'], ['०२', 'खोप बिर्सनु पर्दैन', 'कुन खोप बाँकी छ, कुन आउँदैछ र कुन दिइसकिएको छ, हेर्नुहोस्।'], ['०३', 'विकासलाई सन्दर्भसहित बुझ्नुहोस्', 'बच्चाको विकास बुझ्नुहोस् र विशेषज्ञसँग कहिले परामर्श गर्ने थाहा पाउनुहोस्।'], ['०४', 'हेरचाहसम्बन्धी जानकारी सधैं साथमा', 'पोषणसम्बन्धी सामग्री र क्लिनिकमा लैजान मिल्ने रिपोर्ट एउटै ठाउँमा राख्नुहोस्।']],
+    howLabel: 'हरेक अभिभावकका लागि सरल तरिका', howTitle: 'एकपटक सुरु गर्नुहोस्। आवश्यक पर्दा फेरि प्रयोग गर्नुहोस्।',
+    steps: [['प्रोफाइल बनाउनुहोस्', 'केही सजिला चरणमा बच्चाको आधारभूत जानकारी राख्नुहोस्।'], ['जानकारी थप्दै जानुहोस्', 'समयअनुसार नाप, खोप, विकास र हेरचाहसम्बन्धी जानकारी थप्दै जानुहोस्।'], ['विश्वासका साथ साझा गर्नुहोस्', 'स्वास्थ्यकर्मीसँगको अर्को भेटमा स्पष्ट सारांश लैजानुहोस्।']],
     trustLabel: 'विश्वासलाई केन्द्रमा राखेर', trustTitle: 'तपाईंको परिवारको जानकारीको हेरचाह हुनुपर्छ।',
-    trustBody: 'कपूरी क स्पष्ट जानकारी, सुरक्षित खाता र तपाईंले बनाएका रेकर्डमाथिको नियन्त्रणसहित गोपनीयतालाई प्राथमिकता दिएर बनाइएको हो। स्वास्थ्यसम्बन्धी सामग्री शैक्षिक हो र योग्य स्वास्थ्यकर्मीको सल्लाहको विकल्प होइन।',
-    trustItems: [['पहिलेदेखि निजी', 'तपाईंको बच्चाको रेकर्ड सार्वजनिक हुँदैन।'], ['सुरुदेखि द्विभाषी', 'आवश्यकताअनुसार नेपाली र अंग्रेजी बदल्नुहोस्।'], ['दैनिक जीवनका लागि', 'सानो स्क्रिनमा पनि पढ्न र चलाउन सजिलो।']],
-    ctaTitle: 'अर्को स्वास्थ्य जाँचलाई अलि सजिलो बनाउनुहोस्।', ctaBody: 'आजै बच्चाको डिजिटल स्वास्थ्य किताब सुरु गर्नुहोस्।', cta: 'कपूरी क खोल्नुहोस्', footer: 'नेपाली परिवारका लागि द्विभाषी बाल स्वास्थ्य सहायक।', disclaimer: 'शैक्षिक जानकारी मात्र। व्यक्तिगत स्वास्थ्य सल्लाहका लागि योग्य स्वास्थ्यकर्मीसँग सधैं परामर्श गर्नुहोस्।', support: 'सहायता चाहियो? सम्पर्क गर्नुहोस्',
+    trustBody: 'कपूरी क स्पष्ट जानकारी, सुरक्षित खाता र तपाईंले बनाएका रेकर्डमाथिको नियन्त्रण प्रदान गर्दै गोपनीयतालाई प्राथमिकता दिएर बनाइएको हो। स्वास्थ्यसम्बन्धी सामग्री शैक्षिक हो र योग्य स्वास्थ्यकर्मीको सल्लाहको विकल्प होइन।',
+    trustItems: [['पहिलेदेखि निजी', 'तपाईंको बच्चाको रेकर्ड सार्वजनिक हुँदैन।'], ['सुरुदेखि द्विभाषी', 'आवश्यकताअनुसार नेपाली र अङ्ग्रेजी भाषा बदल्नुहोस्।'], ['दैनिक जीवनका लागि', 'सानो स्क्रिनमा पनि पढ्न र प्रयोग गर्न सजिलो।']],
+    ctaTitle: 'अर्को स्वास्थ्य जाँचलाई अझ सजिलो बनाउनुहोस्।', ctaBody: 'आजै बच्चाको डिजिटल स्वास्थ्य किताब सुरु गर्नुहोस्।', cta: 'कपूरी क प्रयोग गर्न सुरु गर्नुहोस्', footer: 'नेपाली परिवारका लागि द्विभाषी बालस्वास्थ्य सहायक।', disclaimer: 'शैक्षिक जानकारी मात्र। व्यक्तिगत स्वास्थ्य सल्लाहका लागि योग्य स्वास्थ्यकर्मीसँग सधैं परामर्श गर्नुहोस्।', support: 'सहायता चाहियो? सम्पर्क गर्नुहोस्',
   },
 };
 
@@ -103,7 +103,7 @@ export default function WebsiteScreen({ onGetStarted }: WebsiteScreenProps) {
 
       <View nativeID="top" style={[styles.hero, compact && styles.heroCompact]}>
         <View style={styles.heroCopy}><Text style={styles.eyebrow}>{t.eyebrow}</Text><Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>{t.title}</Text><Text style={styles.heroBody}>{t.body}</Text><View style={[styles.buttonRow, compact && styles.buttonColumn]}><Pressable style={[styles.primaryButton, compact && styles.fullButton]} onPress={() => (onGetStarted ? onGetStarted() : jump('start'))}><Text style={styles.primaryText}>{t.primary}</Text><Text style={styles.buttonArrow}>↗</Text></Pressable><Pressable style={[styles.secondaryButton, compact && styles.fullButton]} onPress={() => jump('features')}><Text style={styles.secondaryText}>{t.secondary}</Text></Pressable></View><Text style={styles.heroNote}>{t.heroNote}</Text></View>
-        <View style={styles.heroArt}><View style={styles.sun} /><View style={styles.artCard}><Text style={styles.artKicker}>TODAY / आज</Text><Text style={styles.artTitle}>{language === 'ne' ? 'मायाको स्वास्थ्य किताब' : 'Maya’s health book'}</Text><View style={styles.artLine}><Text style={styles.artIcon}>↗</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'वृद्धि चार्ट' : 'Growth chart'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'पछिल्लो नाप २ हप्ता अघि' : 'Last measurement · 2 weeks ago'}</Text></View></View><View style={styles.artLine}><Text style={styles.artIcon}>✓</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'खोप तयार' : 'Vaccines on track'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'अर्को खोप ३ महिनामा' : 'Next one · 3 months'}</Text></View></View></View><Text style={styles.artCaption}>सुरक्षित · सरल · साथमा</Text></View>
+        <View style={styles.heroArt}><View style={styles.sun} /><View style={styles.artCard}><Text style={styles.artKicker}>TODAY / आज</Text><Text style={styles.artTitle}>{language === 'ne' ? 'मायाको स्वास्थ्य किताब' : 'Maya’s health book'}</Text><View style={styles.artLine}><Text style={styles.artIcon}>↗</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'वृद्धि चार्ट' : 'Growth chart'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'पछिल्लो नाप २ हप्ता अघि' : 'Last measurement · 2 weeks ago'}</Text></View></View><View style={styles.artLine}><Text style={styles.artIcon}>✓</Text><View><Text style={styles.artLabel}>{language === 'ne' ? 'खोप तयार' : 'Vaccines on track'}</Text><Text style={styles.artMeta}>{language === 'ne' ? 'अर्को खोप ३ महिनामा' : 'Next one · 3 months'}</Text></View></View></View><Text style={styles.artCaption}>सुरक्षित · सरल · सधैं साथमा</Text></View>
       </View>
 
       <View nativeID="features" style={styles.section}><Text style={styles.sectionLabel}>{t.sectionLabel}</Text><Text style={styles.sectionTitle}>{t.sectionTitle}</Text><Text style={styles.sectionBody}>{t.sectionBody}</Text><View style={styles.featureGrid}>{t.features.map(([num, title, body]) => <View key={num} style={styles.featureCard}><Text style={styles.featureNum}>{num}</Text><Text style={styles.featureTitle}>{title}</Text><Text style={styles.featureBody}>{body}</Text></View>)}</View></View>
