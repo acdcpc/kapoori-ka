@@ -1,216 +1,152 @@
 # कपूरी क (Kapoori Ka)
 
-> **Your Child's Digital Health Book** — A bilingual (Nepali / English) mobile app for tracking child health in Nepal.
+> **Your child's digital health book** — a bilingual (नेपाली / English) child-health app for Nepali families: WHO growth tracking, Nepal NIP immunization records with reminders, milestones, clinic-ready reports, and caregiver continuity.
 
-[![Expo](https://img.shields.io/badge/Expo-SDK%2056-000020?logo=expo)](https://expo.dev)
-[![React Native](https://img.shields.io/badge/React%20Native-0.85-61DAFB?logo=react)](https://reactnative.dev)
-[![Supabase](https://img.shields.io/badge/Supabase-Auth_%2B_Data-3ECF8E?logo=supabase)](https://supabase.com)
+[![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo)](https://expo.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?logo=react)](https://reactnative.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Postgres%20%2B%20Storage-3ECF8E?logo=supabase)](https://supabase.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
----
-
-## 🚀 Live Build
-
-| Platform | Status | Link |
-|----------|--------|------|
-| Android (Preview APK) | ✅ Active | [Expo Builds](https://expo.dev/accounts/thisisprakashthapa/projects/kapoori-ka) |
+**Distribution:** Android APK (sideload) for Android users · installable **PWA** for iPhone and desktop.
+No app-store dependency; premium unlocking is code-based with owner-verified payments.
 
 ---
 
 ## 📱 Features
 
-| Feature | Status | Description |
+| Feature | Access | Description |
 |---------|--------|-------------|
-| 👶 Child Profiles | ✅ | Add and manage multiple children with birth details and photos |
-| 📈 WHO Growth Charts | ✅ | Weight-for-age and height-for-age charts based on WHO Child Growth Standards |
-| 💉 Immunization Schedule | ✅ | Nepal National Immunization Program (NIP) schedule with BS/AD calendar |
-| 🧠 Developmental Milestones | ⭐ Premium | 100+ milestones across motor, language, cognitive, and social domains |
-| 🧩 M-CHAT Autism Screening | ⭐ Premium | 20-question M-CHAT-R/F screening (validated tool, Nepali translation) |
-| 📄 PDF Reports | ⭐ Premium | Export growth reports as PDF documents |
-| 🖼️ Photo Upload | ✅ | Camera/gallery profile photo for each child |
-| 🔔 Vaccine Reminders | ✅ | Push notifications for upcoming vaccines |
-| 🌐 Bilingual (नेपाली / English) | ✅ | Full UI in both languages with BS calendar support |
-| ☁️ Cloud Sync | ✅ | Supabase real-time data sync across devices |
+| 👶 Child profiles + photos | Free | Multiple children, birth details, private photos |
+| 📈 WHO growth charts | Free (basic) / ⭐ Premium (full) | Weight, height **and head circumference** on exact WHO 2006/2007 references, with z-score and percentile interpretation |
+| 💉 Immunization schedule + reminders | **Free** | Nepal NIP schedule (BS/AD calendar), 7-day / 2-day / day-of reminders, and overdue catch-up reminders — on Android via OS notifications, on PWA via Web Push |
+| 🧠 Developmental milestones | ⭐ Premium | Milestone tracking across motor, language, cognitive, social domains |
+| 🧩 M-CHAT autism screening | ⭐ Premium | M-CHAT-R/F screening, Nepali translation |
+| 📄 Health report PDF | ⭐ Premium | One consolidated report: WHO charts, z-score/percentile table, growth records, vaccinations |
+| 🩺 Clinic summary | Free | Short caregiver-triggered hand-off PDF |
+| 🌙 Dark mode + accessibility | Free | Light/dark/system, text scaling, high contrast, voice guidance |
+| 🌐 Bilingual | Free | Nepali-first UI with English, persistent language choice |
+| ☁️ Cloud sync | Free | Supabase Auth + Postgres + private storage, offline-first with retry |
 
-> ⭐ = Premium features unlocked via activation code
+### Pricing (Nepal)
 
-### Planned Features
+| Plan | Price | Notes |
+|---|---|---|
+| 6 Months | **NPR 650** | ≈ NPR 108 / month |
+| Yearly | **NPR 850** | ≈ NPR 71 / month — best value |
 
-| Feature | Status |
-|---------|--------|
-| 📏 AI Height Measurement | 🔄 Post-launch — previously in beta, removed for stabilizing |
+One-time payment, no auto-charge. Pay by QR (eSewa / Khalti / bank apps) inside the app, submit the transaction ID, and the owner verifies it — the app then activates premium automatically (no code typing).
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────┐
-│     React Native (Expo SDK 56)      │
-│  ┌─────────┐  ┌──────────────────┐  │
-│  │ Screens │  │  Premium System   │  │
-│  │ (12)    │  │  Activation Codes  │  │
-│  └─────────┘  └──────────────────┘  │
-│  ┌─────────┐  ┌──────────────────┐  │
-│  │ Supabase│  │  Firebase         │  │
-│  │ Auth    │  │  Analytics, FCM,   │  │
-│  │ Postgres│  │  Crashlytics       │  │
-│  └─────────┘  └──────────────────┘  │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  Expo / React Native (SDK 57, RN 0.86)       │
+│  ┌──────────────┐  ┌───────────────────────┐ │
+│  │ Screens (20) │  │ Premium / entitlements│ │
+│  └──────────────┘  └───────────────────────┘ │
+│  ┌──────────────┐  ┌───────────────────────┐ │
+│  │ Supabase SDK │  │ Expo push (native) +  │ │
+│  │ Auth/DB/Store│  │ Web Push (PWA/iOS)    │ │
+│  └──────────────┘  └───────────────────────┘ │
+└──────────────────────────────────────────────┘
+        │ HTTPS (PostgREST + Edge Functions)
+        ▼
+┌──────────────────────────────────────────────┐
+│ Supabase: Auth · Postgres (24 tables, RLS)   │
+│ · Storage (3 private buckets)                │
+│ · Edge Functions: submit-payment,            │
+│   approve-payment, my-activation-code,       │
+│   admin-payments, aggregate-health-metrics,  │
+│   send-vaccine-reminders                     │
+└──────────────────────────────────────────────┘
 ```
 
-### Tech Stack
+### Tech stack
 
 | Layer | Technology |
-|-------|-----------|
-| Framework | React Native 0.85.3 / Expo SDK 56 |
-| Language | TypeScript |
-| Auth | **Supabase Auth** (email, anonymous, Google OAuth) |
-| Database | **Supabase Postgres** (7 tables, RLS enabled) |
-| Storage | **Supabase Storage** (child-photos, pdf-reports) |
+|---|---|
+| Framework | Expo SDK 57 / React Native 0.86.3, TypeScript |
+| Auth | Supabase Auth (email/password, Google OAuth, anonymous) |
+| Database | Supabase Postgres — RLS on every table, owner-scoped policies |
+| Storage | Supabase Storage — `child-photos`, `payment-screenshots`, `pdf-reports` (all private) |
 | Charts | Victory Native |
-| Navigation | React Navigation |
-| Analytics | Firebase Analytics |
-| Crash Reporting | Firebase Crashlytics |
-| Push | Firebase Cloud Messaging (FCM) |
-| Functions | Firebase Cloud Functions (redeemCode) |
+| Navigation | React Navigation (native stack) |
+| Native push | `expo-notifications` (OS-scheduled local reminders) |
+| Web push | Service worker + VAPID (`send-vaccine-reminders`) |
+| Payments | In-app QR + transaction reference → owner review (in-app or web admin) |
+| Functions | Supabase Edge Functions (Deno) |
+| Web | Expo web export (SPA) + landing page; PWA with offline service worker |
 
-### Not in Use (Removed)
+### Removed / not in use
 
-| Package | Reason Removed |
-|---------|---------------|
-| Firebase Auth | Migrated to Supabase Auth |
-| Firebase Firestore | Migrated to Supabase Postgres |
-| Firebase Storage | Migrated to Supabase Storage |
-| react-native-vision-camera | Height Measurement removed |
-| react-native-fast-tflite | Height Measurement removed |
-| react-native-worklets | Height Measurement removed |
+| Package | Reason |
+|---|---|
+| Firebase Auth / Firestore / Storage | Migrated to Supabase |
+| Firebase Analytics / Crashlytics / FCM / Cloud Functions | Removed with the Firebase migration (crash reporting is on the pre-launch checklist) |
+| react-native-vision-camera, react-native-fast-tflite, react-native-worklets | Height-measurement feature removed (planned post-launch) |
 
 ---
 
-## 🛠️ Environment Variables
-
-Copy `.env.example` to `.env` and fill in your values:
-
-```env
-# App
-APP_NAME=कपूरी क (Kapoori Ka)
-APP_VERSION=1.0.0
-APP_ENV=development
-
-# Supabase (Required)
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=***
-
-# Firebase (Analytics, Crashlytics, FCM)
-EXPO_PUBLIC_FIREBASE_API_KEY=***
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_PROJECT.firebasestorage.app
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_SENDER_ID
-EXPO_PUBLIC_FIREBASE_APP_ID=1:XXXX:web:XXXX
-EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXX
-
-# OAuth Client IDs
-EXPO_PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY=YOUR_KEY
-EXPO_PUBLIC_FIREBASE_ANDROID_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
-EXPO_PUBLIC_FIREBASE_IOS_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
-EXPO_PUBLIC_FIREBASE_WEB_CLIENT_ID=YOUR_ID.apps.googleusercontent.com
-```
-
----
-
-## 🛠️ Getting Started
+## 🛠️ Getting started
 
 ### Prerequisites
-- Node.js 18+
-- pnpm (recommended) or npm
-- Expo CLI (`npx expo`)
-- Supabase project ([supabase.com](https://supabase.com))
-- Firebase project ([console.firebase.google.com](https://console.firebase.google.com))
+- Node.js 20+ and pnpm
+- A Supabase project (Auth + Postgres + Storage)
+- Optional: EAS CLI for Android builds (`npm i -g eas-cli`)
 
-### Local Development
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/acdcpc/kapoori-ka.git
-   cd kapoori-ka
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Set up environment:**
-   ```bash
-   cp .env.example .env
-   # Fill in your Supabase URL, anon key, and Firebase credentials
-   ```
-
-4. **Set up Supabase:**
-   - Create a new Supabase project
-   - Enable Google OAuth provider in Authentication → Providers
-   - Add redirect URL: `com.kapoori.ka://auth/callback`
-   - Enable anonymous sign-ins
-   - Enable email confirmation
-   - Run the database migration (create tables with RLS policies)
-
-5. **Start the development server:**
-   ```bash
-   npx expo start
-   ```
-
-6. **Run on Android:**
-   ```bash
-   npx expo start --android
-   ```
-
-### Building for Production
+### Local development
 
 ```bash
-# Install EAS CLI globally
-npm install -g eas-cli
+git clone https://github.com/acdcpc/kapoori-ka.git
+cd kapoori-ka
+pnpm install
+cp .env.example .env        # fill in your Supabase values
+npx expo start              # then: 'a' for Android, 'w' for web
+```
 
-# Login to Expo
-eas login
+### Supabase setup
+- Enable Email provider (auto-confirm ON for launch — no email round-trip)
+- Enable Google OAuth; add redirect URLs for your web origin and `com.kapoori.ka://auth/callback`
+- Apply migrations in `supabase/migrations/` (forward-only, timestamped)
+- Edge Function secrets: `ALLOWED_ORIGINS`, `AUTOMATION_KEY` (activation-code encryption), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `REMINDER_CRON_SECRET`
+- Reminder cron runs from GitHub Actions (`vaccine-reminders.yml`) using the `REMINDER_CRON_SECRET` repo secret
 
-# Build preview APK (standalone, no Metro needed)
+### Android build (sideload)
+
+```bash
+eas login                                   # account: thisisprakashs-team
 eas build --profile preview --platform android
 ```
 
----
+### Quality gates (run before every push)
 
-## 🔒 Security
-
-- **Row-Level Security (RLS)** enabled on all Supabase tables — users can only access their own data
-- **Email confirmation** required for all new accounts
-- **HTTPS/TLS** for all data transmission
-- **Session tokens** stored in `expo-secure-store` (Android Keystore encrypted)
-- **Google OAuth** with exact redirect URI (no wildcards)
-- **Supabase Anon Key** is intentionally public-facing but protected by RLS
-- **All secrets** excluded from git history via `.gitignore`
-
----
-
-## ⚠️ Known Limitations
-
-| Limitation | Mitigation |
-|-----------|------------|
-| Supabase free tier auto-pauses after 7 days of inactivity | Daily ping workflow (`.github/workflows/supabase-ping.yml`) at 03:00 UTC |
-| Height Measurement feature not available | Planned for post-launch reimplementation |
-| Firebase Auth/firebase.ts still present for analytics init | Fully migrated to Supabase for auth; Firebase used only for Analytics/Crashlytics/FCM |
+```bash
+pnpm exec tsc --noEmit                     # types
+npx expo-doctor                            # 21/21 required
+pnpm run validate:release-security         # static security regressions
+pnpm run validate:caregiver-features       # caregiver foundations
+pnpm run validate:hc-calculations          # WHO head-circumference tables + z-scores
+pnpm build:web                             # web/PWA export
+pnpm audit                                 # see DEPENDENCY_EXCEPTIONS.md
+```
 
 ---
 
-## 📄 License
+## 📚 Documentation
 
-MIT — See [LICENSE](LICENSE) for details.
+| Document | Purpose |
+|---|---|
+| [OWNER_ACTIONS.md](OWNER_ACTIONS.md) | Owner-only tasks and verified live-backend state |
+| [SECURITY_AND_SCALE_AUDIT.md](SECURITY_AND_SCALE_AUDIT.md) | RLS/privacy/scale audit + growth-data verification |
+| [DEPENDENCY_EXCEPTIONS.md](DEPENDENCY_EXCEPTIONS.md) | Advisories triaged, patch overrides, accepted exceptions |
+| [DARK_MODE_IMPLEMENTATION.md](DARK_MODE_IMPLEMENTATION.md) | Theming architecture and palette roles |
+| [WEBSITE_DECISION_RECORD.md](WEBSITE_DECISION_RECORD.md) | Landing-page scope, privacy and route map |
+| [todo.md](todo.md) | Running record of completed work |
 
 ---
 
-## 📧 Contact
+## ⚠️ Clinical safety
 
-- **Developer:** Prakash Thapa
-- **Email:** kapoori.ka@gmail.com
-- **GitHub:** [acdcpc/kapoori-ka](https://github.com/acdcpc/kapoori-ka)
+Kapoori Ka records information and reminders; it does not diagnose illness and does not replace a health professional. Growth interpretation uses exact WHO standards (2006 standards 0–60 months, 2007 reference 61–216 months) with calm, non-diagnostic caregiver wording; the PDF report keeps clinical terminology for health workers.

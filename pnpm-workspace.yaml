@@ -4,6 +4,9 @@ allowBuilds:
 overrides:
   undici: 6.28.0
   nanoid: 3.3.18
+  # Security patch overrides (build tooling only) — see DEPENDENCY_EXCEPTIONS.md
+  '@xmldom/xmldom': 0.8.15
+  js-yaml: 4.3.2
 minimumReleaseAgeExclude:
   - '@expo/cli@56.1.24 || 57.0.21'
   - '@expo/config-plugins@56.0.15'
