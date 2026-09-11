@@ -35,6 +35,7 @@ import { AccessibilityProvider } from './src/context/AccessibilityContext';
 import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
 import { getWebAppUrl } from './src/lib/webConfig';
+import { supabase } from './src/lib/supabase';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = { current: null as any };
@@ -114,6 +115,8 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const systemColorScheme = useColorScheme();
   const [webEnterApp, setWebEnterApp] = useState(false);
+  const [webEntryResolved, setWebEntryResolved] = useState(Platform.OS !== 'web');
+  const [showLanding, setShowLanding] = useState(false);
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
   const palette = makePalette(isDark);
 
@@ -137,6 +140,35 @@ export default function App() {
       }
     };
     prepare();
+  }, []);
+
+  // ── Web entry rules ──────────────────────────────────────────────────
+  // 1. Installed app (PWA / home-screen) → straight into the app
+  // 2. Signed-in session → straight into the app
+  // 3. First browser visit → landing page (then remembered per device)
+  // 4. Returning browser visitor without a session → login screen
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    (async () => {
+      try {
+        const standalone = typeof window !== 'undefined' && (
+          (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+          (window.navigator as any)?.standalone === true
+        );
+        if (standalone) { setShowLanding(false); return; }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) { setShowLanding(false); return; }
+
+        let seen = false;
+        try { seen = window.localStorage.getItem('kk_landing_seen') === '1'; } catch { /* private mode */ }
+        setShowLanding(!seen);
+      } catch {
+        setShowLanding(false);
+      } finally {
+        setWebEntryResolved(true);
+      }
+    })();
   }, []);
 
   // ── Web OAuth callback error handling ──
@@ -213,8 +245,17 @@ export default function App() {
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
         <ThemeContext.Provider value={{ mode: themeMode, setMode: handleSetThemeMode, isDark, palette }}>
           <AccessibilityProvider>
-            {Platform.OS === 'web' && !webEnterApp ? (
-              <WebsiteScreen onGetStarted={() => setWebEnterApp(true)} />
+            {Platform.OS === 'web' && !webEntryResolved ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: palette.bg }}>
+                <ActivityIndicator size="large" color={palette.clay} />
+              </View>
+            ) : Platform.OS === 'web' && showLanding && !webEnterApp ? (
+              <WebsiteScreen
+                onGetStarted={() => {
+                  try { window.localStorage.setItem('kk_landing_seen', '1'); } catch { /* private mode */ }
+                  setWebEnterApp(true);
+                }}
+              />
             ) : (
               <AuthProvider>
                 <Navigation />
