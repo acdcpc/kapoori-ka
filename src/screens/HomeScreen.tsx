@@ -14,6 +14,7 @@ import Onboarding from '../components/Onboarding';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
+import { computeVaccineSchedule } from '../utils/vaccineSchedule';
 import { supabase } from '../lib/supabase';
 import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
@@ -23,7 +24,6 @@ import { RootStackParamList } from '../navigation/types';
 import { translations } from '../i18n/translations';
 import { formatAge, getAgeInMonths } from '../utils/growthCalculations';
 import { WHATSAPP_NUMBER } from '../constants';
-import { computeVaccineSchedule } from '../utils/vaccineSchedule';
 import { VaccineRecord } from '../types';
 
 type HomeScreenProps = {
@@ -68,6 +68,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const t = translations[language];
   const isNe = language === 'ne';
   const [children, setChildren] = useState<Child[]>([]);
+  const [todayAction, setTodayAction] = useState<{ title: string; detail: string; screen: string; params?: any; tone: 'urgent' | 'soon' | 'ok' } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
@@ -113,6 +114,91 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         await supabase.from('vaccinations').update({ user_id: user.uid }).eq('child_id', cid).eq('user_id', '');
       }
     } catch (error) { console.error('Claiming records error:', error); }
+  };
+
+  // "Today" card: single most urgent care action across all children.
+  const loadTodayAction = async () => {
+    try {
+      if (!user?.uid) { setTodayAction(null); return; }
+      const { data: kids } = await supabase.from('children').select('id, name, date_of_birth').eq('user_id', user.uid);
+      if (!kids?.length) { setTodayAction(null); return; }
+
+      const { data: vaccs } = await supabase
+        .from('vaccinations')
+        .select('child_id, vaccine_name, scheduled_date, is_given')
+        .in('child_id', kids.map((k: any) => k.id));
+      const byChild = new Map<string, any[]>();
+      for (const v of vaccs ?? []) {
+        const list = byChild.get(v.child_id) ?? [];
+        list.push({ vaccineName: v.vaccine_name, scheduledDate: v.scheduled_date, isGiven: v.is_given });
+        byChild.set(v.child_id, list);
+      }
+
+      let best: { days: number; label: string; child: string; ne: boolean } | null = null;
+      for (const kid of kids) {
+        const schedule = computeVaccineSchedule(kid.date_of_birth, (byChild.get(kid.id) ?? []) as any, isNe ? 'ne' : 'en');
+        for (const v of schedule) {
+          if (v.status === 'given') continue;
+          const days = v.daysUntilDue;
+          if (days > 30) continue;
+          if (!best || days < best.days) {
+            best = { days, label: isNe ? (v.nameNepali || v.name) : v.name, child: kid.name, ne: isNe };
+          }
+        }
+      }
+
+      if (best) {
+        const tone = best.days < 0 ? 'urgent' : best.days <= 7 ? 'soon' : 'ok';
+        const detail = best.days < 0
+          ? (isNe ? `${Math.abs(best.days)} दिन ढिलो — अहिले पनि लगाउन सकिन्छ` : `${Math.abs(best.days)} days overdue — it can still be given`)
+          : best.days === 0
+            ? (isNe ? 'आज लगाउने दिन' : 'Due today')
+            : (isNe ? `${best.days} दिनमा` : `in ${best.days} days`);
+        setTodayAction({
+          title: best.days < 0
+            ? (isNe ? `खोप बाँकी: ${best.label}` : `Vaccine overdue: ${best.label}`)
+            : best.days === 0
+              ? (isNe ? `आज खोप: ${best.label}` : `Vaccine today: ${best.label}`)
+              : (isNe ? `आउँदो खोप: ${best.label}` : `Next vaccine: ${best.label}`),
+          detail: `${best.child} · ${detail}`,
+          screen: 'Immunization',
+          params: { child: kids.find((k: any) => k.name === best!.child) },
+          tone: tone as 'urgent' | 'soon' | 'ok',
+        });
+        return;
+      }
+
+      // No vaccine action → nudge the next measurement if it has been a while.
+      const { data: lastGrowth } = await supabase
+        .from('growth_records')
+        .select('date')
+        .in('child_id', kids.map((k: any) => k.id))
+        .order('date', { ascending: false })
+        .limit(1);
+      const last = lastGrowth?.[0]?.date;
+      const daysSince = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : null;
+      if (daysSince === null || daysSince >= 30) {
+        setTodayAction({
+          title: isNe ? 'आजको काम: नयाँ नाप थप्नुहोस्' : 'Today: add a new measurement',
+          detail: daysSince === null
+            ? (isNe ? 'पहिलो नाप रेकर्ड गर्नुहोस्' : 'Record the first measurement')
+            : (isNe ? `${daysSince} दिन भयो — तौल/उचाइ नाप्नुहोस्` : `${daysSince} days since the last one — measure weight/height`),
+          screen: 'GrowthChart',
+          params: { child: kids[0] },
+          tone: 'ok',
+        });
+        return;
+      }
+
+      setTodayAction({
+        title: isNe ? 'आज सबै अद्यावधिक छ 🎉' : 'All up to date today 🎉',
+        detail: isNe ? 'खोप र नाप अद्यावधिक छन् — राम्रो काम!' : 'Vaccines and measurements are current — good work!',
+        screen: 'Immunization',
+        tone: 'ok',
+      });
+    } catch {
+      setTodayAction(null);
+    }
   };
 
   const loadChildren = async () => {
@@ -173,6 +259,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      loadTodayAction();
       loadChildren().then(() => {
         // We need children state after load — use a delayed check
         setTimeout(() => {
@@ -294,6 +381,32 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </ScrollView>
       ) : (
+        <>
+        {todayAction && children.length > 0 && (
+          <TouchableOpacity
+            style={[styles.todayCard, todayAction.tone === 'urgent' && styles.todayCardUrgent, todayAction.tone === 'soon' && styles.todayCardSoon]}
+            onPress={() => navigation.navigate(todayAction.screen as any, todayAction.params)}
+            accessibilityRole="button"
+            accessibilityLabel={`${isNe ? 'आज' : 'Today'}: ${todayAction.title}`}
+          >
+            <View style={styles.todayRow}>
+              <View style={[styles.todayIcon, todayAction.tone === 'urgent' && styles.todayIconUrgent]}>
+                <Ionicons
+                  name={todayAction.tone === 'urgent' ? 'alert-circle' : todayAction.title.includes('🎉') ? 'checkmark-circle' : 'today-outline'}
+                  size={20}
+                  color={todayAction.tone === 'urgent' ? pal.onAccent : pal.clay}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.todayLabel}>{isNe ? 'आज' : 'TODAY'}</Text>
+                <Text style={styles.todayTitle}>{todayAction.title}</Text>
+                <Text style={styles.todayDetail}>{todayAction.detail}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={pal.muted} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         <FlatList
           data={children}
           renderItem={renderChild}
@@ -309,6 +422,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
           }
         />
+        </>
       )}
 
       {showSettings && (
@@ -404,6 +518,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const makeStyles = (pal: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: pal.bg },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6 },
+  todayCard: { marginHorizontal: 16, marginTop: 6, marginBottom: 10, borderRadius: 16, padding: 14, backgroundColor: pal.surface, borderWidth: 1, borderColor: pal.border },
+  todayCardUrgent: { backgroundColor: pal.redLight, borderColor: pal.red },
+  todayCardSoon: { backgroundColor: pal.amberLight, borderColor: pal.gold },
+  todayRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  todayIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: pal.actionBg, alignItems: 'center', justifyContent: 'center' },
+  todayIconUrgent: { backgroundColor: pal.red },
+  todayLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2, color: pal.muted, marginBottom: 2 },
+  todayTitle: { fontSize: 15, fontWeight: '800', color: pal.text },
+  todayDetail: { fontSize: 12.5, color: pal.muted2, marginTop: 2 },
   headerLeft: { flex: 1 },
   headerTitle: { fontWeight: '800', fontSize: 22, color: pal.text },
   headerSubtitle: { fontSize: 13, color: pal.muted, marginTop: 1 },
