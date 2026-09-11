@@ -13,7 +13,7 @@ const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
 
 function corsHeaders(request: Request): HeadersInit | null {
   const origin = request.headers.get('origin') ?? '';
-  if (!origin || !allowedOrigins.includes(origin)) return null;
+  if (origin && !allowedOrigins.includes(origin)) return null; // native/no-origin requests allowed; cross-origin browsers blocked
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

@@ -63,7 +63,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   useEffect(() => {
     (async () => {
       if (!user?.uid) return;
-      try { const { data } = await supabase.rpc('is_app_admin', { p_actor_id: user.uid }); setIsAdmin(data === true); } catch { setIsAdmin(false); }
+      try { const { data } = await supabase.rpc('is_app_admin', { p_user_id: user.uid }); setIsAdmin(data === true); } catch { setIsAdmin(false); }
     })();
   }, [user?.uid]);
   const t = translations[language];

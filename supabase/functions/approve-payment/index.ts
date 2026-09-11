@@ -15,7 +15,7 @@ const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
 
 function corsHeaders(request: Request): HeadersInit | null {
   const origin = request.headers.get('origin') ?? '';
-  if (!origin || !allowedOrigins.includes(origin)) return null;
+  if (origin && !allowedOrigins.includes(origin)) return null; // native/no-origin requests allowed; cross-origin browsers blocked
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -79,7 +79,7 @@ Deno.serve(async (request) => {
   });
 
   // Server-side admin check (defense in depth; the RPC re-checks too).
-  const { data: isAdmin, error: adminErr } = await adminClient.rpc('is_app_admin', { p_actor_id: user.id });
+  const { data: isAdmin, error: adminErr } = await adminClient.rpc('is_app_admin', { p_user_id: user.id });
   if (adminErr || isAdmin !== true) return response({ error: 'Not authorized.' }, 403, cors);
 
   let body: { payment_id?: string };

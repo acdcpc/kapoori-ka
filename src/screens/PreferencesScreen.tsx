@@ -47,7 +47,7 @@ export default function PreferencesScreen() {
     if (!user?.uid) return;
     (async () => {
       try {
-        const { data } = await supabase.rpc('is_app_admin', { p_actor_id: user.uid });
+        const { data } = await supabase.rpc('is_app_admin', { p_user_id: user.uid });
         if (data === true) {
           setIsAdmin(true);
           setDemoPresent(await hasDemoData(user.uid));

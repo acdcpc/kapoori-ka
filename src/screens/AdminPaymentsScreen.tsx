@@ -79,7 +79,7 @@ export default function AdminPaymentsScreen() {
     (async () => {
       if (!user?.uid) return;
       try {
-        const { data, error } = await supabase.rpc('is_app_admin', { p_actor_id: user.uid });
+        const { data, error } = await supabase.rpc('is_app_admin', { p_user_id: user.uid });
         if (error) throw error;
         if (alive) setIsAdmin(data === true);
       } catch {
