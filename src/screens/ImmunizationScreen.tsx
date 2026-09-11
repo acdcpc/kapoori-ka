@@ -16,6 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import InfoBubble from '../components/InfoBubble';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Speech from 'expo-speech';
 import NepaliDate from 'nepali-date-converter';
@@ -207,6 +208,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   }, [vaccineRecords.length, isPremium]);
 
   const handleSetStatus = (vaccine: ComputedVaccine, status: 'given' | 'missed') => {
+    if (status === 'given') recordProductEvent(user?.uid, 'vaccine_recorded').catch(() => undefined);
     // Premium gate: free users cannot set status for upcoming/missed vaccines
 
     if (status === 'given') {

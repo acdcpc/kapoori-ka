@@ -16,6 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import { getAgeInMonths, weightZScore, heightZScore, hcZScore, percentileFromZ, classifyGrowthStatus, classifyHC } from '../utils/growthCalculations';
 import { WHO_WFA_BOYS, WHO_WFA_GIRLS } from '../data/whoWFA';
 import { WHO_HFA_BOYS, WHO_HFA_GIRLS } from '../data/whoHFA';
@@ -292,6 +293,7 @@ export default function PDFReportScreen({ route }: Props) {
         return;
       }
 
+      recordProductEvent(user?.uid, 'health_report_generated').catch(() => undefined);
       const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
       const fileName = `Growth_Report_${child.name.replace(/\s+/g, '_')}_${dayjs().format('YYYYMMDD')}.pdf`;
       const safeUri = `${FileSystem.documentDirectory}${fileName}`;

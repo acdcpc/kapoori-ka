@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { Child, GrowthRecord, VaccineRecord } from '../types';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import { queueOfflineMutation } from '../lib/featureStorage';
 import { createOfflineMutation } from '../lib/offlineSync';
 import { CLINICAL_SAFETY_NOTICE, getGrowthTrendFlags } from '../lib/clinicalSafety';
@@ -58,6 +59,7 @@ export default function ClinicSummaryScreen() {
         const { error } = await supabase.from('record_export_audit').insert(payload);
         if (error) await queueOfflineMutation(createOfflineMutation('record_export_audit', payload, user.uid));
       }
+      recordProductEvent(user?.uid, 'clinic_summary_generated').catch(() => undefined);
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: labels.shareTitle });
       else Alert.alert(labels.createdTitle, `${tr('यहाँ सुरक्षित भयो', 'Saved at')} ${result.uri}`);
     } catch { Alert.alert(labels.storageError, labels.storageHelp); }

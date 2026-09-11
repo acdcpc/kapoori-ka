@@ -31,6 +31,7 @@ import { FlatList } from 'react-native';
 import { PremiumGuard } from '../components/PremiumGuard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import { CLINICAL_SAFETY_NOTICE, getGrowthTrendFlags } from '../lib/clinicalSafety';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GrowthChart'>;
@@ -155,6 +156,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
         .insert({ child_id: child.id, user_id: user?.uid || '', date: adDateStr, bs_date: bsDateStr, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageMonths, notes: '', recorded_at: dayjs().toISOString() });
       if (sbError) throw sbError;
       setWeight(''); setHeight(''); setHeadCirc(''); setBsDate(new NepaliDate()); setShowForm(false); loadRecords();
+      recordProductEvent(user?.uid, 'measurement_added').catch(() => undefined);
     } catch { Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.'); }
     finally { setSaving(false); }
   };

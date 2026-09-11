@@ -9,6 +9,9 @@ import { PrivacyPreferences } from '../types';
 import { Palette } from '../theme';
 import { FEATURE_CARE_TEAM } from '../config/featureFlags';
 import { isWebPushSupported, isWebPushEnabled, enableWebPush, disableWebPush } from '../lib/webPush';
+import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
+import { hasDemoData, insertDemoData, removeDemoData } from '../lib/demoData';
 import { loadPrivacyPreferences, savePrivacyPreferences } from '../lib/featureAnalytics';
 import { createOfflineMutation, flushOfflineQueue } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
@@ -23,6 +26,9 @@ export default function PreferencesScreen() {
   const tr = (ne: string, en: string) => (isNe ? ne : en);
   const [privacy, setPrivacy] = useState<PrivacyPreferences>({ analyticsOptIn: false, shareCrashDiagnostics: false });
   const [webPushOn, setWebPushOn] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [demoPresent, setDemoPresent] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
   const webPushAvailable = Platform.OS === 'web' && isWebPushSupported();
   const [saving, setSaving] = useState(false);
 
@@ -35,6 +41,20 @@ export default function PreferencesScreen() {
     if (!webPushAvailable) return;
     isWebPushEnabled().then(setWebPushOn).catch(() => setWebPushOn(false));
   }, [webPushAvailable]);
+
+  // Demo-data tools are for the app owner (demos and support calls).
+  useEffect(() => {
+    if (!user?.uid) return;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('is_app_admin', { p_actor_id: user.uid });
+        if (data === true) {
+          setIsAdmin(true);
+          setDemoPresent(await hasDemoData(user.uid));
+        }
+      } catch { /* not an admin */ }
+    })();
+  }, [user?.uid]);
 
   const updateAccessibility = async (patch: Partial<typeof preferences>) => {
     const next = { ...preferences, ...patch };
@@ -102,6 +122,7 @@ export default function PreferencesScreen() {
               const res = await enableWebPush();
               if (res.ok) {
                 setWebPushOn(true);
+                recordProductEvent(user?.uid, 'reminder_opt_in').catch(() => undefined);
                 Alert.alert(tr('सक्रिय भयो', 'Reminders on'), tr('यो उपकरणमा खोप सम्झना सक्रिय भयो।', 'Vaccine reminders are now enabled on this device.'));
               } else {
                 Alert.alert(tr('सक्रिय गर्न सकिएन', 'Could not enable reminders'), res.error || '');
@@ -115,6 +136,45 @@ export default function PreferencesScreen() {
                 : webPushOn
                   ? tr('सम्झना सक्रिय छ — बन्द गर्नुहोस्', 'Reminders ON — tap to turn off')
                   : tr('यो उपकरणमा सम्झना सक्रिय गर्नुहोस्', 'Enable reminders on this device')}
+            </Text>
+          </TouchableOpacity>
+        </Section>
+      )}
+
+      {isAdmin && (
+        <Section title={tr('डेमो डेटा (प्रशासक)', 'Demo data (admin)')}>
+          <Text style={styles.helper}>
+            {tr(
+              'डेमो र सहयोगका लागि नमुना बच्चा र रेकर्ड थप्नुहोस्। यो डेटा “DEMO —” नामले छुट्टिन्छ र कुनै पनि बेला हटाउन सकिन्छ।',
+              'Adds a clearly-labelled sample child and records for demos or support calls. It is marked “DEMO —” and can be removed at any time.',
+            )}
+          </Text>
+          <TouchableOpacity
+            style={[styles.choice, { alignSelf: 'flex-start', paddingHorizontal: 16, minHeight: 46, justifyContent: 'center', opacity: demoBusy ? 0.6 : 1 }]}
+            disabled={demoBusy}
+            onPress={async () => {
+              if (!user?.uid) return;
+              setDemoBusy(true);
+              try {
+                if (demoPresent) {
+                  const removed = await removeDemoData(user.uid);
+                  setDemoPresent(false);
+                  Alert.alert(tr('हटाइयो', 'Removed'), tr(`${removed} नमुना बच्चा हटाइयो।`, `${removed} demo child removed.`));
+                } else {
+                  const res = await insertDemoData(user.uid);
+                  if (res.ok) {
+                    setDemoPresent(true);
+                    Alert.alert(tr('थपियो', 'Demo data added'), tr('नमुना बच्चा र रेकर्ड थपियो।', 'A sample child and records were added.'));
+                  } else {
+                    Alert.alert(tr('थप्न सकिएन', 'Could not add demo data'), res.error || '');
+                  }
+                }
+              } finally { setDemoBusy(false); }
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.choiceText}>
+              {demoPresent ? tr('नमुना डेटा हटाउनुहोस्', 'Remove demo data') : tr('नमुना डेटा थप्नुहोस्', 'Add demo data')}
             </Text>
           </TouchableOpacity>
         </Section>

@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { computeVaccineSchedule } from '../utils/vaccineSchedule';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
 import { LanguageContext } from '../context/LanguageContext';
@@ -507,7 +508,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </TouchableOpacity>
         </View>
       )}
-      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} screen="home" />}
+      {showOnboarding && <Onboarding onComplete={() => { setShowOnboarding(false); recordProductEvent(user?.uid, 'onboarding_completed').catch(() => undefined); }} screen="home" />}
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddChild')}>
         <Ionicons name="add" size={30} color={pal.onAccent} />
       </TouchableOpacity>

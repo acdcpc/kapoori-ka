@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { recordProductEvent } from '../lib/featureAnalytics';
 import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
 import { translations } from '../i18n/translations';
 import { Ionicons } from '@expo/vector-icons';
@@ -259,6 +260,8 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
         .select('id')
         .single();
       if (childErr) throw childErr;
+
+      recordProductEvent(user.uid, 'child_profile_created').catch(() => undefined);
       const childId = childData.id;
 
       // Save birth record if weight/length provided
