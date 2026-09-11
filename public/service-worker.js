@@ -1,7 +1,7 @@
 // Kapoori Ka — versioned, app-shell-only service worker.
 // Bump VERSION on each deploy to invalidate stale caches.
 const CACHE_PREFIX = 'kapoori-ka';
-const VERSION = 'v2';
+const VERSION = 'v3'; // v3: merged Web Push handling (single root worker)
 const CACHE = `${CACHE_PREFIX}-${VERSION}`;
 
 // App shell to pre-cache.
@@ -57,4 +57,35 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// ── Web Push (vaccine reminders) ─────────────────────────────────────────────
+// Merged into this single root-scoped worker so caching and push never fight
+// over the same registration scope.
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Kapoori Ka', body: '', data: {} };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    try { payload.body = event.data ? event.data.text() : ''; } catch { /* ignore */ }
+  }
+  event.waitUntil(self.registration.showNotification(payload.title || 'Kapoori Ka', {
+    body: payload.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: payload.data || {},
+    vibrate: [0, 250, 250, 250],
+    tag: payload.tag || undefined,
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      if ('focus' in client) return client.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow('/');
+  })());
 });

@@ -4,7 +4,8 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { WEB_PUSH_VAPID_PUBLIC_KEY } from '../config/webPush';
 
-const SW_URL = '/sw.js';
+// Single root-scoped service worker (caching + push) — see public/service-worker.js
+const SW_URL = '/service-worker.js';
 
 export const isWebPushSupported = (): boolean => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;

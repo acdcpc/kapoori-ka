@@ -66,6 +66,7 @@
     "build:web": "expo export -p web",
     "serve:web": "expo serve",
     "validate:release-security": "node scripts/validate-release-security.mjs",
+    "validate:hc-calculations": "node scripts/validate-hc-calculations.mjs",
     "validate:caregiver-features": "node scripts/validate-caregiver-features.mjs"
   },
   "private": true,
