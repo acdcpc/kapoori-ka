@@ -96,7 +96,7 @@ function Navigation() {
             <Stack.Screen name="CaregiverTools" component={CaregiverToolsScreen} options={{ title: 'हेरचाह टोली | Care team' }} />
             <Stack.Screen name="ClinicSummary" component={ClinicSummaryScreen} options={{ title: 'क्लिनिक सारांश | Clinic summary' }} />
             <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'सेटिङ | Settings' }} />
-            <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'भुक्तानी समीक्षा | Payments' }} />
+            <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'प्रशासन | Admin' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

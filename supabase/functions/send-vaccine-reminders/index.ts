@@ -94,17 +94,21 @@ Deno.serve(async (request) => {
       const scheduled = record?.scheduled_date ?? addDays(child.date_of_birth, ageInDays);
       const daysUntil = Math.round((Date.parse(scheduled) - Date.parse(today)) / 86400000);
 
-      let title = '', body = '';
+      let title = '', body = '', kind = '';
       if (daysUntil === 7) {
+        kind = '7d';
         title = `💉 ७ दिनमा खोप — ${child.name} / Vaccine in 7 days`;
         body = `${nameNe} · ${name} — ${scheduled}`;
       } else if (daysUntil === 2) {
+        kind = '2d';
         title = `💉 २ दिनमा खोप — ${child.name} / Vaccine in 2 days`;
         body = `${nameNe} · ${name} — ${scheduled}`;
       } else if (daysUntil === 0) {
+        kind = 'day';
         title = `💉 आज खोप — ${child.name} / Vaccine today`;
         body = `${nameNe} · ${name} — ${scheduled}`;
       } else if (daysUntil < 0 && daysUntil >= -60) {
+        kind = 'overdue';
         title = `💉 खोप बाँकी छ — ${child.name} / Vaccine overdue`;
         body = `${nameNe} · ${name} — ${scheduled}`;
       } else {
@@ -112,15 +116,32 @@ Deno.serve(async (request) => {
       }
 
       for (const device of devices) {
+        const nowIso = new Date().toISOString();
         try {
           await webpush.sendNotification(
             { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
             JSON.stringify({ title, body, tag: `vaccine_${id}_${child.id}`, data: { type: 'vaccine', vaccineId: id, childId: child.id } }),
           );
           sent++;
+          await admin.from('reminder_delivery_log').insert({
+            user_id: child.user_id, child_id: child.id, vaccine_id: id, kind,
+            subscription_id: device.id, status: 'sent', provider_status: 201,
+          });
+          await admin.from('web_push_subscriptions')
+            .update({ last_success_at: nowIso, failure_count: 0 }).eq('id', device.id);
         } catch (err: any) {
           failed++;
-          if (err?.statusCode === 404 || err?.statusCode === 410) expired.push(device.id);
+          const status = err?.statusCode ?? null;
+          await admin.from('reminder_delivery_log').insert({
+            user_id: child.user_id, child_id: child.id, vaccine_id: id, kind,
+            subscription_id: device.id, status: 'failed', provider_status: status,
+            error: String(err?.body || err?.message || 'send failed').slice(0, 300),
+          });
+          const { data: current } = await admin.from('web_push_subscriptions')
+            .select('failure_count').eq('id', device.id).maybeSingle();
+          await admin.from('web_push_subscriptions')
+            .update({ last_failure_at: nowIso, failure_count: (current?.failure_count ?? 0) + 1 }).eq('id', device.id);
+          if (status === 404 || status === 410) expired.push(device.id);
         }
       }
     }

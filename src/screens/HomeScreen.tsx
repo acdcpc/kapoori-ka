@@ -378,7 +378,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           {isAdmin && (
             <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('AdminPayments'); }}>
               <Ionicons name="receipt-outline" size={18} color={pal.clay} />
-              <Text style={styles.settingsLabel}>{isNe ? 'भुक्तानी समीक्षा' : 'Payment review'}</Text>
+              <Text style={styles.settingsLabel}>{isNe ? 'प्रशासन' : 'Admin'}</Text>
               <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
             </TouchableOpacity>
           )}

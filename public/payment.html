@@ -105,15 +105,15 @@
       <div id="formView">
         <h2>1. Choose Your Plan</h2>
         <div class="plan-select">
-          <div class="plan-card selected" id="planMonthly" onclick="selectPlan('monthly')">
-            <div class="plan-name">Monthly</div>
-            <div class="plan-price">NPR 100</div>
-            <div class="plan-period">/ month</div>
+          <div class="plan-card" id="plan6Months" onclick="selectPlan('6months')">
+            <div class="plan-name">6 Months</div>
+            <div class="plan-price">NPR 650</div>
+            <div class="plan-period">/ 6 months · NPR 108 per month</div>
           </div>
-          <div class="plan-card" id="planYearly" onclick="selectPlan('yearly')">
-            <div class="plan-name">Yearly</div>
-            <div class="plan-price">NPR 500</div>
-            <div class="plan-period">/ year · 58% save</div>
+          <div class="plan-card selected" id="planYearly" onclick="selectPlan('yearly')">
+            <div class="plan-name">Yearly · Best value</div>
+            <div class="plan-price">NPR 850</div>
+            <div class="plan-period">/ year · NPR 71 per month</div>
           </div>
         </div>
 
@@ -121,7 +121,7 @@
         <p>Pay to our eSewa/Khalti merchant using the details below, then fill in the form.</p>
         <div class="qr-box">
           <img src="esewa-qr.png" alt="Scan to pay">
-          <p>Amount: NPR <span id="qrAmount">500</span></p>
+          <p>Amount: NPR <span id="qrAmount">850</span></p>
         </div>
 
         <h2>3. Payment Method</h2>
@@ -157,7 +157,7 @@
         </div>
         <div class="form-group">
           <label>Amount Paid (NPR) *</label>
-          <input type="number" id="amount" placeholder="500" readonly aria-readonly="true" required>
+          <input type="number" id="amount" placeholder="850" readonly aria-readonly="true" required>
         </div>
         <div class="form-group">
           <label>Remarks (optional)</label>
@@ -205,14 +205,15 @@
     );
 
     var selectedPlan = 'yearly';
+    var PLAN_PRICE = { '6months': '650', 'yearly': '850' };
     var selectedMethod = 'eSewa';
 
     function selectPlan(plan) {
       selectedPlan = plan;
-      document.getElementById('planMonthly').classList.toggle('selected', plan === 'monthly');
+      document.getElementById('plan6Months').classList.toggle('selected', plan === '6months');
       document.getElementById('planYearly').classList.toggle('selected', plan === 'yearly');
-      document.getElementById('qrAmount').textContent = plan === 'yearly' ? '500' : '100';
-      document.getElementById('amount').value = plan === 'yearly' ? '500' : '100';
+      document.getElementById('qrAmount').textContent = PLAN_PRICE[plan] || '850';
+      document.getElementById('amount').value = PLAN_PRICE[plan] || '850';
     }
 
     function selectMethod(method) {
@@ -294,8 +295,8 @@
     window.submitPayment = submitPayment;
 
     // Init defaults
-    document.getElementById('amount').value = '500';
-    document.getElementById('qrAmount').textContent = '500';
+    document.getElementById('amount').value = PLAN_PRICE[selectedPlan] || '850';
+    document.getElementById('qrAmount').textContent = PLAN_PRICE[selectedPlan] || '850';
   </script>
 </body>
 </html>

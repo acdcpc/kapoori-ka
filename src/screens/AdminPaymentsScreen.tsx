@@ -38,6 +38,25 @@ export default function AdminPaymentsScreen() {
   const [items, setItems] = useState<PendingPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pushHealth, setPushHealth] = useState<{ devices: number; sent7d: number; failed7d: number; lastSuccess: string | null } | null>(null);
+
+  const loadReminderHealth = async () => {
+    try {
+      const since = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data: devices } = await supabase.from('web_push_subscriptions').select('last_success_at');
+      const { data: logs } = await supabase.from('reminder_delivery_log').select('status').gte('created_at', since);
+      const sent = (logs ?? []).filter((l: any) => l.status === 'sent').length;
+      const failed = (logs ?? []).filter((l: any) => l.status === 'failed').length;
+      const last = (devices ?? [])
+        .map((d: any) => d.last_success_at)
+        .filter(Boolean)
+        .sort()
+        .pop() ?? null;
+      setPushHealth({ devices: (devices ?? []).length, sent7d: sent, failed7d: failed, lastSuccess: last });
+    } catch {
+      setPushHealth(null);
+    }
+  };
 
   const load = async () => {
     if (!user?.uid) return;
@@ -68,6 +87,7 @@ export default function AdminPaymentsScreen() {
       }
     })();
     load();
+    loadReminderHealth();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
@@ -137,7 +157,21 @@ export default function AdminPaymentsScreen() {
     <SafeAreaView style={styles.page}>
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={t.clay} />}>
-        <Text style={styles.title}>{isNe ? 'भुक्तानी समीक्षा' : 'Payment review'}</Text>
+        <Text style={styles.title}>{isNe ? 'प्रशासन' : 'Admin'}</Text>
+
+        {pushHealth && (
+          <View style={styles.healthCard}>
+            <Text style={styles.healthTitle}>{isNe ? 'खोप सम्झना स्वास्थ्य' : 'Reminder delivery health'}</Text>
+            <Text style={styles.healthLine}>
+              {isNe ? 'उपकरण' : 'Devices'}: {pushHealth.devices} · {isNe ? 'पठाइयो (७ दिन)' : 'Sent (7d)'}: {pushHealth.sent7d} · {isNe ? 'असफल' : 'Failed'}: {pushHealth.failed7d}
+            </Text>
+            <Text style={styles.healthLine}>
+              {isNe ? 'अन्तिम सफल' : 'Last success'}: {pushHealth.lastSuccess ? new Date(pushHealth.lastSuccess).toLocaleString() : (isNe ? 'अझै छैन' : 'none yet')}
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.sectionLabel}>{isNe ? 'भुक्तानी समीक्षा' : 'Payments to review'}</Text>
         {items.length === 0 && !loading && (
           <View style={styles.emptyBox}>
             <Ionicons name="checkmark-done-outline" size={30} color={t.green} />
@@ -186,6 +220,10 @@ const makeStyles = (t: Palette) => StyleSheet.create({
   approveBtn: { flex: 1, minHeight: 46, borderRadius: 10, backgroundColor: t.green, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   approveText: { color: t.onAccent, fontWeight: '800', fontSize: 14 },
   rejectBtn: { flex: 1, minHeight: 46, borderRadius: 10, borderWidth: 1.5, borderColor: t.red, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: t.muted2, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
+  healthCard: { backgroundColor: t.surface, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: t.border },
+  healthTitle: { fontSize: 14, fontWeight: '800', color: t.text, marginBottom: 6 },
+  healthLine: { fontSize: 12.5, color: t.muted2, marginTop: 2 },
   emptyBox: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyText: { color: t.muted2, fontSize: 15 },
 });
