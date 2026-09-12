@@ -1,6 +1,6 @@
 # Kapoori Ka — Release Verification Report
 
-**Date:** 12 September 2026 · **Branch:** `main` · **Commit:** `2204abb`
+**Date:** 12 September 2026 · **Branch:** `main` · **HEAD:** `3dd98a2` (verification gates run at `2204abb`; this report adds only documentation)
 
 ## Environment
 | Item | Value |
@@ -10,7 +10,7 @@
 | Backend | Supabase project `tgnzucqjebnisgrxjfjg` — Auth, Postgres (RLS), Storage, 6 Edge Functions |
 | Distribution | Android APK (sideload/EAS) + installable PWA (web export) |
 
-## Verification gates — all executed at `2204abb`
+## Verification gates — all executed at `2204abb` (HEAD `3dd98a2` documents them)
 
 | Gate | Command | Result |
 |---|---|---|
