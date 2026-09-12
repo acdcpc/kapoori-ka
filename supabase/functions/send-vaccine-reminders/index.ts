@@ -107,7 +107,12 @@ Deno.serve(async (request) => {
         kind = 'day';
         title = `💉 आज खोप — ${child.name} / Vaccine today`;
         body = `${nameNe} · ${name} — ${scheduled}`;
-      } else if (daysUntil < 0 && daysUntil >= -60) {
+      } else if (daysUntil < 0) {
+        // Overdue cadence: day 1, 4, 7, then weekly — never daily spam.
+        const overdue = -daysUntil;
+        const CADENCE = [1, 4, 7, 14, 21, 28, 35, 42];
+        const due = overdue <= 42 ? CADENCE.includes(overdue) : (overdue - 42) % 7 === 0;
+        if (!due || overdue > 365) continue;
         kind = 'overdue';
         title = `💉 खोप बाँकी छ — ${child.name} / Vaccine overdue`;
         body = `${nameNe} · ${name} — ${scheduled}`;

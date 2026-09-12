@@ -150,6 +150,12 @@ export const scheduleVaccineReminders = async (
     // For overdue vaccines (not yet given) remind tomorrow morning — catch-up
     // is always possible, and the reminder re-arms each time the app runs.
     if (vaccine.status === 'missed') {
+      // Catch-up fires tomorrow: only arm when tomorrow lands on the cadence
+      // (day 1, 4, 7, then weekly) so parents are nudged, not spammed.
+      const overdueTomorrow = Math.abs(vaccine.daysUntilDue ?? 0) + 1;
+      const CADENCE = [1, 4, 7, 14, 21, 28, 35, 42];
+      const cadenceHit = overdueTomorrow <= 42 ? CADENCE.includes(overdueTomorrow) : (overdueTomorrow - 42) % 7 === 0;
+      if (!cadenceHit || overdueTomorrow > 365) continue;
       const catchUp = dayjs().add(1, 'day').hour(9).minute(0).second(0);
       await Notifications.scheduleNotificationAsync({
         identifier: `vaccine_catchup_${childName}_${vaccine.id}`,

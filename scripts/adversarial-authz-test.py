@@ -53,6 +53,32 @@ A_TOK, A_ID = A['access_token'], A['user']['id']
 B_TOK, B_ID = B['access_token'], B['user']['id']
 check('signup: two accounts created with immediate sessions', bool(A_TOK and B_TOK), f'A={A_ID[:8]} B={B_ID[:8]}')
 
+# ── guaranteed cleanup: runs on success, assertion failure, or exception ──
+import atexit
+_deleted: set = set()
+
+def admin_delete(uid: str) -> int:
+    if uid in _deleted:
+        return 0
+    r = urllib.request.Request(f'{BASE}/auth/v1/admin/users/{uid}', method='DELETE')
+    r.add_header('apikey', SR); r.add_header('Authorization', f'Bearer {SR}')
+    try:
+        urllib.request.urlopen(r)
+        _deleted.add(uid)
+        return 200
+    except urllib.error.HTTPError as e:
+        _deleted.add(uid)
+        return e.code
+    except Exception:
+        return 0
+
+def cleanup() -> None:
+    a = admin_delete(A_ID)
+    b = admin_delete(B_ID)
+    print(f'cleanup: A={a} B={b}', '(idempotent; runs even if a check failed)')
+
+atexit.register(cleanup)
+
 # ── 1. child isolation ───────────────────────────────────────────────────
 st, ca = req('POST', '/rest/v1/children', A_TOK, {'user_id': A_ID, 'name': 'AdvChildA', 'date_of_birth': '2025-03-01', 'sex': 'female'})
 check('A can create own child', st in (200, 201), f'status {st}')
@@ -150,12 +176,4 @@ fails = [r for r in results if not r[1]]
 print(f'\n=== {len(results) - len(fails)}/{len(results)} PASSED ===')
 for name, ok, detail in fails: print('  FAILED:', name, detail)
 
-# cleanup: delete test users via service role (cascades all data)
-def admin_delete(uid):
-    r = urllib.request.Request(f'{BASE}/auth/v1/admin/users/{uid}', method='DELETE')
-    r.add_header('apikey', SR); r.add_header('Authorization', f'Bearer {SR}')
-    try:
-        urllib.request.urlopen(r); return 200
-    except urllib.error.HTTPError as e: return e.code
-print('cleanup A:', admin_delete(A_ID))
-print('cleanup B:', admin_delete(B_ID))
+cleanup()  # explicit call for a clear final log line

@@ -13,7 +13,9 @@ function isCacheable(request) {
   if (request.method !== 'GET') return false;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
-  if (/^\/(auth|api|rest|graphql)(\/|$)/.test(url.pathname)) return false;
+  // Never cache API, auth, Edge Functions, storage (child photos/PDFs), or the
+  // admin/payment API surfaces — only the app shell and static assets.
+  if (/^\/(auth|api|rest|graphql|functions|storage|admin)(\/|$)/.test(url.pathname)) return false;
   if (SHELL.includes(url.pathname)) return true;
   return (
     url.pathname.startsWith('/_expo/') ||
