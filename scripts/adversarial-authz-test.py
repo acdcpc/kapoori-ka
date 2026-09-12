@@ -5,19 +5,16 @@ Run from repo root: python3 scripts/adversarial-authz-test.py
 Requires .env with the service key, and src/lib/supabase.ts with the anon key.
 """
 import json, os, re, urllib.request, urllib.error
-
 BASE = os.environ.get('SUPABASE_URL', '')
 SRC = open('src/lib/supabase.ts').read()
 ANON = re.search(r"(sb_pub[A-Za-z0-9_]+)", SRC).group(1)
-SR = None
 env = open('.env').read() if os.path.exists('.env') else ''
-m = re.search(r"(sb_secret_[A-Za-z0-9_-]+)", env)
-if not m:
-    raise SystemExit('service key not found in .env — add SR_KEY=... to .env (never commit it)')
+SR_LINE = next((ln for ln in env.splitlines() if ln.startswith('SR_KEY=')), '')
+SR = SR_LINE.split('=', 1)[1].strip() if SR_LINE else os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
 
 # SAFETY: this suite creates and deletes real users in the TARGET project.
 if not BASE or not SR:
-    raise SystemExit('Set SUPABASE_URL and a service key (SR_KEY in .env) to run this suite.')
+    raise SystemExit('Set SUPABASE_URL and SR_KEY in .env to run this suite.')
 if os.environ.get('ADV_ALLOW') != '1':
     raise SystemExit('SAFETY: this suite creates and deletes real users in the target project ('
                      + BASE + '). Run with ADV_ALLOW=1 to confirm you intend to test it.')
