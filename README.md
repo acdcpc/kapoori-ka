@@ -123,14 +123,17 @@ eas build --profile preview --platform android
 ### Quality gates (run before every push)
 
 ```bash
+pnpm install --frozen-lockfile             # reproducible install
 pnpm exec tsc --noEmit                     # types
-npx expo-doctor                            # 21/21 required
-pnpm run validate:release-security         # static security regressions
-pnpm run validate:caregiver-features       # caregiver foundations
-pnpm run validate:hc-calculations          # WHO head-circumference tables + z-scores
-pnpm build:web                             # web/PWA export
+pnpm run doctor                            # Expo diagnostics — 21/21 required
+pnpm run validate:all                      # release-security + caregiver + HC math
+pnpm build:web                             # web/PWA export -> dist/
+npx serve -l 4173 dist &                   # serve the exact artifact
+BASE_URL=http://localhost:4173 pnpm run test:browser   # Chrome/Firefox/mobile matrix
 pnpm audit                                 # see DEPENDENCY_EXCEPTIONS.md
 ```
+
+The full release state, evidence and verdict live in [RELEASE_REPORT.md](RELEASE_REPORT.md).
 
 ---
 
@@ -141,6 +144,7 @@ pnpm audit                                 # see DEPENDENCY_EXCEPTIONS.md
 | [OWNER_ACTIONS.md](OWNER_ACTIONS.md) | Owner-only tasks and verified live-backend state |
 | [SECURITY_AND_SCALE_AUDIT.md](SECURITY_AND_SCALE_AUDIT.md) | RLS/privacy/scale audit + growth-data verification |
 | [DEPENDENCY_EXCEPTIONS.md](DEPENDENCY_EXCEPTIONS.md) | Advisories triaged, patch overrides, accepted exceptions |
+| [RELEASE_REPORT.md](RELEASE_REPORT.md) | Release gates, evidence, device gaps and verdict |
 | [DARK_MODE_IMPLEMENTATION.md](DARK_MODE_IMPLEMENTATION.md) | Theming architecture and palette roles |
 | [WEBSITE_DECISION_RECORD.md](WEBSITE_DECISION_RECORD.md) | Landing-page scope, privacy and route map |
 | [todo.md](todo.md) | Running record of completed work |
