@@ -1,6 +1,6 @@
 # Kapoori Ka — Release Verification Report
 
-**Date:** 13 September 2026 · **Branch:** `main` · **HEAD:** `c28c9a6` (all gates below re-run from a clean checkout at this commit)
+**Date:** 13 September 2026 · **Branch:** `main` · **Gate commit:** `c28c9a6` (all gates re-run from a clean checkout at this commit) · **Report commit:** `e6f43fb`
 
 ## Environment
 | Item | Value |
