@@ -16,15 +16,21 @@ jobs:
     steps:
       - name: Trigger reminder sender
         run: |
-          CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
-            "https://tgnzucqjebnisgrxjfjg.supabase.co/functions/v1/send-vaccine-reminders" \
-            -H "x-reminder-secret: ${{ secrets.REMINDER_CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            -d '{}')
-          echo "HTTP $CODE"
-          cat /tmp/resp.json
-          if [ "$CODE" != "200" ]; then
-            echo "❌ Reminder sender failed"
-            exit 1
-          fi
-          echo "✅ Reminder run complete"
+          # Edge Functions can cold-start slowly; retry a couple of times before
+          # declaring failure (a warm instance answers in ~3s).
+          for attempt in 1 2 3; do
+            CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
+              "https://tgnzucqjebnisgrxjfjg.supabase.co/functions/v1/send-vaccine-reminders" \
+              -H "x-reminder-secret: ${{ secrets.REMINDER_CRON_SECRET }}" \
+              -H "Content-Type: application/json" \
+              -d '{}' --max-time 90)
+            echo "attempt $attempt → HTTP $CODE"
+            cat /tmp/resp.json; echo
+            if [ "$CODE" = "200" ]; then
+              echo "✅ Reminder run complete"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "❌ Reminder sender failed after 3 attempts"
+          exit 1

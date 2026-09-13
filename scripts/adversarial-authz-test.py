@@ -73,6 +73,15 @@ def admin_delete(uid: str) -> int:
         return 0
 
 def cleanup() -> None:
+    # remove any rows this run created that would outlive the accounts
+    for table, col, val in (('web_push_subscriptions', 'endpoint', 'example.com'),
+                            ('push_tokens', 'token', 'advtest')):
+        try:
+            r = urllib.request.Request(f'{BASE}/rest/v1/{table}?{col}=like.*{val}*', method='DELETE')
+            r.add_header('apikey', SR); r.add_header('Authorization', f'Bearer {SR}')
+            urllib.request.urlopen(r)
+        except Exception:
+            pass
     a = admin_delete(A_ID)
     b = admin_delete(B_ID)
     print(f'cleanup: A={a} B={b}', '(idempotent; runs even if a check failed)')

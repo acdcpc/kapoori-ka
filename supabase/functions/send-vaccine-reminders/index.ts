@@ -2,7 +2,13 @@
 // Triggered daily by GitHub Actions (x-reminder-secret header) — the app's
 // native Android builds use OS-scheduled local notifications instead.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.0';
-import webpush from 'npm:web-push@3.6.7';
+// web-push is imported lazily (only when there is something to send) so a
+// no-op run boots fast and cannot hit the gateway boot timeout.
+type WebPush = { setVapidDetails: (s: string, p: string, k: string) => void; sendNotification: (sub: unknown, payload: string) => Promise<unknown> };
+async function loadWebPush(): Promise<WebPush> {
+  const mod = await import('npm:web-push@3.6.7');
+  return (mod.default ?? mod) as unknown as WebPush;
+}
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -56,8 +62,16 @@ Deno.serve(async (request) => {
     return response({ error: 'Server configuration is incomplete.' }, 500);
   }
 
-  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  let webpush: WebPush | null = null;
+  const ensureWebPush = async (): Promise<WebPush> => {
+    if (!webpush) {
+      webpush = await loadWebPush();
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+    }
+    return webpush;
+  };
 
   const today = nepalDate();
   const { data: children, error: childErr } = await admin.from('children').select('id, user_id, name, date_of_birth');
@@ -74,10 +88,20 @@ Deno.serve(async (request) => {
     if (!byChild.has(key)) byChild.set(key, new Map());
     byChild.get(key).set(v.vaccine_name, v);
   }
+  // Ignore/clean rows that cannot be real devices (malformed keys) and rows
+  // that have failed repeatedly — they only slow every run down.
+  const junk: string[] = [];
   const subsByUser = new Map<string, any[]>();
-  for (const s of subs ?? []) {
-    if (!subsByUser.has(s.user_id)) subsByUser.set(s.user_id, []);
-    subsByUser.get(s.user_id)!.push(s);
+  for (const sub of subs ?? []) {
+    const malformed = !sub.p256dh || !sub.auth || sub.p256dh.length < 80 || sub.auth.length < 16;
+    const chronic = (sub.failure_count ?? 0) >= 5;
+    if (malformed || chronic) { junk.push(sub.id); continue; }
+    if (!subsByUser.has(sub.user_id)) subsByUser.set(sub.user_id, []);
+    subsByUser.get(sub.user_id)!.push(sub);
+  }
+
+  if (junk.length) {
+    await admin.from('web_push_subscriptions').delete().in('id', junk);
   }
 
   let sent = 0, failed = 0, removed = 0;
@@ -123,7 +147,8 @@ Deno.serve(async (request) => {
       for (const device of devices) {
         const nowIso = new Date().toISOString();
         try {
-          await webpush.sendNotification(
+          const push = await ensureWebPush();
+          await push.sendNotification(
             { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
             JSON.stringify({ title, body, tag: `vaccine_${id}_${child.id}`, data: { type: 'vaccine', vaccineId: id, childId: child.id } }),
           );
