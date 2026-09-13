@@ -19,6 +19,16 @@ if os.environ.get('ADV_ALLOW') != '1':
     raise SystemExit('SAFETY: this suite creates and deletes real users in the target project ('
                      + BASE + '). Run with ADV_ALLOW=1 to confirm you intend to test it.')
 
+# Production is refused by default: the suite creates and deletes real accounts,
+# so it belongs on a dedicated staging project. The production project ref is
+# hard-coded here only as a DENY list entry.
+PRODUCTION_REF = 'tgnzucqjebnisgrxjfjg'
+if PRODUCTION_REF in BASE and os.environ.get('ADV_EMERGENCY_OVERRIDE') != '1':
+    raise SystemExit(
+        'REFUSED: ' + BASE + ' is the PRODUCTION project. Run this suite against a dedicated '
+        'staging project (SUPABASE_URL=<staging-url>). For a deliberate emergency run, set '
+        'ADV_EMERGENCY_OVERRIDE=1 and document it in the release report.')
+
 def req(method, path, token=None, body=None, key=ANON, headers=None):
     url = BASE + path
     data = json.dumps(body).encode() if body is not None else None

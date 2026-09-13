@@ -27,3 +27,6 @@ src/context/AuthContext.tsx.firebase-backup
 src/utils/growthCalculations.py.consolidate
 # local agent scratch (never ship)
 .openclaw/
+# Python bytecode (validation/test scripts)
+__pycache__/
+*.pyc
