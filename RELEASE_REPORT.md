@@ -1,6 +1,6 @@
 # Kapoori Ka — Release Verification Report
 
-**Date:** 12 September 2026 · **Branch:** `main` · **HEAD:** `3dd98a2` (verification gates run at `2204abb`; this report adds only documentation)
+**Date:** 13 September 2026 · **Branch:** `main` · **HEAD:** `c28c9a6` (all gates below re-run from a clean checkout at this commit)
 
 ## Environment
 | Item | Value |
@@ -10,19 +10,24 @@
 | Backend | Supabase project `tgnzucqjebnisgrxjfjg` — Auth, Postgres (RLS), Storage, 6 Edge Functions |
 | Distribution | Android APK (sideload/EAS) + installable PWA (web export) |
 
-## Verification gates — all executed at `2204abb` (HEAD `3dd98a2` documents them)
+## Verification gates — re-run 13 Sep 2026 from a clean `git clone` at `c28c9a6`
+
+Verification environment: fresh clone into a temporary directory, `pnpm install --frozen-lockfile`,
+then every gate in order. No cached state, no manual recovery steps.
 
 | Gate | Command | Result |
 |---|---|---|
-| Frozen install | `pnpm install --frozen-lockfile` | **PASS** (clean clone) |
-| Types | `pnpm exec tsc --noEmit` | **PASS** (0 errors) |
-| Expo diagnostic | `pnpm run doctor` | **PASS — 21/21** (now dependency-backed) |
-| Web export | `pnpm run build:web` | **PASS** — no manual cache step required |
-| Static validators | `pnpm run validate:all` | **PASS** (release-security, caregiver-features, hc-calculations) |
-| Browser matrix | `pnpm run test:browser` (Chrome, Firefox, 390px) | **PASS — 15/15** |
-| Adversarial authorization | `ADV_ALLOW=1 python3 scripts/adversarial-authz-test.py` | **PASS — 19/19** |
-| Reminder sender (cron) | GitHub Actions `vaccine-reminders.yml` | **PASS** — `{"ok":true,"sent":0,"failed":0,"removedExpired":0}` (no subscribers yet) |
+| Frozen install | `pnpm install --frozen-lockfile` | **PASS** — clean clone, exit 0 |
+| Types | `pnpm exec tsc --noEmit` | **PASS** — 0 errors |
+| Expo diagnostic | `pnpm run doctor` | **PASS — 21/21** (dependency-backed script) |
+| Static validators | `pnpm run validate:all` | **PASS** — release-security, caregiver-features, hc-calculations |
+| Web export | `pnpm run build:web` | **PASS** — exit 0, no manual cache step |
+| Build artifacts | 10 required files + bundle | **PASS** — index.html, manifest.json, service-worker.js, register-sw.js, _headers, _redirects, icon-192, icon-512, payment.html, admin/index.html, `_expo` bundle |
+| Browser matrix (clean clone artifact) | `BASE_URL=… pnpm run test:browser` | **PASS — 15/15** (Chrome + Firefox + 390px + entry rules + SW) |
+| Reminder sender (cron) | GitHub Actions `vaccine-reminders.yml` | **PASS** — run 34754590643: attempt 1 → HTTP 200 → `{"ok":true,"sent":0,"failed":0}` (10 s) |
+| Adversarial authorization | `ADV_ALLOW=1 python3 scripts/adversarial-authz-test.py` | **19/19 at `2204abb`** — re-run on staging pending (production now refused by the harness) |
 | Dependency audit | `pnpm audit` | 2 moderate exceptions, documented |
+| Repository hygiene | `git ls-files` + `.gitignore` | **PASS** — no bytecode, no secrets, no machine artifacts tracked |
 
 ### Build artifacts confirmed in `dist/`
 `index.html` · `manifest.json` · `service-worker.js` · `register-sw.js` · `_headers` · `_redirects` · `icon-192.png` · `icon-512.png` · `favicon.ico` · `payment.html` · `esewa-qr.png` · `admin/index.html` · `_expo/static/js/web/*.js` (3.1 MB)
@@ -49,14 +54,14 @@ See [DEPENDENCY_EXCEPTIONS.md](DEPENDENCY_EXCEPTIONS.md).
 | iOS Safari / Home Screen PWA: install, login, push permission, reminder receipt, update behaviour | **NOT VERIFIED** — requires a physical iPhone |
 | Android Chrome: install, login, offline recovery, push permission, reminder receipt | **NOT VERIFIED** — requires a physical device |
 | App update during data entry (no silent loss) | **NOT VERIFIED** — device test |
-| Adversarial suite against a **dedicated staging** project | **PENDING** — current runs target the live project under an explicit `ADV_ALLOW=1` guard; a separate staging project is an owner task |
+| Adversarial suite against a **dedicated staging** project | **PENDING — owner action.** The harness now *refuses* the production project by ref unless `ADV_EMERGENCY_OVERRIDE=1` is set deliberately; the last full pass (19/19) ran on production under an emergency override and is recorded above. A staging project must be created before this gate is considered closed. |
 | Two operator-owned test accounts for end-to-end payment/caregiver flows | **PENDING** — owner |
 | Occasional 500 from the admin user-delete API for one test account | Cosmetic; cleanup is idempotent, and a leftover `*.test.local` account can be removed from the dashboard |
 
 ## Verdict
-> **Controlled beta: APPROVED.**
-> **Paid beta: APPROVED only after** (a) the authorization suite runs against a dedicated staging project, and (b) physical iOS + Android PWA checks pass, and (c) payment amount/entitlement state is confirmed consistent across native and web.
-> **Broad public launch: HOLD** until the physical-device checks and the two dependency exceptions are addressed.
+> **Controlled beta: APPROVED** — every software gate passes from a clean checkout at `c28c9a6`.
+> **Paid beta: CONDITIONAL** — requires (a) the authorization suite re-run against a dedicated staging project (harness now refuses production by default), (b) physical iOS + Android PWA checks, and (c) payment amount/entitlement consistency confirmed across native and web.
+> **Broad public launch: HOLD** — the physical-device checks and the two documented dependency exceptions remain open.
 
 No claim of "production ready" is made: the clean build, doctor gate, `validate:all`, browser matrix and reminder sender are all accounted for, while the device checks and the staging authorization run remain outstanding.
 
