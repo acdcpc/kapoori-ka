@@ -33,6 +33,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { recordProductEvent } from '../lib/featureAnalytics';
 import { createOfflineMutation } from '../lib/offlineSync';
+import { fetchWithCache, writeCache } from '../lib/offlineCache';
 import { queueOfflineMutation } from '../lib/featureStorage';
 import { CLINICAL_SAFETY_NOTICE, getGrowthTrendFlags } from '../lib/clinicalSafety';
 
@@ -62,6 +63,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [headCirc, setHeadCirc] = useState('');
+  const [offlineMode, setOfflineMode] = useState(false);
   const [bsDate, setBsDate] = useState<NepaliDate>(new NepaliDate());
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -111,27 +113,37 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
         setLoading(false);
         return;
       }
-      const { data, error: sbError } = await supabase
-        .from('growth_records')
-        .select('*')
-        .eq('child_id', child.id)
-        .order('date', { ascending: true });
-      if (sbError) throw sbError;
-      const loaded: GrowthRecord[] = (data || []).map((d: any) => ({
+      // Cache-first: previously loaded records stay visible with no network.
+      const { data: rows, fromCache } = await fetchWithCache<any[]>(`growth:${child.id}`, async () => {
+        const { data, error: sbError } = await supabase
+          .from('growth_records')
+          .select('*')
+          .eq('child_id', child.id)
+          .order('date', { ascending: true });
+        if (sbError) throw sbError;
+        return data || [];
+      });
+      const loaded: GrowthRecord[] = (rows || []).map((d: any) => ({
         id: d.id,
-        childId: d.child_id,
+        childId: d.child_id || d.childId,
         ownerId: d.user_id,
         date: d.date,
         weight: d.weight,
         height: d.height,
+        headCircumference: d.head_circumference ?? d.headCircumference ?? undefined,
         notes: d.notes,
-        ageMonths: d.age_months,
+        ageMonths: d.age_months ?? d.ageMonths,
         bsDate: d.bs_date,
       }));
       setRecords(loaded);
+      setOfflineMode(fromCache);
     } catch (e: any) {
       console.error('Load growth records error:', e?.message || e);
-      Alert.alert('Error', isNe ? 'डेटा लोड भएन।' : 'Could not load growth records.');
+      setOfflineMode(true);
+      Alert.alert(
+        isNe ? 'अफलाइन' : 'Offline',
+        isNe ? 'अफलाइन छ — पहिले लोड भएका रेकर्ड देखाउन सकिएन। इन्टरनेट जोड्नुहोस्।'
+             : 'You are offline and no saved records are available yet. Connect to the internet once to load them.');
     }
     finally { setLoading(false); }
   };
@@ -165,7 +177,25 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
       }
       setWeight(''); setHeight(''); setHeadCirc(''); setBsDate(new NepaliDate()); setShowForm(false);
       if (queued) {
-        setRecords(prev => [...prev, { ...(payload as any), id: `offline-${Date.now()}` }].sort((a, b) => String(a.date).localeCompare(String(b.date))));
+        const optimistic: GrowthRecord = {
+          id: `offline-${Date.now()}`,
+          childId: child.id,
+          ownerId: user?.uid || '',
+          date: adDateStr,
+          weight: w,
+          height: isNaN(h) ? 0 : h,
+          headCircumference: hc > 0 ? hc : undefined,
+          notes: '',
+          ageMonths,
+          bsDate: bsDateStr,
+        } as GrowthRecord;
+        const next = [...records, optimistic].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        setRecords(next);
+        await writeCache(`growth:${child.id}`, next.map(r => ({
+          id: r.id, child_id: r.childId, user_id: r.ownerId, date: r.date,
+          weight: r.weight, height: r.height, head_circumference: r.headCircumference ?? null,
+          notes: r.notes, age_months: r.ageMonths, bs_date: r.bsDate,
+        })));
         Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
       } else {
         loadRecords();
@@ -195,13 +225,35 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
       const hc = parseFloat(firstHeadCirc);
       const today = dayjs().format('YYYY-MM-DD');
       const ageM = getAgeInMonths(child.dateOfBirth, today);
-      const { error: sbError } = await supabase
-        .from('growth_records')
-        .insert({ child_id: child.id, user_id: user?.uid || '', date: today, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageM, notes: '', recorded_at: dayjs().toISOString() });
-      if (sbError) throw sbError;
-      setFirstWeight(''); setFirstHeight('');
-      loadRecords();
-    } catch { Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.'); }
+      const payload = { child_id: child.id, user_id: user?.uid || '', date: today, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageM, notes: '', recorded_at: dayjs().toISOString() };
+      // Same offline-first rule as the main form: never lose a first measurement.
+      let queued = false;
+      const { error: sbError } = await supabase.from('growth_records').insert(payload);
+      if (sbError) {
+        await queueOfflineMutation(createOfflineMutation('create_growth_record', payload, user?.uid || ''));
+        queued = true;
+      }
+      setFirstWeight(''); setFirstHeight(''); setFirstHeadCirc('');
+      if (queued) {
+        const optimistic: GrowthRecord = {
+          id: `offline-${Date.now()}`, childId: child.id, ownerId: user?.uid || '', date: today,
+          weight: w, height: isNaN(h) ? 0 : h, headCircumference: hc > 0 ? hc : undefined,
+          notes: '', ageMonths: ageM, bsDate: undefined,
+        } as GrowthRecord;
+        const next = [...records, optimistic].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        setRecords(next);
+        await writeCache(`growth:${child.id}`, next.map(r => ({ id: r.id, child_id: r.childId, user_id: r.ownerId, date: r.date, weight: r.weight, height: r.height, head_circumference: r.headCircumference ?? null, notes: r.notes, age_months: r.ageMonths })));
+        Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
+      } else {
+        loadRecords();
+      }
+    } catch {
+      try {
+        const payload = { child_id: child.id, user_id: user?.uid || '', date: dayjs().format('YYYY-MM-DD'), weight: w, height: isNaN(parseFloat(firstHeight)) ? 0 : parseFloat(firstHeight), notes: 'queued after error', recorded_at: dayjs().toISOString() };
+        await queueOfflineMutation(createOfflineMutation('create_growth_record', payload, user?.uid || ''));
+        Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
+      } catch { Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.'); }
+    }
     finally { setFirstSaving(false); }
   };
 
@@ -281,6 +333,12 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
   if (records.length === 0) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}>
+        {offlineMode && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color={pal.onClay} />
+            <Text style={styles.offlineBannerText}>{isNe ? 'अफलाइन — बचत गर्न मिल्छ, पछि सिंक हुनेछ' : 'Offline — you can still save, it syncs later'}</Text>
+          </View>
+        )}
         <View style={styles.firstCard}>
           <Text style={styles.firstCardIcon}>📏</Text>
           <Text style={styles.firstCardTitle}>{isNe ? 'पहिलो नाप' : 'First Measurement'}</Text>
@@ -629,6 +687,8 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
   predictorInfoCard: { backgroundColor: pal.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: pal.clay },
   predictorInfoTitle: { fontSize: 16, fontWeight: '700', color: pal.clay, marginBottom: 10 },
   // First Measurement Card
+  offlineBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: pal.gold, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, marginHorizontal: 16, marginTop: 10, marginBottom: 4 },
+  offlineBannerText: { color: pal.onClay, fontWeight: '700', fontSize: 12 },
   firstCard: { backgroundColor: pal.surface, marginHorizontal: 12, marginTop: 24, borderRadius: 20, padding: 24, alignItems: 'center', shadowColor: pal.shadow, shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
   firstCardIcon: { fontSize: 48, marginBottom: 12 },
   firstCardTitle: { fontSize: 22, fontWeight: '800', color: pal.text, marginBottom: 6 },

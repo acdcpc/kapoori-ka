@@ -13,6 +13,7 @@ import Onboarding from '../components/Onboarding';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { fetchWithCache } from '../lib/offlineCache';
 import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
 import ChildPhoto from '../components/ChildPhoto';
 import { RootStackParamList } from '../navigation/types';
@@ -51,14 +52,17 @@ export default function ChildDashboard({ route, navigation }: Props) {
   useEffect(() => {
     const loadSummary = async () => {
       try {
-        // Growth
-        const { data, error: gErr } = await supabase
-          .from('growth_records')
-          .select('*')
-          .eq('child_id', child.id)
-          .eq('user_id', user?.uid || '');
-        if (gErr) throw gErr;
-        const records: GrowthRecord[] = (data || []).map((r: any) => ({
+        // Growth — cache-first so summaries survive offline
+        const { data: growthRows } = await fetchWithCache<any[]>(`growth:${child.id}`, async () => {
+          const { data, error: gErr } = await supabase
+            .from('growth_records')
+            .select('*')
+            .eq('child_id', child.id)
+            .eq('user_id', user?.uid || '');
+          if (gErr) throw gErr;
+          return data || [];
+        });
+        const records: GrowthRecord[] = (growthRows || []).map((r: any) => ({
           id: r.id, childId: r.child_id, ownerId: r.user_id,
           date: r.date, bsDate: r.bs_date, weight: r.weight, height: r.height,
           ageMonths: r.age_months, notes: r.notes, recordedAt: r.recorded_at,

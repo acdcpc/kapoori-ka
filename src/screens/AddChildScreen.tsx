@@ -259,7 +259,11 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
         })
         .select('id')
         .single();
-      if (childErr) throw childErr;
+      if (childErr) {
+        const msg = String((childErr as any)?.message || '');
+        const offline = /network|fetch|timeout|offline/i.test(msg);
+        throw Object.assign(childErr as any, { __offline: offline });
+      }
 
       recordProductEvent(user.uid, 'child_profile_created').catch(() => undefined);
       const childId = childData.id;
@@ -312,6 +316,14 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
 
       Alert.alert('Success', `${storedName} added!`, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (err: any) {
+      if (err?.__offline) {
+        Alert.alert(
+          'अफलाइन / Offline',
+          'नयाँ बच्चा थप्न इन्टरनेट चाहिन्छ। इन्टरनेट जोडेर फेरि प्रयास गर्नुहोस्।\n\nAdding a new child needs an internet connection — please reconnect and try again. (Existing children and their records stay available offline.)',
+        );
+        setSaving(false);
+        return;
+      }
       console.error('AddChild save error:', err?.message || err);
       Alert.alert('Error', 'Could not save.');
     } finally { setSaving(false); }

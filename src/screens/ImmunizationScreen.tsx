@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { recordProductEvent } from '../lib/featureAnalytics';
 import { createOfflineMutation } from '../lib/offlineSync';
 import { queueOfflineMutation } from '../lib/featureStorage';
+import { fetchWithCache } from '../lib/offlineCache';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Speech from 'expo-speech';
 import NepaliDate from 'nepali-date-converter';
@@ -155,6 +156,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingVaccine, setPendingVaccine] = useState<ComputedVaccine | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
   const [bsYear, setBsYear] = useState(2081);
   const [bsMonth, setBsMonth] = useState(4);
   const [bsDay, setBsDay] = useState(1);
@@ -163,11 +165,17 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const loadRecords = async () => {
     try {
       if (!user?.uid || !child?.id) { setVaccineRecords([]); return; }
-      const { data, error: sbError } = await supabase
-        .from('vaccinations')
-        .select('*')
-        .eq('child_id', child.id);
-      if (sbError) throw sbError;
+      // Cache-first: the vaccine schedule stays visible and editable offline.
+      const { data, fromCache } = await fetchWithCache<any[]>(`vaccinations:${child.id}`, async () => {
+        const { data: rows, error: sbError } = await supabase
+          .from('vaccinations')
+          .select('*')
+          .eq('child_id', child.id);
+        if (sbError) throw sbError;
+        return rows || [];
+      });
+      setOfflineMode(fromCache);
+      const sbError = null as any;
       console.log('[IMMUN] loadRecords got', data?.length || 0, 'records');
       if (data?.length) {
         data.slice(0, 3).forEach((d: any) => {

@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { computeVaccineSchedule } from '../utils/vaccineSchedule';
 import { supabase } from '../lib/supabase';
+import { fetchWithCache } from '../lib/offlineCache';
 import { recordProductEvent } from '../lib/featureAnalytics';
 import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
@@ -70,6 +71,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const isNe = language === 'ne';
   const [children, setChildren] = useState<Child[]>([]);
   const [todayAction, setTodayAction] = useState<{ title: string; detail: string; screen: string; params?: any; tone: 'urgent' | 'soon' | 'ok' } | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
@@ -208,12 +210,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       
       if (!user) { setChildren([]); return; }
       await claimExistingRecords(user);
-      const { data, error: sbError } = await supabase
-        .from('children')
-        .select('*')
-        .eq('user_id', user.uid);
-      if (sbError) throw sbError;
-      const loaded: Child[] = (data || []).map((d: any) => ({
+      // Cache-first: the children list stays visible with no network.
+      const { data: rawChildren, fromCache } = await fetchWithCache<any[]>(`children:${user.uid}`, async () => {
+        const { data, error: sbError } = await supabase
+          .from('children')
+          .select('*')
+          .eq('user_id', user.uid);
+        if (sbError) throw sbError;
+        return data || [];
+      });
+      setIsOffline(fromCache);
+      const loaded: Child[] = (rawChildren || []).map((d: any) => ({
         id: d.id,
         name: d.name,
         nameNepali: d.name_nepali,
@@ -383,6 +390,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </ScrollView>
       ) : (
         <>
+        {isOffline && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color={pal.onClay} />
+            <Text style={styles.offlineBannerText}>
+              {isNe ? 'अफलाइन — बचत गरिएको डाटा देखाइँदै' : 'Offline — showing your saved data'}
+            </Text>
+          </View>
+        )}
+
         {todayAction && children.length > 0 && (
           <TouchableOpacity
             style={[styles.todayCard, todayAction.tone === 'urgent' && styles.todayCardUrgent, todayAction.tone === 'soon' && styles.todayCardSoon]}
@@ -519,6 +535,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const makeStyles = (pal: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: pal.bg },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6 },
+  offlineBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: pal.gold, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, marginHorizontal: 16, marginTop: 6 },
+  offlineBannerText: { color: pal.onClay, fontWeight: '700', fontSize: 12 },
   todayCard: { marginHorizontal: 16, marginTop: 6, marginBottom: 10, borderRadius: 16, padding: 14, backgroundColor: pal.surface, borderWidth: 1, borderColor: pal.border },
   todayCardUrgent: { backgroundColor: pal.redLight, borderColor: pal.red },
   todayCardSoon: { backgroundColor: pal.amberLight, borderColor: pal.gold },
