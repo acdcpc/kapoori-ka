@@ -58,6 +58,26 @@ See [DEPENDENCY_EXCEPTIONS.md](DEPENDENCY_EXCEPTIONS.md).
 | Two operator-owned test accounts for end-to-end payment/caregiver flows | **PENDING** — owner |
 | Occasional 500 from the admin user-delete API for one test account | Cosmetic; cleanup is idempotent, and a leftover `*.test.local` account can be removed from the dashboard |
 
+## Physical-device verification — Android (15 Sep 2026)
+
+Device: **Samsung Galaxy A24 (SM-A245F), Android 16** — APK installed in place (`adb install -r`), app data preserved.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Install / in-place update | **PASS** | `Success`; version 1.0.0; no data loss |
+| App launch crash-free | **PASS** | logcat clean across launch, sign-in, home render |
+| Login (email/password, Google, guest) | **PASS** | Nepali login UI rendered; signed in as the owner account |
+| Home + Today card | **PASS** | Live card: "खोप बाँकी: बीसीजी — 1494 दिन ढिलो — अहिले पनि लगाउन सकिन्छ" (calm wording verified on a real overdue vaccine) |
+| Notification channel config | **PASS** | `vaccine-reminders` importance=4 (HIGH) with vibration; permission granted |
+| Reminder **scheduling** | **PASS** | 194 pending RTC_WAKEUP alarms; one at exactly 2026-09-16 02:45 UTC = **08:30 NPT** for the day-of vaccine reminder |
+| Reminder **delivery** | **PENDING** | Scheduled for 16 Sep 08:30 NPT — receipt to be confirmed by the owner |
+| Offline write (measurement) | **FAILED → FIXED** | Saving with no network showed "Could not save": the growth write went straight to Supabase. Now queued locally and replayed on reconnect (commit `4aeabc1`), pending re-test on the next build |
+| PWA install/login/push (Android Chrome) | **BLOCKED** | Requires the web build deployed at a public HTTPS root URL (owner deploy step) |
+| iOS Safari / Home Screen | **BLOCKED** | Requires a physical iPhone |
+
+### Additional defect found and fixed during device verification
+Account deletion left personal health data behind: `children`, `vaccinations`, `growth_records`, `milestones`, `autism_screenings`, `profiles`, `subscriptions` had **no owner foreign key**, so deleted accounts orphaned 10 child rows in production. Fixed live (migration `20260915000001`): orphans removed, all seven tables now `ON DELETE CASCADE` — account deletion now genuinely deletes personal data.
+
 ## Verdict
 > **Controlled beta: APPROVED** — every software gate passes from a clean checkout at `c28c9a6`.
 > **Paid beta: CONDITIONAL** — requires (a) the authorization suite re-run against a dedicated staging project (harness now refuses production by default), (b) physical iOS + Android PWA checks, and (c) payment amount/entitlement consistency confirmed across native and web.
