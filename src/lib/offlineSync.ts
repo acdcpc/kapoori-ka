@@ -9,6 +9,8 @@ const ALLOWED_MUTATIONS = new Set<OfflineMutation['operation']>([
   'create_clinic_visit',
   'update_privacy_preferences',
   'record_export_audit',
+  'create_growth_record',
+  'update_vaccination',
 ]);
 
 export function createOfflineMutation(operation: OfflineMutation['operation'], payload: Record<string, unknown>, ownerId: string): OfflineMutation {
@@ -34,6 +36,20 @@ async function replay(mutation: OfflineMutation, ownerId: string): Promise<void>
   if (mutation.operation === 'update_privacy_preferences') {
     if (mutation.payload.user_id !== ownerId) throw new Error('Privacy preference ownership mismatch');
     const { error } = await supabase.from('user_privacy_preferences').upsert(mutation.payload);
+    if (error) throw error;
+    return;
+  }
+  if (mutation.operation === 'create_growth_record') {
+    if (mutation.payload.user_id !== ownerId) throw new Error('Growth record ownership mismatch');
+    const { error } = await supabase.from('growth_records').insert(mutation.payload);
+    if (error) throw error;
+    return;
+  }
+  if (mutation.operation === 'update_vaccination') {
+    if (mutation.payload.user_id !== ownerId) throw new Error('Vaccination ownership mismatch');
+    const { error } = await supabase
+      .from('vaccinations')
+      .upsert(mutation.payload, { onConflict: 'child_id,vaccine_name' });
     if (error) throw error;
     return;
   }

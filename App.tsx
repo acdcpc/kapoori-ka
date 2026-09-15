@@ -8,7 +8,7 @@ import { ThemeContext, ThemeMode } from './src/context/ThemeContext';
 import { makePalette } from './src/theme';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, Platform, useColorScheme } from 'react-native';
+import { ActivityIndicator, View, Platform, useColorScheme, AppState } from 'react-native';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -36,6 +36,7 @@ import { registerForPushNotifications } from './src/utils/notifications';
 import { RootStackParamList } from './src/navigation/types';
 import { getWebAppUrl } from './src/lib/webConfig';
 import { supabase } from './src/lib/supabase';
+import { flushOfflineQueue } from './src/lib/offlineSync';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = { current: null as any };
@@ -140,6 +141,24 @@ export default function App() {
       }
     };
     prepare();
+  }, []);
+
+  // ── Offline queue auto-sync ─────────────────────────────────────────
+  // Anything captured while offline (measurements, vaccinations, care notes)
+  // is replayed when the app starts and whenever it returns to the foreground.
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id || cancelled) return;
+        const { synced } = await flushOfflineQueue(session.user.id);
+        if (synced > 0) console.log(`[offline] synced ${synced} queued record(s)`);
+      } catch { /* offline still */ }
+    };
+    sync();
+    const sub = AppState.addEventListener('change', (state: string) => { if (state === 'active') sync(); });
+    return () => { cancelled = true; sub.remove(); };
   }, []);
 
   // ── Web entry rules ──────────────────────────────────────────────────

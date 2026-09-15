@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import InfoBubble from '../components/InfoBubble';
 import { supabase } from '../lib/supabase';
 import { recordProductEvent } from '../lib/featureAnalytics';
+import { createOfflineMutation } from '../lib/offlineSync';
+import { queueOfflineMutation } from '../lib/featureStorage';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Speech from 'expo-speech';
 import NepaliDate from 'nepali-date-converter';
@@ -232,12 +234,18 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
       };
       console.log('[IMMUN] record to upsert:', JSON.stringify(record));
 
-      // Idempotent upsert keyed on (child_id, vaccine_name) — no select-then-write race
+      // Idempotent upsert keyed on (child_id, vaccine_name) — no select-then-write race.
+      // Offline-first: a vaccination record must survive no-network conditions, so
+      // failures queue locally and replay when the connection returns.
       const { error: upErr } = await supabase
         .from('vaccinations')
         .upsert(record, { onConflict: 'child_id,vaccine_name' });
-      console.log('[IMMUN] upsert result:', { error: upErr?.message, code: (upErr as any)?.code });
-      if (upErr) throw upErr;
+      if (upErr) {
+        await queueOfflineMutation(createOfflineMutation('update_vaccination', { ...record, user_id: user?.uid || '' }, user?.uid || ''));
+        Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
+        await loadRecords();
+        return;
+      }
 
       console.log('[IMMUN] saved', vaccine.id, 'as', status, 'on', givenDate);
       await loadRecords();

@@ -180,7 +180,7 @@ export interface OfflineMutation {
   id: string;
   ownerId: string;
   createdAt: string;
-  operation: 'create_feeding_record' | 'create_clinic_visit' | 'update_privacy_preferences' | 'record_export_audit';
+  operation: 'create_feeding_record' | 'create_clinic_visit' | 'update_privacy_preferences' | 'record_export_audit' | 'create_growth_record' | 'update_vaccination';
   payload: Record<string, unknown>;
   attempts: number;
   lastError?: string;

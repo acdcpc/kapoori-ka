@@ -32,6 +32,8 @@ import { PremiumGuard } from '../components/PremiumGuard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { recordProductEvent } from '../lib/featureAnalytics';
+import { createOfflineMutation } from '../lib/offlineSync';
+import { queueOfflineMutation } from '../lib/featureStorage';
 import { CLINICAL_SAFETY_NOTICE, getGrowthTrendFlags } from '../lib/clinicalSafety';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GrowthChart'>;
@@ -151,13 +153,35 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
       const bsDateStr = bsDate.format('YYYY-MM-DD');
       const ageMonths = getAgeInMonths(child.dateOfBirth, adDateStr);
       const hc = parseFloat(headCirc);
-      const { error: sbError } = await supabase
-        .from('growth_records')
-        .insert({ child_id: child.id, user_id: user?.uid || '', date: adDateStr, bs_date: bsDateStr, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageMonths, notes: '', recorded_at: dayjs().toISOString() });
-      if (sbError) throw sbError;
-      setWeight(''); setHeight(''); setHeadCirc(''); setBsDate(new NepaliDate()); setShowForm(false); loadRecords();
+      const payload = { child_id: child.id, user_id: user?.uid || '', date: adDateStr, bs_date: bsDateStr, weight: w, height: isNaN(h) ? 0 : h, head_circumference: hc > 0 ? hc : null, age_months: ageMonths, notes: '', recorded_at: dayjs().toISOString() };
+      // Offline-first: a measurement must never be lost just because the
+      // network is down — queue it locally and replay on reconnect.
+      let queued = false;
+      const { error: sbError } = await supabase.from('growth_records').insert(payload);
+      if (sbError) {
+        const mutation = createOfflineMutation('create_growth_record', payload, user?.uid || '');
+        await queueOfflineMutation(mutation);
+        queued = true;
+      }
+      setWeight(''); setHeight(''); setHeadCirc(''); setBsDate(new NepaliDate()); setShowForm(false);
+      if (queued) {
+        setRecords(prev => [...prev, { ...(payload as any), id: `offline-${Date.now()}` }].sort((a, b) => String(a.date).localeCompare(String(b.date))));
+        Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
+      } else {
+        loadRecords();
+      }
       recordProductEvent(user?.uid, 'measurement_added').catch(() => undefined);
-    } catch { Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.'); }
+    } catch (err: any) {
+      // Queue even on unexpected errors so a measurement is never lost.
+      try {
+        const payload = { child_id: child.id, user_id: user?.uid || '', date: dayjs().format('YYYY-MM-DD'), weight: w, height: isNaN(h) ? 0 : h, head_circumference: parseFloat(headCirc) > 0 ? parseFloat(headCirc) : null, notes: 'queued after error', recorded_at: dayjs().toISOString() };
+        await queueOfflineMutation(createOfflineMutation('create_growth_record', payload, user?.uid || ''));
+        setShowForm(false);
+        Alert.alert(isNe ? 'अफलाइन बचत भयो' : 'Saved offline', isNe ? 'इन्टरनेट फर्केपछि आफैँ सिंक हुनेछ।' : 'It will sync automatically when you are back online.');
+      } catch {
+        Alert.alert('Error', isNe ? 'बचत गर्न सकिएन।' : 'Could not save.');
+      }
+    }
     finally { setSaving(false); }
   };
 
