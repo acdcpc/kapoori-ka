@@ -303,7 +303,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
 const makeStyles = (pal: Palette) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: pal.bg },
   container: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: 48 },   // clears the Android gesture strip (see src/lib/sheetLayout.ts)
   headerTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, marginBottom: 8 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backBtn: { padding: 8 },

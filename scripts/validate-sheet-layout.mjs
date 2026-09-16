@@ -73,6 +73,15 @@ assert(/paddingBottom:\s*sheetClearance/.test(home), 'HomeScreen: scroll content
 assert(!/Math\.max\(insets\.bottom,\s*12\)/.test(home), 'HomeScreen: the old 12dp floor is still present');
 checks += 5;
 
+// Scrollable screens whose content can end with an interactive row must also keep
+// the strip clear, otherwise the final row can only be reached when the content
+// happens to leave slack.
+const dash = fs.readFileSync('src/screens/ChildDashboard.tsx', 'utf8');
+const pad = Number((dash.match(/scrollContent:\s*\{\s*paddingBottom:\s*(\d+)/) || [])[1]);
+assert(Number.isFinite(pad) && pad >= GESTURE_STRIP_DP,
+  `ChildDashboard: list bottom padding ${pad}dp is under the ${GESTURE_STRIP_DP}dp strip`);
+checks += 1;
+
 const px = (dp) => Math.round(dp * DENSITY);
 console.log(`sheet layout OK — ${checks} assertions across ${DEVICES.length} devices`);
 console.log(`  clearance floor ....... ${GESTURE_STRIP_DP}dp (old floor ${OLD_FLOOR_DP}dp is the bug)`);
