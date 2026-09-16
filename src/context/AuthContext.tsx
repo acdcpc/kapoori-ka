@@ -371,6 +371,16 @@ function parseUrlParams(url: string): URLSearchParams {
             await supabase.auth.getSession();
           }
         }
+        // Verify we really ended up signed in. Previously a silent failure here
+        // left the user on the login screen with no explanation at all.
+        const { data: after } = await supabase.auth.getSession();
+        if (!after?.session) {
+          const msg = 'Google sign-in did not complete';
+          console.error('[AuthContext]', msg, '- no session after browser success');
+          setError(msg);
+          setLoading(false);
+          throw new Error(msg);
+        }
         console.log('[AuthContext] Google sign-in browser returned success');
       } else if (result.type === 'cancel') {
         console.log('[AuthContext] Google sign-in cancelled by user');

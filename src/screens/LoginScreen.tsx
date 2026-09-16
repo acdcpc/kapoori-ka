@@ -94,7 +94,16 @@ export default function LoginScreen() {
     finally { setLocalLoading(false); }
   };
 
-  const handleGoogleLogin = async () => { setAuthError(null); try { await signInWithGoogle(); } catch (error: any) { setAuthError(getAuthErrorMessage(error, language)); } };
+  const handleGoogleLogin = async () => {
+    setAuthError(null);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      const raw = error instanceof Error ? error.message : String(error);
+      console.log('[LOGIN] Google sign-in error:', raw);
+      setAuthError(getAuthErrorMessage(error, language));
+    }
+  };
   const handleForgotPassword = async () => {
     setAuthError(null);
     if (!resetEmail || !validateEmail(resetEmail)) { setAuthError(isNe ? 'कृपया वैध इमेल ठेगाना प्रविष्ट गर्नुहोस्' : 'Please enter a valid email address'); return; }

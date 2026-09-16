@@ -109,6 +109,39 @@ const errorMap: Record<string, { en: string; ne: string }> = {
     en: 'Incorrect email or password. Please try again.',
     ne: 'गलत इमेल वा पासवर्ड। कृपया पुन: प्रयास गर्नुहोस्।',
   },
+  'Google sign-in did not complete': {
+    en: 'Google sign-in did not finish. Please tap “Continue with Google” again — or use your email and password.',
+    ne: 'गुगल लगइन पूरा हुन सकेन। कृपया “Continue with Google” फेरि थिच्नुहोस् — वा इमेल र पासवर्ड प्रयोग गर्नुहोस्।',
+  },
+  // Supabase OAuth (Google) sign-in
+  'Unable to exchange external code': {
+    en: 'Google sign-in could not be completed. Please try again — if it keeps failing, sign in with email instead.',
+    ne: 'गुगलबाट लगइन पूरा हुन सकेन। कृपया पुन: प्रयास गर्नुहोस् — फेरि पनि नभए इमेलबाट लगइन गर्नुहोस्।',
+  },
+  'invalid flow state': {
+    en: 'Google sign-in was interrupted. Please tap “Continue with Google” again.',
+    ne: 'गुगल लगइन बीचमै रोकियो। कृपया “Continue with Google” फेरि थिच्नुहोस्।',
+  },
+  'bad_oauth_state': {
+    en: 'Google sign-in was interrupted. Please try again.',
+    ne: 'गुगल लगइन बीचमै रोकियो। कृपया पुन: प्रयास गर्नुहोस्।',
+  },
+  'Error getting user profile from external provider': {
+    en: 'Google did not share your profile details. Please try again or use email sign-in.',
+    ne: 'गुगलले प्रोफाइल जानकारी दिएन। कृपया पुन: प्रयास गर्नुहोस् वा इमेलबाट लगइन गर्नुहोस्।',
+  },
+  'provider is not enabled': {
+    en: 'Google sign-in is unavailable right now. Please sign in with your email and password.',
+    ne: 'गुगल लगइन अहिले उपलब्ध छैन। कृपया इमेल र पासवर्डले लगइन गर्नुहोस्।',
+  },
+  'Unsupported provider': {
+    en: 'Google sign-in is unavailable right now. Please sign in with your email and password.',
+    ne: 'गुगल लगइन अहिले उपलब्ध छैन। कृपया इमेल र पासवर्डले लगइन गर्नुहोस्।',
+  },
+  'Signups not allowed for this instance': {
+    en: 'New sign-ups are temporarily closed. Please try again later.',
+    ne: 'नयाँ दर्ता अहिले बन्द छ। कृपया पछि पुन: प्रयास गर्नुहोस्।',
+  },
   'For security purposes, you can only request this after': {
     en: 'Too many attempts. Please wait a moment and try again.',
     ne: 'धेरै प्रयास भयो। कृपया केही समय पर्खेर पुन: प्रयास गर्नुहोस्।',

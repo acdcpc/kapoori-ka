@@ -18,6 +18,7 @@ import { computeVaccineSchedule } from '../utils/vaccineSchedule';
 import { supabase } from '../lib/supabase';
 import { fetchWithCache } from '../lib/offlineCache';
 import { recordProductEvent } from '../lib/featureAnalytics';
+import { isPremiumActive } from '../lib/premium';
 import ChildPhoto from '../components/ChildPhoto';
 import { Child } from '../types';
 import { LanguageContext } from '../context/LanguageContext';
@@ -59,7 +60,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const updateTextScale = (textScale: 'standard' | 'large' | 'extra_large') => { setA11yPrefs({ ...a11yPrefs, textScale }); };
   const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
-  const { signOutUser, user } = useAuth();
+  const { signOutUser, user, subscription } = useAuth();
+  const premiumActive = isPremiumActive(subscription);
   const insets = useSafeAreaInsets();
   const SCREEN_H = Dimensions.get('window').height;
   const [isAdmin, setIsAdmin] = useState(false);
@@ -426,6 +428,31 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </TouchableOpacity>
         )}
 
+        {!premiumActive && children.length > 0 && (
+          <TouchableOpacity
+            style={styles.premiumCta}
+            onPress={() => navigation.navigate('Subscription')}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={isNe ? 'प्रिमियम सदस्यता हेर्नुहोस्' : 'View premium subscription'}
+          >
+            <View style={styles.premiumCtaIcon}>
+              <Ionicons name="star" size={18} color={pal.onAccent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.premiumCtaTitle}>{isNe ? 'प्रिमियम सदस्यता' : 'Premium Subscription'}</Text>
+              <Text style={styles.premiumCtaBody}>
+                {isNe
+                  ? 'वृद्धि चार्ट, विकास मापदण्ड, पोषण गाइड, अटिजम स्क्रिनिङ र PDF रिपोर्ट — ६ महिना रु. ६५० वा वार्षिक रु. ८५०'
+                  : 'Growth charts, milestones, feeding guide, autism screening & PDF reports — NPR 650 / 6 months or NPR 850 / year'}
+              </Text>
+            </View>
+            <View style={styles.premiumCtaBtn}>
+              <Text style={styles.premiumCtaBtnText}>{isNe ? 'हेर्नुहोस्' : 'View'}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <FlatList
           data={children}
           renderItem={renderChild}
@@ -576,6 +603,22 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
   settingsBtnLabel: { fontSize: 13, color: pal.muted, fontWeight: '500' },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4, borderWidth: 1, borderColor: pal.actionBg, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
   logoutBtnLabel: { fontSize: 13, color: pal.red, fontWeight: '600' },
+  premiumCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 15, marginTop: 14, marginBottom: 2,
+    backgroundColor: pal.surface, borderRadius: 16, padding: 14,
+    borderWidth: 1.5, borderColor: pal.clay,
+  },
+  premiumCtaIcon: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: pal.clay,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  premiumCtaTitle: { fontSize: 15, fontWeight: '800', color: pal.text },
+  premiumCtaBody: { fontSize: 12, color: pal.muted, marginTop: 3, lineHeight: 17 },
+  premiumCtaBtn: {
+    backgroundColor: pal.clay, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+  },
+  premiumCtaBtnText: { color: pal.onAccent, fontWeight: '800', fontSize: 13 },
   settingsPanel: { backgroundColor: pal.surface, borderTopWidth: 1, borderTopColor: pal.border, padding: 16, paddingTop: 8 },
   settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: pal.border, alignSelf: 'center', marginBottom: 12 },
   settingsTitle: { fontSize: 16, fontWeight: '700', color: pal.text, marginBottom: 12 },

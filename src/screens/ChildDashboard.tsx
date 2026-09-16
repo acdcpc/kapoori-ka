@@ -12,6 +12,7 @@ import Onboarding from '../components/Onboarding';
 
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { isPremiumActive } from '../lib/premium';
 import { supabase } from '../lib/supabase';
 import { fetchWithCache } from '../lib/offlineCache';
 import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
@@ -36,7 +37,7 @@ export default function ChildDashboard({ route, navigation }: Props) {
   const t = translations[language];
   const isNe = language === 'ne';
 
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const isPremium = isPremiumActive(subscription);
   const { preferences } = useAccessibility();
 
   // Dashboard summary state
