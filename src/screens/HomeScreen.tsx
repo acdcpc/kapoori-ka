@@ -64,6 +64,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const premiumActive = isPremiumActive(subscription);
   const isGuest = !!(user as any)?.isAnonymous;
   const insets = useSafeAreaInsets();
+
+// Bottom padding floor, in dp. React Native styles are density-independent, so a
+// floor of 12 leaves the last row of the sheet inside the gesture strip on a
+// 3x-density phone (12dp ~ 33px vs a ~132px gesture area): the row renders but
+// the tap is swallowed by the system back/home gesture. 48dp clears it.
+const GESTURE_SAFE_BOTTOM = 48;
   const SCREEN_H = Dimensions.get('window').height;
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -512,7 +518,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         // rows — All settings, Admin, About, Logout — render underneath the
         // system navigation area and cannot be tapped. Constrain the height,
         // scroll the content, and keep clear of the bottom inset.
-        <View style={[styles.settingsPanel, { maxHeight: SCREEN_H * 0.85, paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+        <View style={[styles.settingsPanel, { maxHeight: SCREEN_H * 0.85, paddingBottom: Math.max(insets.bottom, GESTURE_SAFE_BOTTOM) + 8 }]}>
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
