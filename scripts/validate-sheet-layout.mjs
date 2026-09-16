@@ -83,6 +83,38 @@ assert(Number.isFinite(pad) && pad >= GESTURE_STRIP_DP,
 checks += 1;
 
 const px = (dp) => Math.round(dp * DENSITY);
+// ---------------------------------------------------------------------------
+// Measured device fixture — Galaxy A24, ADMIN account, Nepali UI, 2026-09-16,
+// installed build (pre-fix). Row tops in device pixels, read from a uiautomator
+// dump: the title at 1218, then संस्करण 1462, भाषा 1609, रूप 1783, अक्षरको आकार
+// 1950, प्रिमियम सदस्यता 2063, सबै सेटिङ 2182, प्रशासन 2301 — where प्रशासन was
+// already clipped by the screen edge (2340) and परिचय/लग आउट never rendered.
+// Swiping inside the panel moved nothing: no bounded viewport, so no scroll.
+// The admin sheet is the tallest row stack, so it defines the requirement.
+const ADMIN_ROW_TOPS_PX = [1218, 1462, 1609, 1783, 1950, 2063, 2182, 2301];
+const ROW_PITCH_PX = 119;              // measured: प्रिमियम 2063 -> सबै सेटिङ 2182
+const ROWS_NEVER_RENDERED = 2;         // परिचय (About), लग आउट (Logout)
+const PANEL_TOP_PX = 1150;             // panel's top padding above the title row
+
+const lastAdminRowBottomPx = ADMIN_ROW_TOPS_PX[ADMIN_ROW_TOPS_PX.length - 1]
+  + (1 + ROWS_NEVER_RENDERED) * ROW_PITCH_PX;
+assert(lastAdminRowBottomPx > stripTopPx,
+  'the measured admin failure no longer reproduces — re-measure on the device');
+const lostPx = lastAdminRowBottomPx - stripTopPx;
+assert(lostPx > 400,
+  `expected the old build to bury the admin rows (measured ${lostPx}px below the strip top)`);
+
+const adminContentDp = (lastAdminRowBottomPx - PANEL_TOP_PX) / DENSITY;
+const a24ViewportDp = maxHeight(832, 24, 0) - SHEET_CHROME_DP;
+assert(adminContentDp <= a24ViewportDp,
+  `admin sheet ${adminContentDp.toFixed(0)}dp must fit the ${a24ViewportDp}dp A24 viewport`);
+const smallViewportDp = maxHeight(640, 24, 0) - SHEET_CHROME_DP;
+assert(adminContentDp > smallViewportDp,
+  'on a small phone the admin sheet must be taller than its viewport — that is the case the old build broke, and why the ScrollView must be bounded');
+checks += 4;
+
+console.log(`admin sheet fixture .... content ${adminContentDp.toFixed(0)}dp | A24 viewport ${a24ViewportDp}dp (fits) | small-phone viewport ${smallViewportDp}dp (scrolls) | old build buried ${lostPx.toFixed(0)}px of rows`);
+
 console.log(`sheet layout OK — ${checks} assertions across ${DEVICES.length} devices`);
 console.log(`  clearance floor ....... ${GESTURE_STRIP_DP}dp (old floor ${OLD_FLOOR_DP}dp is the bug)`);
 console.log(`  A24 screen ............ ${SCREEN_PX}px  | gesture strip ${STRIP_PX}px, starts at y=${stripTopPx}`);
