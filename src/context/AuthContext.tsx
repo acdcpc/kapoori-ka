@@ -11,6 +11,7 @@ import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '../config/googleAuth';
 import { registerForPushNotifications, armAllVaccineRemindersForUser } from '../utils/notifications';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -297,6 +298,38 @@ function parseUrlParams(url: string): URLSearchParams {
   return new URLSearchParams(clean);
 }
 
+  /**
+   * Native Google sign-in (account picker → ID token → Supabase).
+   * Returns true when the user is signed in, false when the native path is
+   * unavailable (module missing, no client ID, user cancelled) so the caller
+   * can fall back to the browser flow.
+   */
+  const tryNativeGoogleSignIn = async (): Promise<boolean> => {
+    if (!GOOGLE_WEB_CLIENT_ID) return false;
+    try {
+      const mod: any = await import('@react-native-google-signin/google-signin');
+      const G = mod?.GoogleSignin ?? mod?.default;
+      if (!G?.configure) return false;
+      G.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+        offlineAccess: false,
+      });
+      await G.hasPlayServices?.({ showPlayServicesUpdateDialog: false }).catch?.(() => true);
+      const res = await G.signIn();
+      if (!res || res.type === 'cancelled') return false;
+      const idToken: string | null = res?.data?.idToken ?? null;
+      if (!idToken) return false;
+      const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+      if (error) throw error;
+      console.log('[AuthContext] Signed in via native Google Sign-In');
+      return true;
+    } catch (e: any) {
+      console.log('[AuthContext] Native Google Sign-In unavailable, using browser flow:', e?.message || e);
+      return false;
+    }
+  };
+
   const signInWithGoogle = async () => {
     setError(null); setLoading(true);
     try {
@@ -304,6 +337,12 @@ function parseUrlParams(url: string): URLSearchParams {
       // makeRedirectUri returns the native scheme on native and window.location.origin on web.
       const redirectTo = makeRedirectUri({ scheme: 'com.kapoori.ka', path: 'auth/callback' });
       console.log('[AuthContext] Google sign-in redirect URL:', redirectTo);
+
+      if (!isWeb) {
+        // Prefer the native picker: it removes the browser/deep-link round trip
+        // that makes the OAuth flow fail intermittently on Android.
+        if (await tryNativeGoogleSignIn()) { setLoading(false); return; }
+      }
 
       if (isWeb) {
         // Web: let the browser handle the OAuth redirect. supabase detectSessionInUrl

@@ -62,6 +62,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user, subscription } = useAuth();
   const premiumActive = isPremiumActive(subscription);
+  const isGuest = !!(user as any)?.isAnonymous;
   const insets = useSafeAreaInsets();
   const SCREEN_H = Dimensions.get('window').height;
   const [isAdmin, setIsAdmin] = useState(false);
@@ -428,7 +429,41 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </TouchableOpacity>
         )}
 
-        {!premiumActive && children.length > 0 && (
+        {isGuest && (
+          <TouchableOpacity
+            style={[styles.premiumCta, { borderColor: pal.border }]}
+            onPress={() => Alert.alert(
+              isNe ? 'अतिथि मोड' : 'Guest mode',
+              isNe
+                ? 'अहिलेका रेकर्ड यही फोनमा मात्र छन् — फोन बदल्नु वा एप हटाउनुभयो भने हराउँछन्। खाता बनाए सुरक्षित रहन्छन् र सदस्यता पनि लिन सकिन्छ।'
+                : 'Your records currently live only on this phone — they are lost if you change phones or uninstall. Create an account to keep them safe and to be able to subscribe.',
+              [
+                { text: isNe ? 'खाता बनाउनुहोस्' : 'Create account', onPress: async () => { try { await signOutUser(); } catch { /* returns to the login screen */ } } },
+                { text: isNe ? 'पछि' : 'Not now', style: 'cancel' },
+              ],
+            )}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={isNe ? 'खाता बनाउनुहोस्' : 'Create an account'}
+          >
+            <View style={[styles.premiumCtaIcon, { backgroundColor: pal.muted }]}>
+              <Ionicons name="person-outline" size={18} color={pal.onAccent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.premiumCtaTitle}>{isNe ? 'अतिथि मोडमा हुनुहुन्छ' : 'You are in guest mode'}</Text>
+              <Text style={styles.premiumCtaBody}>
+                {isNe
+                  ? 'रेकर्ड यही फोनमा मात्र सुरक्षित छन्। खाता बनाउनुहोस् — अनि नै प्रिमियम सदस्यता पनि लिन सकिन्छ।'
+                  : 'Records stay only on this phone. Create an account to keep them safe — and to be able to subscribe.'}
+              </Text>
+            </View>
+            <View style={styles.premiumCtaBtn}>
+              <Text style={styles.premiumCtaBtnText}>{isNe ? 'बनाउनुहोस्' : 'Create'}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {!isGuest && !premiumActive && children.length > 0 && (
           <TouchableOpacity
             style={styles.premiumCta}
             onPress={() => navigation.navigate('Subscription')}

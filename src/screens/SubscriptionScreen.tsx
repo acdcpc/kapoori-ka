@@ -67,7 +67,7 @@ export default function SubscriptionScreen() {
   const { palette: t } = useContext(ThemeContext);
   const styles = makeStyles(t);
   const { language } = useContext(LanguageContext);
-  const { subscription, redeemCode, refreshUserData, loading: authLoading } = useAuth();
+  const { subscription, redeemCode, refreshUserData, loading: authLoading, user, signOutUser, signInWithGoogle } = useAuth();
   const isNe = language === 'ne';
 
   const [redemptionCode, setRedemptionCode] = useState('');
@@ -81,6 +81,10 @@ export default function SubscriptionScreen() {
   const [screenshot, setScreenshot] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
+  // Guest (anonymous) sessions have no email, so submit-payment rejects them.
+  // Show a clear way forward instead of a paywall that cannot possibly work.
+  const isGuest = !!(user as any)?.isAnonymous;
 
   const freeFeatures = isNe ? FREE_FEATURES_NE : FREE_FEATURES_EN;
   const paidFeatures = isNe ? PAID_FEATURES_NE : PAID_FEATURES_EN;
@@ -153,8 +157,18 @@ export default function SubscriptionScreen() {
       const headers = await authHeaders();
       const form = new FormData();
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        // Never post a payment without a real account: the server needs the
+        // email to attach the receipt and the activation to someone.
+        setSubmitting(false);
+        Alert.alert(
+          isNe ? 'खाता चाहिन्छ' : 'Account needed',
+          isNe ? 'भुक्तानी पठाउन पहिले गुगल वा इमेलबाट खाता बनाउनुहोस्।' : 'Please create an account (Google or email) before submitting a payment.',
+        );
+        return;
+      }
       form.append('name', user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Parent');
-      form.append('email', user?.email ?? '');
+      form.append('email', user?.email);
       form.append('mobile', mobile.trim());
       form.append('plan', payPlan);
       form.append('transaction_id', ref);
@@ -217,6 +231,62 @@ export default function SubscriptionScreen() {
 
   if (authLoading || redeeming) {
     return <ActivityIndicator size="large" color={t.clay} style={{ flex: 1 }} />;
+  }
+
+  const startRealAccount = async () => {
+    setSwitchingAccount(true);
+    try {
+      await signOutUser();
+      await signInWithGoogle();
+    } catch { /* handled by the auth layer (message shown there) */ }
+    finally { setSwitchingAccount(false); }
+  };
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView style={styles.container} contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+          <View style={styles.statusCard}>
+            <Ionicons name="person-circle-outline" size={30} color={t.clay} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.statusActive}>{isNe ? 'सदस्यता लिन खाता चाहिन्छ' : 'Subscriptions need an account'}</Text>
+              <Text style={styles.guestText}>
+                {isNe
+                  ? 'तपाईं अतिथिको रूपमा चलाउँदै हुनुहुन्छ। प्रिमियम सदस्यता लिन गुगल वा इमेलबाट खाता बनाउनुहोस्। भुक्तानी रसिद र सक्रियता खातासँग जोडिनुपर्छ।'
+                  : 'You are using the app as a guest. Premium needs a real account (Google or email) because the payment receipt and activation must be tied to it.'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statusCard}>
+            <Ionicons name="information-circle-outline" size={24} color={t.muted} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.guestText}>
+                {isNe
+                  ? 'ध्यान दिनुहोस्: अतिथि अवस्थामा हालिएका बच्चाको रेकर्ड नयाँ खातामा सर्दैन — तिनीहरू यही फोनमा रहन्छन्।'
+                  : 'Note: children added while in guest mode do not move to the new account — they stay on this phone only.'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.payBtn, switchingAccount && { opacity: 0.6 }]}
+            onPress={startRealAccount}
+            disabled={switchingAccount}
+          >
+            {switchingAccount ? <ActivityIndicator color={t.onAccent} /> : (
+              <>
+                <Ionicons name="logo-google" size={18} color={t.onAccent} />
+                <Text style={styles.payBtnText}>{isNe ? 'गुगलबाट खाता बनाउनुहोस्' : 'Create account with Google'}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <Text style={[styles.guestText, { textAlign: 'center', marginTop: 10 }]}>
+            {isNe ? 'वा लगआउट गरी इमेल/पासवर्डले लगइन गर्नुहोस्।' : 'Or log out and sign in with your email and password.'}
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -536,5 +606,6 @@ const makeStyles = (t: Palette) => StyleSheet.create({
   stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: t.clay, alignItems: 'center', justifyContent: 'center' },
   stepNumText: { color: t.onAccent, fontWeight: '900', fontSize: 12 },
   stepTitle: { fontWeight: '800', color: t.text, fontSize: 14 },
+  guestText: { fontSize: 13, color: t.muted, lineHeight: 19 },
   stepText: { fontSize: 12.5, color: t.muted2, lineHeight: 18, marginTop: 2 },
 });
