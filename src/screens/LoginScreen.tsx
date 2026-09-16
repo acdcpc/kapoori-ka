@@ -58,15 +58,37 @@ export default function LoginScreen() {
         if (password !== confirmPassword) { setAuthError(isNe ? 'पासवर्ड मिलेन।' : 'Passwords do not match.'); setLocalLoading(false); return; }
         console.log('[LOGIN] Calling signUpWithEmail...');
         const signUpResult = await signUpWithEmail(email, password);
-        console.log('[LOGIN] signUpWithEmail returned:', JSON.stringify({ hasSession: !!signUpResult?.session, hasUser: !!signUpResult?.user }));
         if (!signUpResult?.session) {
+          // Email confirmation is enabled on this project — ask them to confirm.
           setVerificationSent(true);
           setPassword(''); setConfirmPassword('');
+        } else {
+          Alert.alert(
+            isNe ? '🎉 खाता बनियो!' : '🎉 Account created!',
+            isNe
+              ? 'स्वागत छ! तपाईं अहिले लगइन हुनुभयो। अब बच्चाको प्रोफाइल बनाउन सुरु गर्नुहोस्।'
+              : 'Welcome! You are signed in. Next step: add your child\u2019s profile to start tracking growth and vaccines.',
+          );
         }
       } else { await signInWithEmail(email, password); }
     } catch (error: any) {
-      const msg = (error instanceof Error ? error.message : String(error)) || (isNe ? 'प्रमाणीकरण त्रुटि।' : 'Authentication error.');
-      console.log('[LOGIN] handleEmailAction error:', msg);
+      const raw = (error instanceof Error ? error.message : String(error)) || '';
+      const code = String((error as any)?.code || '');
+      const alreadyRegistered = /already|exists|registered/i.test(raw + ' ' + code);
+      console.log('[LOGIN] handleEmailAction error:', raw, '| code:', code);
+      if (alreadyRegistered) {
+        // Helpful path: this email is taken — switch them to sign-in and explain.
+        setIsRegistering(false);
+        setPassword(''); setConfirmPassword('');
+        Alert.alert(
+          isNe ? 'यो इमेलमा पहिले नै खाता छ' : 'This email already has an account',
+          isNe
+            ? 'त्यसैले नयाँ खाता बनिएन। कृपया सोही इमेल र पासवर्डले लगइन गर्नुहोस्। पासवर्ड बिर्सनुभएको छ भने “पासवर्ड बिर्सनुभयो?” थिच्नुहोस् — नयाँ खाता चाहिन्छ भने अर्को इमेल प्रयोग गर्नुहोस्।'
+            : 'So no new account was created. Sign in with that email and its password instead. Forgot it? Tap “Forgot password?”. To start fresh, use a different email address.',
+        );
+        return;
+      }
+      const msg = raw || (isNe ? 'प्रमाणीकरण त्रुटि।' : 'Authentication error.');
       setAuthError(getAuthErrorMessage(error, language) || msg);
     }
     finally { setLocalLoading(false); }
@@ -146,6 +168,11 @@ export default function LoginScreen() {
             />
 
             <Text style={styles.label}>{isNe ? 'पासवर्ड' : 'Password'}</Text>
+            {isRegistering && (
+              <Text style={styles.pwHint}>
+                {isNe ? 'कम्तिमा ८ अक्षर — कम्तिमा एक अक्षर र एक अंक (जस्तै: kapoori2026)' : 'At least 8 characters, with at least one letter and one number (e.g. kapoori2026)'}
+              </Text>
+            )}
             <View style={styles.pwContainer}>
               <TextInput
                 style={[styles.input, styles.pwInput, passwordFocused && styles.inputFocused, authError && styles.inputError]}

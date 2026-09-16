@@ -165,7 +165,10 @@ export default function SubscriptionScreen() {
       }
       const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-payment`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+        // NOTE: never set Content-Type for FormData manually — React Native adds
+        // it with the multipart boundary; a bare 'multipart/form-data' header
+        // makes the server unable to parse the body (payment uploads failed).
+        headers: { ...headers },
         body: form,
       });
       const json = await res.json();
