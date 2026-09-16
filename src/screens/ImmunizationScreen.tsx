@@ -219,7 +219,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
 
   const handleSetStatus = (vaccine: ComputedVaccine, status: 'given' | 'missed') => {
     if (status === 'given') recordProductEvent(user?.uid, 'vaccine_recorded').catch(() => undefined);
-    // Premium gate: free users cannot set status for upcoming/missed vaccines
+    // Vaccines are free for everyone — no premium gate here.
 
     if (status === 'given') {
       setPendingVaccine(vaccine); setShowDatePicker(true); setSelectedADDate(dayjs().format('YYYY-MM-DD'));
@@ -475,8 +475,6 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
           </ScrollView>
         </ScrollView>
       )}
-
-      {/* Premium Modal — shown when free users tap Upcoming/Missed */}
 
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="slide">

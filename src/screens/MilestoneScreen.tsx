@@ -83,7 +83,16 @@ export default function MilestoneScreen({ route, navigation }: Props) {
 
   const updateStatus = async (milestoneId: string, status: 'achieved' | 'denied') => {
     if (!isPremium) {
-      Alert.alert(isNe ? 'प्रिमियम सुविधा' : 'Premium Feature', isNe ? 'विकासका चरणहरू चिन्ह लगाउन प्रिमियम सदस्यता आवश्यक छ।' : 'Marking milestones requires a premium subscription.');
+      Alert.alert(
+        isNe ? 'प्रिमियम सुविधा' : 'Premium Feature',
+        isNe
+          ? 'विकासका चरणहरू चिन्ह लगाउन प्रिमियम सदस्यता आवश्यक छ — ६ महिना रु. ६५० वा वार्षिक रु. ८५०।'
+          : 'Marking milestones requires a premium subscription — NPR 650 for 6 months or NPR 850 yearly.',
+        [
+          { text: isNe ? 'सदस्यता लिनुहोस्' : 'Subscribe', onPress: () => navigation.navigate('Subscription' as any) },
+          { text: isNe ? 'पछि' : 'Not now', style: 'cancel' },
+        ],
+      );
       return;
     }
     try {

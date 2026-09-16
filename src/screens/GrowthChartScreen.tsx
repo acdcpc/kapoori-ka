@@ -501,10 +501,18 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
               <Text style={styles.addBtnText}>{isNe ? 'नयाँ मापन थप्नुहोस्' : 'Add New Measurement'}</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.addBtnLocked}>
+            <TouchableOpacity
+              style={styles.addBtnLocked}
+              onPress={() => navigation.navigate('Subscription' as any)}
+              accessibilityRole="button"
+              accessibilityLabel={isNe ? 'प्रिमियम सदस्यता लिनुहोस्' : 'Get premium subscription'}
+            >
               <Ionicons name="lock-closed" size={20} color={pal.clay} />
-              <Text style={styles.addBtnLockedText}>{isNe ? 'प्रिमियम सुविधा — बृद्धि निदान र WHO प्रतिशत चार्टहरू' : 'Premium Feature — Growth diagnostics & WHO percentile charts'}</Text>
-            </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addBtnLockedText}>{isNe ? 'प्रिमियम सुविधा — बृद्धि निदान र WHO प्रतिशत चार्टहरू' : 'Premium Feature — Growth diagnostics & WHO percentile charts'}</Text>
+                <Text style={styles.addBtnLockedCta}>{isNe ? 'सदस्यता लिनुहोस् →' : 'Get subscription →'}</Text>
+              </View>
+            </TouchableOpacity>
           )}
 
           {/* Add Modal */}
@@ -639,6 +647,7 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
   legendText: { fontSize: 11, color: pal.muted },
 
   addBtn: { backgroundColor: pal.clay, marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 3, marginBottom: 12 },
+  addBtnLockedCta: { color: pal.clay, fontWeight: '800', fontSize: 13, marginTop: 3 },
   addBtnLocked: { backgroundColor: pal.surfaceWarm, marginHorizontal: 12, padding: 14, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pal.clay, marginBottom: 12 },
   addBtnText: { color: pal.onAccent, fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
   addBtnLockedText: { color: pal.clay, fontSize: 13, fontWeight: '600', marginLeft: 8, flex: 1 },
