@@ -2,7 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
-  Alert, ActivityIndicator, ScrollView,
+  Alert, ActivityIndicator, ScrollView, Dimensions,
 } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { Palette } from '../theme';
@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Onboarding from '../components/Onboarding';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { computeVaccineSchedule } from '../utils/vaccineSchedule';
@@ -60,6 +60,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
   const { signOutUser, user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const SCREEN_H = Dimensions.get('window').height;
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     (async () => {
@@ -443,9 +445,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {showSettings && (
-        <View style={styles.settingsPanel}>
+        // The settings sheet can be taller than the screen on gesture-navigation
+        // phones (Android 16 edge-to-edge). Without a scroll container the last
+        // rows — All settings, Admin, About, Logout — render underneath the
+        // system navigation area and cannot be tapped. Constrain the height,
+        // scroll the content, and keep clear of the bottom inset.
+        <View style={[styles.settingsPanel, { maxHeight: SCREEN_H * 0.85, paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
           <View style={styles.settingsRow}>
             <Ionicons name="medical-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>Kapoori Ka</Text>
@@ -522,6 +530,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <Ionicons name="log-out-outline" size={18} color={pal.red} />
             <Text style={[styles.settingsLabel, { color: pal.red }]}>{isNe ? 'लग आउट' : 'Logout'}</Text>
           </TouchableOpacity>
+          </ScrollView>
         </View>
       )}
       {showOnboarding && <Onboarding onComplete={() => { setShowOnboarding(false); recordProductEvent(user?.uid, 'onboarding_completed').catch(() => undefined); }} screen="home" />}
