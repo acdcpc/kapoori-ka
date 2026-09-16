@@ -67,17 +67,22 @@ Client IDs in the Google Cloud project `kapoori-ka` (project number `39172947424
 - Android client registered for package `com.kapoori.ka` with SHA-1
   `F9:70:A8:53:C2:DC:F6:D5:C9:1A:DF:5F:1C:37:DE:4F:E8:19:B1:6A` — matches the EAS
   signing key of the installed APK, so Google will accept the app.
-- The app's `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set to `Kapoori Ka Web` (Google
-  only mints an ID token for a Web-type client).
-- [ ] **Supabase → Authentication → Providers → Google → `Client IDs`** → append
+- The app's `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set to the client Supabase already
+  authorises — `Web client (auto created by Google Service)`, i.e.
+  `391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com`
+  (type **Web application**, same project). Google only mints an ID token for a
+  Web-type client, and using this one means the token audience is already accepted
+  by Supabase, so no dashboard change is required.
+- [ ] **Only if logcat reports an audience error** (`Unacceptable audience in
+      id_token`): append the spare Web client
       `391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com`
-      (comma-separated; **keep the existing entry**) → Save.
-      The project's Google provider currently authorizes only its own client ID
-      (`391729474242-c8etl1f9…`, same project), so the ID token minted for the Web
-      client would be rejected as an unauthorized audience and the app would fall
-      back to the browser flow.
+      to Supabase → Authentication → Providers → Google → `Client IDs`
+      (comma-separated, **keeping the existing entry**) → Save.
       Do this from the dashboard UI — do **not** let an automated agent rewrite that
-      field: clobbering the existing entry would break the working browser sign-in.
+      field: clobbering the existing entry would break the working browser sign-in,
+      and its value cannot be reproduced from a screenshot.
+      Not expected to be needed: `scripts/verify-native-google.sh` reports the
+      audience error explicitly if it happens.
 - [ ] Before any iOS build: confirm which of the two iOS client IDs matches the iOS
       bundle identifier, then set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and add the
       config plugin with `iosUrlScheme: com.googleusercontent.apps.<IOS_CLIENT_ID>`

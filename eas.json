@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
       }
     },
@@ -19,14 +19,14 @@
       },
       "prebuildCommand": "npx expo prebuild --clean --platform android",
       "env": {
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-c8eti1f9elnggfc61ncsm6ncpprf7kb4.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
       }
     }

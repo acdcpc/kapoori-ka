@@ -3,7 +3,12 @@
  *
  * Client IDs live in the Google Cloud project `kapoori-ka` (verified in the
  * console on 2026-09-16):
- *   Web application  "Kapoori Ka Web"  -> EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+ *   Web application  "Web client (auto created by Google Service)"
+ *                      -> EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, because it is the
+ *                      client Supabase Auth already authorises as an ID-token
+ *                      audience: the browser flow has always used it, so the
+ *                      native flow needs no dashboard change.
+ *   Web application  "Kapoori Ka Web"  -> spare Web client, unused for now
  *   Android          "kapoori.ka"      -> EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
  *                      (matched by package com.kapoori.ka + signing SHA-1
  *                       f970a853c20cf6d5c91adf5f1c37de4fe819b16a, not by code)
