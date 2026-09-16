@@ -300,16 +300,17 @@ function parseUrlParams(url: string): URLSearchParams {
 
   /**
    * Native Google sign-in (account picker → ID token → Supabase).
-   * Returns true when the user is signed in, false when the native path is
-   * unavailable (module missing, no client ID, user cancelled) so the caller
-   * can fall back to the browser flow.
+   * Returns 'signed-in' on success, 'cancelled' when the user backed out of
+   * the picker (do NOT then open a browser at them), or 'unavailable' when the
+   * native path cannot be used at all, in which case the caller falls back to
+   * the browser flow.
    */
-  const tryNativeGoogleSignIn = async (): Promise<boolean> => {
-    if (!GOOGLE_WEB_CLIENT_ID) return false;
+  const tryNativeGoogleSignIn = async (): Promise<'signed-in' | 'cancelled' | 'unavailable'> => {
+    if (!GOOGLE_WEB_CLIENT_ID) return 'unavailable';
     try {
       const mod: any = await import('@react-native-google-signin/google-signin');
       const G = mod?.GoogleSignin ?? mod?.default;
-      if (!G?.configure) return false;
+      if (!G?.configure) return 'unavailable';
       G.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
         iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
@@ -317,16 +318,16 @@ function parseUrlParams(url: string): URLSearchParams {
       });
       await G.hasPlayServices?.({ showPlayServicesUpdateDialog: false }).catch?.(() => true);
       const res = await G.signIn();
-      if (!res || res.type === 'cancelled') return false;
+      if (!res || res.type === 'cancelled') return 'cancelled';
       const idToken: string | null = res?.data?.idToken ?? null;
-      if (!idToken) return false;
+      if (!idToken) return 'unavailable';
       const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
       if (error) throw error;
       console.log('[AuthContext] Signed in via native Google Sign-In');
-      return true;
+      return 'signed-in';
     } catch (e: any) {
       console.log('[AuthContext] Native Google Sign-In unavailable, using browser flow:', e?.message || e);
-      return false;
+      return 'unavailable';
     }
   };
 
@@ -341,7 +342,14 @@ function parseUrlParams(url: string): URLSearchParams {
       if (!isWeb) {
         // Prefer the native picker: it removes the browser/deep-link round trip
         // that makes the OAuth flow fail intermittently on Android.
-        if (await tryNativeGoogleSignIn()) { setLoading(false); return; }
+        const outcome = await tryNativeGoogleSignIn();
+        if (outcome === 'signed-in') { setLoading(false); return; }
+        if (outcome === 'cancelled') {
+          // The user closed the picker on purpose — do not open a browser next.
+          console.log('[AuthContext] Native Google Sign-In cancelled by user');
+          setLoading(false);
+          return;
+        }
       }
 
       if (isWeb) {
