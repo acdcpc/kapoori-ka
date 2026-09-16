@@ -55,6 +55,35 @@ Delete the old Firestore-based Cloud Functions from the Firebase console
 - Google Cloud → OAuth client → Authorized redirect URIs: same `/auth/callback`.
 - [x] `mailer_autoconfirm` dashboard toggle — **DONE 2026-09-03** (email confirmation OFF; verified via live signup returning a session). Tradeoff accepted: no email-ownership proof at signup; password + RLS still protect data.
 
+### 5b. Native Google Sign-In (verified in the Google console 2026-09-16)
+Client IDs in the Google Cloud project `kapoori-ka` (project number `391729474242`):
+
+| Client | Type | ID |
+| --- | --- | --- |
+| `Kapoori Ka Web` | Web application | `391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com` |
+| `kapoori.ka` | Android | `391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com` |
+| (iOS client) | iOS | `391729474242-vqck9s8u54rbm50vqmh79rb9pov8uem1.apps.googleusercontent.com` |
+
+- Android client registered for package `com.kapoori.ka` with SHA-1
+  `F9:70:A8:53:C2:DC:F6:D5:C9:1A:DF:5F:1C:37:DE:4F:E8:19:B1:6A` — matches the EAS
+  signing key of the installed APK, so Google will accept the app.
+- The app's `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set to `Kapoori Ka Web` (Google
+  only mints an ID token for a Web-type client).
+- [ ] **Supabase → Authentication → Providers → Google → `Client IDs`** → append
+      `391729474242-sdbnj3oc3g1jl5vqc6kgu3mpd33u6l89.apps.googleusercontent.com`
+      (comma-separated; **keep the existing entry**) → Save.
+      The project's Google provider currently authorizes only its own client ID
+      (`391729474242-c8etl1f9…`, same project), so the ID token minted for the Web
+      client would be rejected as an unauthorized audience and the app would fall
+      back to the browser flow.
+      Do this from the dashboard UI — do **not** let an automated agent rewrite that
+      field: clobbering the existing entry would break the working browser sign-in.
+- [ ] Before any iOS build: confirm which of the two iOS client IDs matches the iOS
+      bundle identifier, then set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and add the
+      config plugin with `iosUrlScheme: com.googleusercontent.apps.<IOS_CLIENT_ID>`
+      (the plugin throws without it, and without options it wires up Firebase
+      `google-services.json`, which this project does not use).
+
 ### 6. Android + device
 - `eas login` (as `alokthapas-team`) → `eas build --profile preview --platform android` (SDK 57 path unverified since upgrade).
 - Physical iPhone Safari + PWA install test once a live URL exists.
