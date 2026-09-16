@@ -8,29 +8,29 @@ overrides:
   '@xmldom/xmldom': 0.8.15
   js-yaml: 4.3.2
 minimumReleaseAgeExclude:
-  - '@expo/cli@56.1.24 || 57.0.21 || 57.0.24'
+  - '@expo/cli@56.1.24 || 57.0.21 || 57.0.24 || 57.0.25'
   - '@expo/config-plugins@56.0.15'
   - '@expo/prebuild-config@56.0.22 || 57.0.16'
-  - '@expo/router-server@56.0.18 || 57.0.9'
+  - '@expo/router-server@56.0.18 || 57.0.9 || 57.0.10'
   - expo-asset@56.0.23 || 57.0.16 || 57.0.17
   - expo-constants@56.0.24 || 57.0.17 || 57.0.18
   - expo-file-system@56.0.10 || 57.0.7
   - expo-modules-autolinking@56.0.22 || 57.0.13
   - expo-modules-core@56.0.24 || 57.0.15 || 57.0.18
   - expo-server@56.0.6
-  - expo@56.0.20 || 57.0.19 || 57.0.22
+  - expo@56.0.20 || 57.0.19 || 57.0.22 || 57.0.23
   - expo-auth-session@56.0.17 || 57.0.11 || 57.0.12
-  - expo-build-properties@56.0.26 || 57.0.16
+  - expo-build-properties@56.0.26 || 57.0.16 || 57.0.19
   - expo-dev-client@56.0.25 || 57.0.18 || 57.0.19
   - expo-dev-launcher@56.0.26 || 57.0.19 || 57.0.20
   - expo-dev-menu@56.0.22 || 57.0.18
-  - expo-image-manipulator@56.0.25 || 57.0.15 || 57.0.17
-  - expo-image-picker@56.0.24 || 57.0.15 || 57.0.17
+  - expo-image-manipulator@56.0.25 || 57.0.15 || 57.0.17 || 57.0.18
+  - expo-image-picker@56.0.24 || 57.0.15 || 57.0.17 || 57.0.18
   - expo-linking@56.0.17 || 57.0.9 || 57.0.10
-  - expo-notifications@56.0.24 || 57.0.16 || 57.0.18
-  - expo-sharing@56.0.25 || 57.0.17 || 57.0.19
+  - expo-notifications@56.0.24 || 57.0.16 || 57.0.18 || 57.0.19
+  - expo-sharing@56.0.25 || 57.0.17 || 57.0.19 || 57.0.20
   - '@expo/fingerprint@0.20.12 || 0.20.13'
-  - babel-preset-expo@57.0.10
+  - babel-preset-expo@57.0.10 || 57.0.12
   - expo-font@57.0.3 || 57.0.4
   - expo-modules-jsi@57.0.7
   - expo-secure-store@57.0.3 || 57.0.4
