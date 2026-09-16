@@ -11,7 +11,7 @@ import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
-import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '../config/googleAuth';
+import { GOOGLE_IOS_CLIENT_ID, NATIVE_SERVER_CLIENT_ID } from '../config/googleAuth';
 import { registerForPushNotifications, armAllVaccineRemindersForUser } from '../utils/notifications';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -306,13 +306,13 @@ function parseUrlParams(url: string): URLSearchParams {
    * the browser flow.
    */
   const tryNativeGoogleSignIn = async (): Promise<'signed-in' | 'cancelled' | 'unavailable'> => {
-    if (!GOOGLE_WEB_CLIENT_ID) return 'unavailable';
+    if (!NATIVE_SERVER_CLIENT_ID) return 'unavailable';
     try {
       const mod: any = await import('@react-native-google-signin/google-signin');
       const G = mod?.GoogleSignin ?? mod?.default;
       if (!G?.configure) return 'unavailable';
       G.configure({
-        webClientId: GOOGLE_WEB_CLIENT_ID,
+        webClientId: NATIVE_SERVER_CLIENT_ID,
         iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
         offlineAccess: false,
       });

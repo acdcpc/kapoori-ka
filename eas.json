@@ -6,17 +6,26 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "prebuildCommand": "npx expo prebuild --clean --platform android"
+      "prebuildCommand": "npx expo prebuild --clean --platform android",
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "391729474242-ed06j5kdq395ii14lsmpdjqh5hnhd4h3.apps.googleusercontent.com"
+      }
     }
   }
 }
