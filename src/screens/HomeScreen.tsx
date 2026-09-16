@@ -1,5 +1,6 @@
 // src/screens/HomeScreen.tsx
 import React, { useContext, useEffect, useState } from 'react';
+import { sheetBottomClearance, sheetMaxHeight } from '../lib/sheetLayout';
 import {
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
   Alert, ActivityIndicator, ScrollView, Dimensions,
@@ -65,12 +66,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const isGuest = !!(user as any)?.isAnonymous;
   const insets = useSafeAreaInsets();
 
-// Bottom padding floor, in dp. React Native styles are density-independent, so a
-// floor of 12 leaves the last row of the sheet inside the gesture strip on a
-// 3x-density phone (12dp ~ 33px vs a ~132px gesture area): the row renders but
-// the tap is swallowed by the system back/home gesture. 48dp clears it.
-const GESTURE_SAFE_BOTTOM = 48;
   const SCREEN_H = Dimensions.get('window').height;
+  // Sheet geometry: keep the last row clear of the gesture strip and let the
+  // content scroll when it does not fit (see src/lib/sheetLayout.ts).
+  const sheetClearance = sheetBottomClearance(insets.bottom);
+  const sheetHeight = sheetMaxHeight(SCREEN_H, insets.top, insets.bottom);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     (async () => {
@@ -514,14 +514,22 @@ const GESTURE_SAFE_BOTTOM = 48;
 
       {showSettings && (
         // The settings sheet can be taller than the screen on gesture-navigation
-        // phones (Android 16 edge-to-edge). Without a scroll container the last
-        // rows — All settings, Admin, About, Logout — render underneath the
-        // system navigation area and cannot be tapped. Constrain the height,
-        // scroll the content, and keep clear of the bottom inset.
-        <View style={[styles.settingsPanel, { maxHeight: SCREEN_H * 0.85, paddingBottom: Math.max(insets.bottom, GESTURE_SAFE_BOTTOM) + 8 }]}>
+        // phones (Android 16 edge-to-edge). Verified on device: with the panel's
+        // bottom flush to the screen edge, the last rows (Admin, About, Logout)
+        // rendered inside the gesture strip and their taps were swallowed by the
+        // home gesture, and because the content still fitted the max height the
+        // ScrollView never scrolled. The sheet is now lifted by a hard 48dp floor
+        // and its content carries the same padding, so it always scrolls and the
+        // last row always ends above the strip.
+        <View style={[styles.settingsPanel, { maxHeight: sheetHeight, marginBottom: sheetClearance }]}>
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
+          <ScrollView
+            style={styles.settingsScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: sheetClearance }}
+          >
           <View style={styles.settingsRow}>
             <Ionicons name="medical-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>Kapoori Ka</Text>
@@ -660,6 +668,7 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
     backgroundColor: pal.clay, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
   },
   premiumCtaBtnText: { color: pal.onAccent, fontWeight: '800', fontSize: 13 },
+  settingsScroll: { flexShrink: 1 },
   settingsPanel: { backgroundColor: pal.surface, borderTopWidth: 1, borderTopColor: pal.border, padding: 16, paddingTop: 8 },
   settingsHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: pal.border, alignSelf: 'center', marginBottom: 12 },
   settingsTitle: { fontSize: 16, fontWeight: '700', color: pal.text, marginBottom: 12 },

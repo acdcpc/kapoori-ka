@@ -72,8 +72,9 @@
     "validate:hc-calculations": "node scripts/validate-hc-calculations.mjs",
     "validate:caregiver-features": "node scripts/validate-caregiver-features.mjs",
     "doctor": "expo-doctor",
-    "validate:all": "pnpm run validate:release-security && pnpm run validate:caregiver-features && pnpm run validate:hc-calculations",
-    "test:browser": "node scripts/browser-matrix.mjs"
+    "validate:all": "pnpm run validate:release-security && pnpm run validate:caregiver-features && pnpm run validate:hc-calculations && pnpm run validate:sheet-layout",
+    "test:browser": "node scripts/browser-matrix.mjs",
+    "validate:sheet-layout": "node scripts/validate-sheet-layout.mjs"
   },
   "private": true,
   "expo": {
