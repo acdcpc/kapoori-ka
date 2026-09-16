@@ -113,6 +113,22 @@ assert(adminContentDp > smallViewportDp,
   'on a small phone the admin sheet must be taller than its viewport — that is the case the old build broke, and why the ScrollView must be bounded');
 checks += 4;
 
+// Free-account measurement (same device/build): 8 rows, from the संस्करण label top
+// at 1118px to the लग आउट label bottom at 2176px = 1058px = 376dp, with the panel
+// bottom at 2204px — just 4px above the strip. It fits, but with no margin at all,
+// and the panel still refused to scroll (a swipe moved nothing), so adding one more
+// row — the admin row, or the guest-mode banner — pushed content past the edge.
+const FREE_CONTENT_DP = (2176 - 1118) / DENSITY;
+const FREE_PANEL_BOTTOM_PX = 2204;
+assert(FREE_PANEL_BOTTOM_PX <= stripTopPx,
+  'the measured free-account panel must sit above the strip');
+assert(stripTopPx - FREE_PANEL_BOTTOM_PX < 20,
+  'the free-account sheet cleared by 4px — the margin is that thin, so nothing may regress it');
+assert(FREE_CONTENT_DP < adminContentDp,
+  'the admin stack must be taller than the free stack (it has one extra row)');
+checks += 3;
+
+console.log(`free-account sheet ..... content 376dp, panel bottom 2204px (4px above the strip, still would not scroll)`);
 console.log(`admin sheet fixture .... content ${adminContentDp.toFixed(0)}dp | A24 viewport ${a24ViewportDp}dp (fits) | small-phone viewport ${smallViewportDp}dp (scrolls) | old build buried ${lostPx.toFixed(0)}px of rows`);
 
 console.log(`sheet layout OK — ${checks} assertions across ${DEVICES.length} devices`);
