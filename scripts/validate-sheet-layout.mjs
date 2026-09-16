@@ -66,11 +66,12 @@ assert(SCREEN_PX - OLD_FLOOR_DP * DENSITY - OLD_FLOOR_DP * DENSITY > stripTopPx,
 checks += 3;
 
 // Wiring: the screen must use the helper, lift the sheet, and pad the scroll content.
-assert(/marginBottom:\s*sheetClearance/.test(home), 'HomeScreen: the sheet is not lifted by sheetClearance');
+assert(/bottom:\s*sheetClearance/.test(home), 'HomeScreen: the sheet is not pinned above the gesture strip');
+assert(/position:\s*'absolute'/.test(home), 'HomeScreen: the sheet is not absolutely pinned, so sibling layout can push it off-screen');
 assert(/maxHeight:\s*sheetHeight/.test(home), 'HomeScreen: the sheet does not use the helper height cap');
 assert(/paddingBottom:\s*sheetClearance/.test(home), 'HomeScreen: scroll content is not padded by sheetClearance');
 assert(!/Math\.max\(insets\.bottom,\s*12\)/.test(home), 'HomeScreen: the old 12dp floor is still present');
-checks += 4;
+checks += 5;
 
 const px = (dp) => Math.round(dp * DENSITY);
 console.log(`sheet layout OK — ${checks} assertions across ${DEVICES.length} devices`);

@@ -521,7 +521,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         // ScrollView never scrolled. The sheet is now lifted by a hard 48dp floor
         // and its content carries the same padding, so it always scrolls and the
         // last row always ends above the strip.
-        <View style={[styles.settingsPanel, { maxHeight: sheetHeight, marginBottom: sheetClearance }]}>
+        <View style={[styles.settingsPanel, {
+          // Pinned to the bottom with an absolute edge so the last row can never
+          // end up inside the gesture strip, whatever the siblings do. The height
+          // cap is what the screen actually has left, so taller content scrolls
+          // instead of being clipped past the bottom edge (the old 85% cap was
+          // permissive enough to let the panel grow off-screen without scrolling).
+          position: 'absolute', left: 0, right: 0, bottom: sheetClearance,
+          maxHeight: sheetHeight,
+        }]}>
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
           <ScrollView
