@@ -54,7 +54,7 @@ if [ -x "$HOME/Library/Android/sdk/build-tools/36.0.0/apksigner" ]; then
     "$HOME/Library/Android/sdk/build-tools/36.0.0/apksigner" verify --print-certs "$APK" \
     | grep -iE "SHA-1|SHA-256" || true
   echo "   Expected SHA-1 (registered on the Android OAuth client):"
-  echo "   F9:70:A8:53:C2:DC:F6:DC:9C:1A:DF:5F:1C:37:DE:4F:E8:19:B1:6A"
+  echo "   F9:70:A8:53:C2:DC:F6:D5:C9:1A:DF:5F:1C:37:DE:4F:E8:19:B1:6A"
 fi
 
 if adb devices 2>/dev/null | awk 'NR>1 && $2=="device"' | grep -q .; then
