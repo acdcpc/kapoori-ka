@@ -146,7 +146,10 @@ async function notifyAdmins(adminClient: ReturnType<typeof createClient>, info: 
   const { data: rows, error: tokenErr } = await adminClient
     .from('push_tokens').select('token').in('user_id', ids);
   if (tokenErr || !rows?.length) return;
-  const amount = info.plan === 'yearly' ? 'NPR 500' : 'NPR 100';
+  // Keep in sync with src/lib/pricing.ts (Deno cannot import from src/).
+  const PLAN_PRICE_NPR: Record<string, number> = { '6months': 650, yearly: 850 };
+  const price = PLAN_PRICE_NPR[info.plan];
+  const amount = price ? `NPR ${price}` : 'NPR ?';
   const messages = rows.map((r: { token: string }) => ({
     to: r.token,
     title: 'New payment to verify',

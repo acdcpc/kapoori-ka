@@ -169,6 +169,8 @@
 
   <script src="../vendor/supabase-js.min.js"></script>
   <script>
+    // Fallback only: prefer the amount actually recorded on the payment.
+    var PLAN_PRICE = { '6months': 650, yearly: 850 };
     // Security design: this page authenticates an operator, but it never
     // authorizes by email and never writes payments/codes/storage directly.
     // The admin-payments Edge Function verifies the dedicated admin role.
@@ -308,7 +310,7 @@
           '<td>' + date + '</td>' +
           '<td>' + (p.email || '-') + '</td>' +
           '<td style="font-family:monospace;font-size:12px;">' + (p.transaction_id || '-') + '</td>' +
-          '<td>NPR ' + (p.amount || 0) + '</td>' +
+          '<td>NPR ' + (p.amount || PLAN_PRICE[p.plan] || 0) + '</td>' +
           '<td>' + badge + '</td>' +
           '<td>' + screenshot + '</td>' +
           '<td>' + actions + '</td>' +
@@ -333,7 +335,7 @@
         '<p><strong>Email:</strong> ' + (p.email || '-') + '</p>' +
         '<p><strong>Mobile:</strong> ' + (p.mobile || '-') + '</p>' +
         '<p><strong>Transaction ID:</strong> ' + (p.transaction_id || '-') + '</p>' +
-        '<p><strong>Amount:</strong> NPR ' + (p.amount || 0) + '</p>' +
+        '<p><strong>Amount:</strong> NPR ' + (p.amount || PLAN_PRICE[p.plan] || 0) + '</p>' +
         '<p><strong>Status:</strong> ' + (p.status || '-') + '</p>' +
         '<p><strong>Submitted:</strong> ' + date + '</p>' +
         '<p><strong>Verified:</strong> ' + verified + '</p>' +

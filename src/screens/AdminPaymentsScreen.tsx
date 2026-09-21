@@ -11,6 +11,7 @@ import { Palette } from '../theme';
 import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
+import { planLabel } from '../lib/pricing';
 
 type PendingPayment = {
   id: string;
@@ -23,9 +24,6 @@ type PendingPayment = {
   remarks: string | null;
   created_at: string;
 };
-
-const PLAN_LABEL = (p: string, ne: boolean) =>
-  p === 'yearly' ? (ne ? 'वार्षिक NPR 500' : 'Yearly NPR 500') : p === 'monthly' ? (ne ? 'मासिक NPR 100' : 'Monthly NPR 100') : p;
 
 export default function AdminPaymentsScreen() {
   const { palette: t } = useContext(ThemeContext);
@@ -109,7 +107,7 @@ export default function AdminPaymentsScreen() {
   const approve = async (p: PendingPayment) => {
     Alert.alert(
       isNe ? 'स्वीकृत गर्नुहोस्?' : 'Approve payment?',
-      `${p.name} · ${PLAN_LABEL(p.plan, isNe)}\n${isNe ? 'Transaction:' : 'Txn'}: ${p.transaction_id}`,
+      `${p.name} · ${planLabel(p.plan, isNe, p.amount)}\n${isNe ? 'Transaction:' : 'Txn'}: ${p.transaction_id}`,
       [
         { text: isNe ? 'रद्द' : 'Cancel', style: 'cancel' },
         { text: isNe ? 'स्वीकृत गर्नुहोस्' : 'Approve', onPress: async () => { setBusyId(p.id); try { await callFunction('approve-payment', { payment_id: p.id }); Alert.alert('✅', isNe ? 'स्वीकृत भयो — प्रयोगकर्ताको एप आफैँ सक्रिय हुनेछ।' : 'Approved — the user’s app will activate automatically.'); await load(); } catch (e: any) { Alert.alert(isNe ? 'त्रुटि' : 'Error', e?.message); } finally { setBusyId(null); } } },
@@ -182,7 +180,7 @@ export default function AdminPaymentsScreen() {
           <View key={p.id} style={styles.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={styles.cardName}>{p.name}</Text>
-              <Text style={styles.cardPlan}>{PLAN_LABEL(p.plan, isNe)}</Text>
+              <Text style={styles.cardPlan}>{planLabel(p.plan, isNe, p.amount)}</Text>
             </View>
             <Text style={styles.cardMeta}>{p.email}</Text>
             <Text style={styles.cardMeta}>{isNe ? 'Transaction:' : 'Txn'}: {p.transaction_id}</Text>
