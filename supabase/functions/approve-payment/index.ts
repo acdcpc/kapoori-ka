@@ -79,8 +79,17 @@ Deno.serve(async (request) => {
   });
 
   // Server-side admin check (defense in depth; the RPC re-checks too).
-  const { data: isAdmin, error: adminErr } = await adminClient.rpc('is_app_admin', { p_user_id: user.id });
-  if (adminErr || isAdmin !== true) return response({ error: 'Not authorized.' }, 403, cors);
+  // Read app_admins directly instead of calling the is_app_admin() RPC: that
+  // function is granted to `authenticated` only (see
+  // 20260822000000_release_security_hardening.sql lines 44-45), so a service-role
+  // call raises 42501 and every legitimate approval failed with "Not authorized."
+  const { data: adminRow, error: adminErr } = await adminClient
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .is('revoked_at', null)
+    .maybeSingle();
+  if (adminErr || !adminRow) return response({ error: 'Not authorized.' }, 403, cors);
 
   let body: { payment_id?: string };
   try { body = await request.json(); } catch { return response({ error: 'Invalid JSON body.' }, 400, cors); }
