@@ -102,7 +102,11 @@ Deno.serve(async (request) => {
   if (payment.status !== 'pending') return response({ error: 'Payment has already been processed.' }, 409, cors);
 
   const plaintext = generateCode();
-  const codeHash = await sha256Hex(plaintext);
+  // Hash the same normalized form redeem_activation_code uses
+  // (upper(regexp_replace(code, '[^A-Z0-9]', '', 'g'))): hashing the pretty
+  // "KK-XXXX-XXXX-XXXX" form produced a stored hash the redemption path could
+  // never match, so an in-app approved code could not be redeemed at all.
+  const codeHash = await sha256Hex(plaintext.replace(/[^A-Za-z0-9]/g, '').toUpperCase());
 
   const { error: rpcErr } = await adminClient.rpc('admin_approve_payment', {
     p_payment_id: paymentId,
