@@ -49,10 +49,24 @@ async function sha256Hex(plaintext: string): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(plaintext))));
 }
 
+// AES-GCM accepts a 128/192/256-bit key, i.e. 16/24/32 bytes after base64
+// decoding. A malformed AUTOMATION_KEY (a hash string, for example) would throw
+// inside importKey, which looked identical to a database write failure and left
+// us guessing. Fail with a reason we can act on instead.
+function automationKeyBytes(): Uint8Array {
+  const keyB64 = Deno.env.get('AUTOMATION_KEY') ?? '';
+  if (!keyB64) throw new Error('AUTOMATION_KEY is not set');
+  let raw: string;
+  try { raw = atob(keyB64); } catch { throw new Error('AUTOMATION_KEY is not valid base64'); }
+  const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  if (![16, 24, 32].includes(bytes.length)) {
+    throw new Error(`AUTOMATION_KEY must decode to 16, 24 or 32 bytes; got ${bytes.length}`);
+  }
+  return bytes;
+}
+
 async function encrypt(plaintext: string): Promise<string> {
-  const keyB64 = Deno.env.get('AUTOMATION_KEY');
-  if (!keyB64) throw new Error('Server configuration is incomplete.');
-  const keyBytes = Uint8Array.from(atob(keyB64), (c) => c.charCodeAt(0));
+  const keyBytes = automationKeyBytes();
   const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext)));
@@ -115,13 +129,17 @@ Deno.serve(async (request) => {
   });
   if (rpcErr) return response({ error: rpcErr.message || 'Approval failed.' }, 400, cors);
 
+  const failed = (why: string) => response({
+    error: `Approved, but storing the in-app code failed (${why}). `
+         + `The payment is valid — give the payer this code: ${plaintext}`,
+  }, 500, cors);
   try {
     const encrypted = await encrypt(plaintext);
     const { error: upErr } = await adminClient
       .from('payments').update({ automation_code_encrypted: encrypted }).eq('id', paymentId);
-    if (upErr) return response({ error: 'Approved, but storing the in-app code failed. Use the web admin panel to view it.' }, 500, cors);
-  } catch {
-    return response({ error: 'Approved, but storing the in-app code failed. Use the web admin panel to view it.' }, 500, cors);
+    if (upErr) return failed(`payments.${'automation_code_encrypted'} write: ${upErr.message}`);
+  } catch (e) {
+    return failed(e instanceof Error ? e.message : String(e));
   }
 
   // Tell the parent immediately — their app will auto-redeem on next open.
