@@ -1,5 +1,6 @@
 // src/utils/notifications.ts
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import dayjs from 'dayjs';
@@ -54,7 +55,20 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
     });
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  // Expo push tokens need the EAS project id. Without it the call throws, and the
+  // failure used to be swallowed silently -- which is why push_tokens stayed empty
+  // and no approval notification ever reached a device. Surface it in the logs and
+  // keep going: the rest of registration is best-effort.
+  let token: string;
+  try {
+    const projectId =
+      ((Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId) ??
+      (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+    token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+  } catch (e) {
+    console.warn('[notifications] push token registration failed:', e instanceof Error ? e.message : String(e));
+    return null;
+  }
 
   // Persist for payment/admin notifications (no-op when signed out).
   try {
