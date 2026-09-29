@@ -117,6 +117,28 @@
       <button onclick="signOut()">Sign Out</button>
     </div>
 
+    <!-- Announcements: broadcasts a push message to the selected audience. -->
+    <details style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;background:#fff;">
+      <summary style="cursor:pointer;font-weight:700;font-size:16px;">📣 Send an announcement to users</summary>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;max-width:640px;">
+        <input id="bcTitle" maxlength="100" placeholder="Title, e.g. New in Kapoori Ka"
+               style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <textarea id="bcBody" maxlength="400" rows="3" placeholder="Message, up to 400 characters"
+                  style="padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;"></textarea>
+        <select id="bcAudience" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+          <option value="all">All users with the app installed</option>
+          <option value="premium">Premium users only</option>
+          <option value="free">Free users only</option>
+        </select>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button onclick="previewBroadcast()">Check audience size</button>
+          <button onclick="sendBroadcast()" style="background:#E8602C;color:#fff;">Send now</button>
+          <span id="bcStatus" style="color:#666;"></span>
+        </div>
+        <div id="bcResult" style="font-size:13px;color:#444;white-space:pre-wrap;"></div>
+      </div>
+    </details>
+
     <div class="tabs">
       <div class="tab active" onclick="switchTab('pending')">Pending</div>
       <div class="tab" onclick="switchTab('approved')">Approved</div>
@@ -484,6 +506,43 @@
       document.execCommand('copy');
       document.body.removeChild(ta);
       alert('Code copied!');
+    }
+
+  
+    // ---- Announcements (admin broadcast) ----
+    window.previewBroadcast = async function () { await broadcastCall(true); };
+    window.sendBroadcast = async function () {
+      if (!confirm('Send this announcement to the selected users now?')) return;
+      await broadcastCall(false);
+    };
+    async function broadcastCall(dryRun) {
+      var status = document.getElementById('bcStatus');
+      var out = document.getElementById('bcResult');
+      var title = document.getElementById('bcTitle').value.trim();
+      var message = document.getElementById('bcBody').value.trim();
+      var audience = document.getElementById('bcAudience').value;
+      if (title.length < 3 || message.length < 3) {
+        out.textContent = 'Please fill in both the title and the message (at least 3 characters each).';
+        return;
+      }
+      status.textContent = dryRun ? 'Checking…' : 'Sending…';
+      out.textContent = '';
+      try {
+        var res = await supabase.functions.invoke('admin-broadcast', {
+          body: { title: title, body: message, audience: audience, dry_run: !!dryRun },
+        });
+        if (res.error) throw res.error;
+        var d = res.data || {};
+        status.textContent = '';
+        out.textContent = dryRun
+          ? 'Audience: ' + (d.targeted || 0) + ' device(s) would receive this.'
+          : 'Targeted ' + (d.targeted || 0) + ' · sent ' + (d.sent || 0) + ' · failed ' + (d.failed || 0)
+            + (d.note ? ' · ' + d.note : '')
+            + (d.errors && d.errors.length ? ' · first error: ' + d.errors[0] : '');
+      } catch (e) {
+        status.textContent = '';
+        out.textContent = 'Could not send: ' + ((e && e.message) || e);
+      }
     }
 
   </script>
