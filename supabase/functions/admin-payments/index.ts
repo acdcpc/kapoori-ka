@@ -97,7 +97,36 @@ Deno.serve(async (request) => {
     return response({ payments: withSignedReceipts }, 200, cors);
   }
 
-  const paymentId = typeof body.payment_id === 'string' ? body.payment_id : '';
+  // The payer's app auto-redeems by fetching the AES-GCM encrypted code from
+// my-activation-code, so every path that issues a code must store it. This one
+// (the web panel) previously only returned the code, which is why a payment
+// approved from the browser never activated the payer's app.
+function automationKeyBytes(): Uint8Array {
+  const keyB64 = Deno.env.get('AUTOMATION_KEY') ?? '';
+  if (!keyB64) throw new Error('AUTOMATION_KEY is not set');
+  let raw: string;
+  try { raw = atob(keyB64); } catch { throw new Error('AUTOMATION_KEY is not valid base64'); }
+  const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  if (![16, 24, 32].includes(bytes.length)) {
+    throw new Error(`AUTOMATION_KEY must decode to 16, 24 or 32 bytes; got ${bytes.length}`);
+  }
+  return bytes;
+}
+
+function b64(bytes: Uint8Array): string {
+  let out = '';
+  for (const b of bytes) out += String.fromCharCode(b);
+  return btoa(out);
+}
+
+async function encryptCode(plaintext: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', automationKeyBytes(), 'AES-GCM', false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext)));
+  return `v1:${b64(iv)}:${b64(ct)}`;
+}
+
+const paymentId = typeof body.payment_id === 'string' ? body.payment_id : '';
   if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(paymentId)) return response({ error: 'Invalid payment reference.' }, 400, cors);
 
   if (action === 'reject') {
@@ -121,7 +150,20 @@ Deno.serve(async (request) => {
       p_actor_id: user.id,
     });
     if (error) return response({ error: action === 'approve' ? 'Unable to approve this payment.' : 'Unable to generate a replacement code.' }, 400, cors);
-    return response({ success: true, status: 'approved', code }, 200, cors);
+
+    // Store the encrypted copy so the payer's app can auto-redeem. A failure here
+    // must not lose the code: the panel still receives it to hand over manually.
+    let stored = false;
+    try {
+      const encrypted = await encryptCode(code);
+      const { error: upErr } = await adminClient
+        .from('payments').update({ automation_code_encrypted: encrypted }).eq('id', paymentId);
+      stored = !upErr;
+      if (upErr) console.error('[admin-payments] storing code failed:', upErr.message);
+    } catch (e) {
+      console.error('[admin-payments] encrypting code failed:', e instanceof Error ? e.message : String(e));
+    }
+    return response({ success: true, status: 'approved', code, stored }, 200, cors);
   }
 
   return response({ error: 'Unsupported action.' }, 400, cors);
