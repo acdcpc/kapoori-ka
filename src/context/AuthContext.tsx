@@ -10,7 +10,7 @@ import React, { createContext, useState, useEffect, useCallback, useRef, useCont
 import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { GOOGLE_IOS_CLIENT_ID, NATIVE_SERVER_CLIENT_ID } from '../config/googleAuth';
 import { registerForPushNotifications, armAllVaccineRemindersForUser } from '../utils/notifications';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -492,6 +492,33 @@ function parseUrlParams(url: string): URLSearchParams {
   const refreshUserData = async () => {
     if (user) await initProfile(user.uid, user.email, user.displayName, user.photoURL, user.isAnonymous);
   };
+
+  // Redeem a pending activation code as soon as the app opens. The server stores
+  // the code when the owner approves; the payer should not have to know to visit
+  // the Subscription screen for it to take effect. Failures stay silent — the
+  // Subscription screen still offers the manual path and visible errors.
+  useEffect(() => {
+    if (!user?.uid || subscription?.status === 'active' || subscription?.plan === 'premium') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/my-activation-code`, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const json = await res.json();
+        if (!cancelled && json?.status === 'approved' && json?.code) {
+          await redeemCode(json.code);
+          await refreshUserData();
+        }
+      } catch { /* silent by design */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
