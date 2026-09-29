@@ -1,3 +1,4 @@
+const fs = require('fs');
 import 'dotenv/config';
 
 export default {
@@ -19,6 +20,9 @@ export default {
       bundleIdentifier: "com.kapoori.ka"
     },
     android: {
+      // Android push needs FCM: drop google-services.json in the repo root and the
+      // build picks it up here. Absent, the build proceeds as before.
+      ...(fs.existsSync('./google-services.json') ? { googleServicesFile: './google-services.json' } : {}),
       adaptiveIcon: {
         foregroundImage: "./assets/android-icon-foreground.png",
         backgroundColor: "#E6F4FE"
