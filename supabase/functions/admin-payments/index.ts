@@ -129,6 +129,10 @@ async function encryptCode(plaintext: string): Promise<string> {
 const paymentId = typeof body.payment_id === 'string' ? body.payment_id : '';
   if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(paymentId)) return response({ error: 'Invalid payment reference.' }, 400, cors);
 
+  const { data: paymentRow } = await adminClient
+    .from('payments').select('user_id').eq('id', paymentId).maybeSingle();
+  const payerId = paymentRow?.user_id ?? null;
+
   if (action === 'reject') {
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
     const { error } = await adminClient.rpc('admin_reject_payment', {
@@ -162,6 +166,27 @@ const paymentId = typeof body.payment_id === 'string' ? body.payment_id : '';
       if (upErr) console.error('[admin-payments] storing code failed:', upErr.message);
     } catch (e) {
       console.error('[admin-payments] encrypting code failed:', e instanceof Error ? e.message : String(e));
+    }
+    // Tell the payer, same as the in-app approval path does.
+    try {
+      const { data: tokenRows } = payerId ? await adminClient
+        .from('push_tokens').select('token').eq('user_id', payerId) : { data: null };
+      if (tokenRows?.length) {
+        const messages = tokenRows.map((r: { token: string }) => ({
+          to: r.token,
+          title: '🎉 Congratulations — Premium is active!',
+          body: 'बधाई छ! तपाईंको कपूरी क प्रिमियम सक्रिय भयो। Enjoy every feature · सबै सुविधा उपभोग गर्नुहोस्।',
+          data: { type: 'premium_activated' },
+          sound: 'default',
+        }));
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(messages),
+        });
+      }
+    } catch (e) {
+      console.error('[admin-payments] payer notification failed:', e instanceof Error ? e.message : String(e));
     }
     return response({ success: true, status: 'approved', code, stored }, 200, cors);
   }

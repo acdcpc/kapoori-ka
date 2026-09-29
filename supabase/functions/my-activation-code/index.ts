@@ -76,6 +76,16 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   if (payErr) return response({ error: 'Could not look up your payment.' }, 500, cors);
+
+  // Approval already activates premium server-side, so a second redemption is
+  // pointless. Tell the client it is active instead of handing back a code that
+  // would fail as 'already used'.
+  const { data: sub } = await adminClient
+    .from('subscriptions').select('status, end_date').eq('user_id', user.id).maybeSingle();
+  if (sub && String(sub.status).toLowerCase() === 'active'
+      && (!sub.end_date || new Date(sub.end_date).getTime() > Date.now())) {
+    return response({ status: 'approved', already_active: true }, 200, cors);
+  }
   if (!payment) return response({ status: 'none' }, 200, cors);
   if (payment.status !== 'approved' || !payment.automation_code_encrypted) {
     return response({ status: payment.status === 'pending' ? 'pending' : payment.status }, 200, cors);
