@@ -1,4 +1,6 @@
 // src/screens/HomeScreen.tsx
+import { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useContext, useEffect, useState } from 'react';
 import { sheetBottomClearance, sheetMaxHeight } from '../lib/sheetLayout';
 import {
@@ -61,7 +63,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const updateTextScale = (textScale: 'standard' | 'large' | 'extra_large') => { setA11yPrefs({ ...a11yPrefs, textScale }); };
   const styles = makeStyles(pal);
   const { language, setLanguage } = useContext(LanguageContext);
-  const { signOutUser, user, subscription } = useAuth();
+  const { signOutUser, user, subscription, refreshUserData } = useAuth();
+  // Premium can change while the app stays open (an approval lands on another screen).
+  // Re-read the subscription every time Home regains focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (typeof refreshUserData === 'function') refreshUserData().catch(() => undefined);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
+
   const premiumActive = isPremiumActive(subscription);
   const isGuest = !!(user as any)?.isAnonymous;
   const insets = useSafeAreaInsets();
