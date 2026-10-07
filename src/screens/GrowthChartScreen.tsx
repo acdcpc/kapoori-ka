@@ -258,14 +258,14 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   };
 
   const chartData = useMemo(() => {
-    if (chartType === 'bmi') return records.filter(r => r.weight && r.height && (r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date)) >= 24).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: calculateBMI(r.weight, r.height || 0) })).filter(d => d.y > 0);
+    if (chartType === 'bmi') return records.filter(r => r.weight && r.height && (r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date)) >= 60).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: calculateBMI(r.weight, r.height || 0) })).filter(d => d.y > 0);
     if (chartType === 'hc') return records.filter(r => r.headCircumference).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: r.headCircumference as number }));
     return records.map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: (chartType === 'weight' ? r.weight : r.height) || 0 })).filter(d => d.y > 0);
   }, [records, chartType, child.dateOfBirth]);
 
   const latestRecord = records.length > 0 ? records[records.length - 1] : null;
   const latestBMIRecord = useMemo(() => {
-    for (let i = records.length - 1; i >= 0; i--) { const r = records[i]; const age = r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date); if (r.weight && r.height && age >= 24) return { ...r, ageMonths: age, bmi: calculateBMI(r.weight, r.height) }; }
+    for (let i = records.length - 1; i >= 0; i--) { const r = records[i]; const age = r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date); if (r.weight && r.height && age >= 60) return { ...r, ageMonths: age, bmi: calculateBMI(r.weight, r.height) }; }
     return null;
   }, [records, child.dateOfBirth]);
 
@@ -297,7 +297,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
     return calculateMidParentalHeight(fh, mh, child.sex);
   }, [fatherHeight, motherHeight, child.sex]);
 
-  const bmiAvailable = childAgeMonths >= 24;
+  const bmiAvailable = childAgeMonths >= 60;
 
 const STATUS_COLORS = { green: pal.green, yellow: pal.gold, red: pal.red, grey: pal.muted };
 // Calm, supportive guidance per metric — never diagnosis words; always a next step.
@@ -318,7 +318,7 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
     green: { en: 'Weight matches height well — a healthy balance.', ne: 'तौल उचाइसँग मिल्छ — स्वस्थ सन्तुलन।' },
     yellow: { en: 'Weight relative to height is a little outside the usual range. Gentle changes to meals and active play help.', ne: 'उचाइको तुलनामा तौल अलि फरक छ। खाना र सक्रिय खेलमा सौम्य परिवर्तनले मद्दत गर्छ।' },
     red: { en: 'Weight relative to height is well outside the usual range. A health worker can make a simple, kind plan — please visit soon.', ne: 'उचाइको तुलनामा तौल धेरै फरक छ। स्वास्थ्यकर्मीले सरल र मिल्ने योजना बनाइदिन्छन् — सीघै जानुहोस्।' },
-    grey: { en: 'BMI can be measured from 2 years of age.', ne: 'BMI २ वर्षदेखि नाप्न सकिन्छ।' },
+    grey: { en: 'From 5 years we track BMI-for-age; below 5, weight-for-height is the right measure.', ne: '५ वर्षमाथि BMI-for-age हेरिन्छ; ५ वर्षमुनि weight-for-height उपयुक्त हुन्छ।' },
   },
   hc: {
     green: { en: 'Head size is growing well within WHO standards.', ne: 'टाउकोको वृद्धि WHO मापदण्ड अनुसार राम्रो छ।' },
