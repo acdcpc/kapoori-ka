@@ -117,6 +117,14 @@ export default function SubscriptionScreen() {
           isNe ? 'सफल!' : 'Success!',
           isNe ? 'भुक्तानी पुष्टि भयो — प्रिमियम सक्रिय भयो! 🎉' : 'Payment verified — Premium is now active! 🎉',
         );
+      } else if (json?.status === 'approved' && json?.already_active) {
+        // Approval activates premium server-side now, so there is no code to redeem.
+        // Without this branch the screen silently did nothing after an approval.
+        if (refreshUserData) await refreshUserData();
+        Alert.alert(
+          isNe ? 'प्रिमियम सक्रिय छ' : 'Premium is active',
+          isNe ? 'तपाईंको प्रिमियम पहिले नै सक्रिय भइसकेको छ।' : 'Your premium is already active.',
+        );
       } else if (json?.status === 'pending') {
         Alert.alert(
           isNe ? 'जाँच हुँदैछ' : 'Still verifying',

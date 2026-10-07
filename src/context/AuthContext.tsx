@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
@@ -519,6 +519,18 @@ function parseUrlParams(url: string): URLSearchParams {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
+
+  // A subscription can change while the app is open — an admin approves a payment,
+  // or the payer's own approval lands minutes later. Nothing used to re-read it, so
+  // premium only appeared after a full app restart. Re-read whenever the app comes
+  // back to the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshUserData().catch(() => undefined);
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The auth listener only fires on state changes. A session restored before the
   // listener attaches emits no event on some versions, so push registration could
