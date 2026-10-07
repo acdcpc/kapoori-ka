@@ -81,7 +81,7 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
         updated_at: new Date().toISOString(),
       });
     }
-  } catch { /* non-fatal */ }
+  } catch (e) { console.warn('[notifications] persisting the push token failed:', e instanceof Error ? e.message : String(e)); }
 
   return token;
 };

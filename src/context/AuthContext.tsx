@@ -520,6 +520,15 @@ function parseUrlParams(url: string): URLSearchParams {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
+  // The auth listener only fires on state changes. A session restored before the
+  // listener attaches emits no event on some versions, so push registration could
+  // be skipped entirely — which is why push_tokens stayed empty. Register whenever
+  // a user is present, in addition to the listener.
+  useEffect(() => {
+    if (!user?.uid) return;
+    registerForPushNotifications().catch(() => undefined);
+  }, [user?.uid]);
+
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium';
 
   const value: AuthContextType = {
