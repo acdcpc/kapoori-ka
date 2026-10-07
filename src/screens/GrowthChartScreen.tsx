@@ -18,6 +18,7 @@ import { translations } from '../i18n/translations';
 import { GrowthRecord } from '../types';
 import { getAgeInMonths, classifyGrowthStatus, getIdealRanges, classifyHC } from '../utils/growthCalculations';
 import { WHO_WFA_BOYS, WHO_WFA_GIRLS } from '../data/whoWFA';
+import { WHO_WFL_BOYS, WHO_WFL_GIRLS, WHO_WFH_BOYS, WHO_WFH_GIRLS } from '../data/whoWFH';
 import { WHO_HFA_BOYS, WHO_HFA_GIRLS } from '../data/whoHFA';
 import { WHO_BFA_BOYS, WHO_BFA_GIRLS } from '../data/whoBFA';
 import { WHO_HCFA_BOYS, WHO_HCFA_GIRLS } from '../data/whoHCFA';
@@ -67,7 +68,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const [bsDate, setBsDate] = useState<NepaliDate>(new NepaliDate());
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [chartType, setChartType] = useState<'weight' | 'height' | 'bmi' | 'hc'>('weight');
+  const [chartType, setChartType] = useState<'weight' | 'height' | 'wfh' | 'bmi' | 'hc'>('weight');
   const [activeTab, setActiveTab] = useState<'chart' | 'predictor'>('chart');
   const [fatherHeight, setFatherHeight] = useState('');
   const [motherHeight, setMotherHeight] = useState('');
@@ -259,6 +260,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
 
   const chartData = useMemo(() => {
     if (chartType === 'bmi') return records.filter(r => r.weight && r.height && (r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date)) >= 60).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: calculateBMI(r.weight, r.height || 0) })).filter(d => d.y > 0);
+    if (chartType === 'wfh') return records.filter(r => r.weight && r.height).map(r => ({ x: Math.round((r.height as number) * 10) / 10, y: r.weight as number }));
     if (chartType === 'hc') return records.filter(r => r.headCircumference).map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: r.headCircumference as number }));
     return records.map(r => ({ x: r.ageMonths || getAgeInMonths(child.dateOfBirth, r.date), y: (chartType === 'weight' ? r.weight : r.height) || 0 })).filter(d => d.y > 0);
   }, [records, chartType, child.dateOfBirth]);
@@ -273,13 +275,21 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const sharedRanges = getIdealRanges(displayAgeMonths, child.sex);
   const status = (chartType === 'bmi' && latestBMIRecord?.bmi)
     ? classifyGrowthStatus(latestRecord?.weight, latestRecord?.height, displayAgeMonths, child.sex, { metric: 'bmi', bmiValue: latestBMIRecord.bmi })
-    : chartType === 'hc'
+    : chartType === 'wfh'
+      ? classifyGrowthStatus(latestRecord?.weight, latestRecord?.height, childAgeMonths, child.sex, { metric: 'wfh' })
+      : chartType === 'hc'
     ? classifyHC(latestRecord?.headCircumference, displayAgeMonths, child.sex)
     : (latestRecord ? classifyGrowthStatus(latestRecord.weight, latestRecord.height, displayAgeMonths, child.sex) : null);
   const trendFlags = useMemo(() => getGrowthTrendFlags(records, isNe ? 'ne' : 'en'), [records, isNe]);
 
   const getActiveCurves = () => {
     if (chartType === 'weight') return child.sex === 'male' ? WHO_WFA_BOYS : WHO_WFA_GIRLS;
+    if (chartType === 'wfh') {
+      // The WHO standard switches at 24 months: weight-for-length under it, weight-for-height above.
+      const under2 = childAgeMonths < 24;
+      if (child.sex === 'male') return under2 ? WHO_WFL_BOYS : WHO_WFH_BOYS;
+      return under2 ? WHO_WFL_GIRLS : WHO_WFH_GIRLS;
+    }
     if (chartType === 'height') return child.sex === 'male' ? WHO_HFA_BOYS : WHO_HFA_GIRLS;
     if (chartType === 'hc') return child.sex === 'male' ? WHO_HCFA_BOYS : WHO_HCFA_GIRLS;
     return child.sex === 'male' ? WHO_BFA_BOYS : WHO_BFA_GIRLS;
@@ -298,15 +308,24 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   }, [fatherHeight, motherHeight, child.sex]);
 
   const bmiAvailable = childAgeMonths >= 60;
+  // WHO: weight-for-length below 24 months, weight-for-height 24-60; BMI-for-age from 5 years.
+  const wfhAvailable = childAgeMonths < 60;
 
 const STATUS_COLORS = { green: pal.green, yellow: pal.gold, red: pal.red, grey: pal.muted };
 // Calm, supportive guidance per metric — never diagnosis words; always a next step.
+
 const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = {
   weight: {
     green: { en: 'Your child is growing well within WHO standards. Keep up the good feeding and care.', ne: 'बच्चा WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ। राम्रो हेरचाह जारी राख्नुहोस्।' },
     yellow: { en: 'Weight is a little outside the usual range. Small, steady changes in feeding help a lot — mention it at your next visit.', ne: 'तौल सामान्य दायराभन्दा अलि फरक छ। साना र नियमित परिवर्तनले ठूलो फरक पार्छ — अर्को जाँचमा भन्नुहोस्।' },
     red: { en: 'Weight is well outside the usual range for this age. This is not rare and can often be improved — please visit a pediatrician or your nearest health post soon and bring this chart with you.', ne: 'तौल यो उमेरको सामान्य दायराभन्दा धेरै फरक छ। यो दुर्लभ समस्या होइन र सुधार्न सकिन्छ — सीघै बाल रोग विशेषज्ञ वा नजिकको स्वास्थ्य चौकीमा जानुहोस् र यो चार्ट पनि लैजानुहोस्।' },
     grey: { en: 'Add a measurement to see the growth status.', ne: 'वृद्धि स्थिति हेर्न मापन थप्नुहोस्।' },
+  },
+  wfh: {
+    green: { en: 'Weight and height are in proportion, within WHO standards. Keep up the good feeding and care.', ne: 'तौल र उचाइ WHO मापदण्ड अनुसार मिल्दो छ। राम्रो खाना र हेरचाह जारी राख्नुहोस्।' },
+    yellow: { en: 'Weight for height is a little outside the usual range. Small, steady changes in feeding help a lot — mention it at your next visit.', ne: 'उचाइको तुलनामा तौल सामान्य दायराभन्दा अलि फरक छ। साना र नियमित परिवर्तनले फरक पार्छ — अर्को जाँचमा भन्नुहोस्।' },
+    red: { en: 'Weight for height is well outside the usual range. This is common and treatable — please visit a pediatrician or your nearest health post soon and bring this chart with you.', ne: 'उचाइको तुलनामा तौल सामान्य दायराभन्दा धेरै फरक छ। यो सामान्य समस्या हो र उपचार सम्भव छ — सीघै बाल रोग विशेषज्ञ वा नजिकको स्वास्थ्य चौकीमा जानुहोस्।' },
+    grey: { en: 'Add a weight and height measurement to see how they compare.', ne: 'तौल र उचाइको मापन थप्नुहोस्।' },
   },
   height: {
     green: { en: 'Height is growing well within WHO standards. Good nutrition now builds a strong future.', ne: 'उचाइ WHO मापदण्ड अनुसार राम्रोसँग बढिरहेको छ। अहिलेको राम्रो पोषणले भविष्य बनाउँछ।' },
@@ -395,7 +414,7 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
               <View style={styles.statusHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <InfoBubble titleEn="What is WAZ?" titleNe="WAZ के हो?" bodyEn="Weight-for-Age Z-score compares your child's weight to WHO standards." bodyNe="यो उमेर अनुसारको तौल सूचकांक हो।" iconSize={14} iconColor={pal.muted} />
-                  <Text style={styles.statusTitle}>{chartType === 'bmi' ? (isNe ? 'BMI स्थिति' : 'BMI Status') : (isNe ? 'वृद्धि स्थिति' : 'Growth Status')}: </Text>
+                  <Text style={styles.statusTitle}>{chartType === 'bmi' ? (isNe ? 'BMI स्थिति' : 'BMI Status') : chartType === 'wfh' ? (isNe ? 'तौल-उचाइ स्थिति' : 'Weight-for-height Status') : (isNe ? 'वृद्धि स्थिति' : 'Growth Status')}: </Text>
                   <TouchableOpacity onPress={() => { const d = (STATUS_DESC[chartType] ?? STATUS_DESC.weight)[status.status]; Speech.speak(isNe ? d.ne : d.en); }}>
                     <Ionicons name="volume-high" size={16} color={pal.muted} />
                   </TouchableOpacity>
@@ -450,8 +469,13 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
             <TouchableOpacity style={[styles.underlineBtn, chartType === 'height' && styles.underlineBtnActive]} onPress={() => setChartType('height')}>
               <Text style={[styles.underlineBtnText, chartType === 'height' && styles.underlineBtnTextActive]}>{isNe ? 'उचाइ' : 'Height'}</Text>
             </TouchableOpacity>
+            {wfhAvailable && (
+              <TouchableOpacity style={[styles.underlineBtn, chartType === 'wfh' && styles.underlineBtnActive]} onPress={() => setChartType('wfh')}>
+                <Text style={[styles.underlineBtnText, chartType === 'wfh' && styles.underlineBtnTextActive]}>{isNe ? 'तौल-उचाइ' : 'Weight-height'}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={[styles.underlineBtn, chartType === 'bmi' && styles.underlineBtnActive, !bmiAvailable && { opacity: 0.4 }]} onPress={() => bmiAvailable && setChartType('bmi')} disabled={!bmiAvailable}>
-              <Text style={[styles.underlineBtnText, chartType === 'bmi' && styles.underlineBtnTextActive]}>BMI {!bmiAvailable ? '(2y+)' : ''}</Text>
+              <Text style={[styles.underlineBtnText, chartType === 'bmi' && styles.underlineBtnTextActive]}>BMI {!bmiAvailable ? '(5y+)' : ''}</Text>
             </TouchableOpacity>
             {childAgeMonths <= 60 && (
               <TouchableOpacity style={[styles.underlineBtn, chartType === 'hc' && styles.underlineBtnActive]} onPress={() => setChartType('hc')}>
@@ -464,8 +488,8 @@ const STATUS_DESC: Record<string, Record<string, { en: string; ne: string }>> = 
           <View style={styles.chartWrapper}>
             <Text style={styles.chartTitle}>{chartType === 'weight' ? (isNe ? 'तौल चार्ट (WHO)' : 'Weight Chart (WHO)') : chartType === 'height' ? (isNe ? 'उचाइ चार्ट (WHO)' : 'Height Chart (WHO)') : chartType === 'hc' ? (isNe ? 'टाउको परिधि चार्ट (WHO)' : 'Head Circumference Chart (WHO)') : (isNe ? 'BMI चार्ट (WHO)' : 'BMI Chart (WHO)')}</Text>
             <VictoryChart width={CHART_WIDTH} height={CHART_HEIGHT} theme={VictoryTheme.material} padding={{ top: 20, bottom: 40, left: 50, right: 20 }}>
-              <VictoryAxis label={isNe ? 'उमेर (महिना)' : 'Age (months)'} style={{ axisLabel: { padding: 30, fontSize: 10 } }} />
-              <VictoryAxis dependentAxis label={`${chartType === 'weight' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : chartType === 'height' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : chartType === 'hc' ? (isNe ? 'टाउको परिधि (सेमी)' : 'Head circ. (cm)') : 'BMI (kg/m²)'}`} style={{ axisLabel: { padding: 40, fontSize: 10 } }} />
+              <VictoryAxis label={chartType === 'wfh' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : (isNe ? 'उमेर (महिना)' : 'Age (months)')} style={{ axisLabel: { padding: 30, fontSize: 10 } }} />
+              <VictoryAxis dependentAxis label={`${chartType === 'weight' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : chartType === 'height' ? (isNe ? 'उचाइ (सेमी)' : 'Height (cm)') : chartType === 'hc' ? (isNe ? 'टाउको परिधि (सेमी)' : 'Head circ. (cm)') : chartType === 'wfh' ? (isNe ? 'तौल (केजी)' : 'Weight (kg)') : 'BMI (kg/m²)'}`} style={{ axisLabel: { padding: 40, fontSize: 10 } }} />
               <VictoryArea data={sd3p} y0={(d: any) => sd3n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.redLight, fillOpacity: 0.3 } }} />
               <VictoryArea data={sd2p} y0={(d: any) => sd2n.find(p => p.x === d.x)?.y || 0} style={{ data: { fill: pal.greenLight, fillOpacity: 0.4 } }} />
               <VictoryLine data={med} style={{ data: { stroke: pal.green, strokeWidth: 1.5, strokeDasharray: '4,4' } }} />

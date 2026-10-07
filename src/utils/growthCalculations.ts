@@ -17,6 +17,10 @@ import {
 import {
   WHO_HCFA_BOYS, WHO_HCFA_GIRLS, WHO_HCFA_LMS_BOYS, WHO_HCFA_LMS_GIRLS,
 } from '../data/whoHCFA';
+import {
+  WHO_WFL_BOYS, WHO_WFL_GIRLS, WHO_WFL_BOYS_LMS, WHO_WFL_GIRLS_LMS,
+  WHO_WFH_BOYS, WHO_WFH_GIRLS, WHO_WFH_BOYS_LMS, WHO_WFH_GIRLS_LMS,
+} from '../data/whoWFH';
 
 // Calculate age in months from DOB with decimal precision for better tracking
 export const getAgeInMonths = (dateOfBirth: string, measurementDate?: string): number => {
@@ -85,6 +89,15 @@ export const zFromLMS = (value: number, L: number, M: number, S: number): number
 };
 
 // Standard normal CDF (Abramowitz & Stegun 7.1.26) → percentile 0.1–99.9
+/** Exact weight-for-length/height z from the official WHO LMS (by cm, sex, age-appropriate table). */
+export const wfhZ = (weight: number, heightCm: number, sex: 'male' | 'female'): number => {
+  const cm = Math.round(heightCm * 10) / 10;
+  const lms = sex === 'male' ? (cm < 65 ? WHO_WFL_BOYS_LMS : WHO_WFH_BOYS_LMS) : (cm < 65 ? WHO_WFL_GIRLS_LMS : WHO_WFH_GIRLS_LMS);
+  let row = lms[0];
+  for (const r of lms) { if (r[0] <= cm) row = r; else break; }
+  return zFromLMS(weight, row[1], row[2], row[3]);
+};
+
 export const percentileFromZ = (z: number): number => {
   if (isNaN(z)) return NaN;
   const zz = Math.abs(z);
@@ -181,7 +194,7 @@ export const classifyGrowthStatus = (
   height: number | null | undefined,
   ageMonths: number,
   sex: 'male' | 'female',
-  opts?: { metric?: 'weight' | 'bmi' | 'height'; bmiValue?: number }
+  opts?: { metric?: 'weight' | 'bmi' | 'height' | 'wfh'; bmiValue?: number }
 ): GrowthStatusResult => {
   const metric = opts?.metric || 'weight';
 
@@ -194,6 +207,19 @@ export const classifyGrowthStatus = (
       green: { en: 'Healthy weight for height', ne: 'उचाइअनुसार स्वस्थ तौल' },
       yellow: { en: band !== 'yellow' ? '' : (z < 0 ? 'A little light for this height' : 'A little heavy for this height'), ne: band !== 'yellow' ? '' : (z < 0 ? 'उचाइअनुसार अलि हल्का' : 'उचाइअनुसार अलि बढी') },
       red: { en: z < 0 ? 'Much lighter than usual — please see a health worker' : 'Much heavier than usual — please see a health worker', ne: z < 0 ? 'सामान्यभन्दा धेरै हल्का — स्वास्थ्यकर्मीलाई देखाउनुहोस्' : 'सामान्यभन्दा धेरै बढी — स्वास्थ्यकर्मीलाई देखाउनुहोस्' },
+    };
+    return { status: band, labelEn: labels[band].en, labelNe: labels[band].ne };
+  }
+
+  if (metric === 'wfh') {
+    const z = weight && height ? wfhZ(weight, height, sex) : NaN;
+    if (isNaN(z)) return { status: 'grey', labelEn: 'Weight and height both needed', labelNe: 'तौल र उचाइ दुवै चाहिन्छ' };
+    const band = zBand(z);
+    const labels: Record<string, { en: string; ne: string }> = {
+      green: { en: 'Healthy weight for height', ne: 'उचाइअनुसार स्वस्थ तौल' },
+      yellow: { en: z < 0 ? 'A little light for this height' : 'A little heavy for this height', ne: z < 0 ? 'उचाइअनुसार अलि हल्का' : 'उचाइअनुसार अलि बढी' },
+      red: { en: z < 0 ? 'Much lighter than usual — please see a health worker' : 'Much heavier than usual — please see a health worker', ne: z < 0 ? 'सामान्यभन्दा धेरै हल्का — स्वास्थ्यकर्मीलाई देखाउनुहोस्' : 'सामान्यभन्दा धेरै बढी — स्वास्थ्यकर्मीलाई देखाउनुहोस्' },
+      grey: { en: 'Weight and height both needed', ne: 'तौल र उचाइ दुवै चाहिन्छ' },
     };
     return { status: band, labelEn: labels[band].en, labelNe: labels[band].ne };
   }
