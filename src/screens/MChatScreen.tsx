@@ -163,11 +163,13 @@ export default function MChatScreen({ route, navigation }: Props) {
         else { if (response === false) { totalScore += 1; concernList.push(q.id); } }
       }
     });
-    // M-CHAT-R/F critical items: q2, q5, q7, q9, q14, q15, q16, q18, q20
-    const criticalItems = ['q2', 'q5', 'q7', 'q9', 'q14', 'q15', 'q16', 'q18', 'q20'];
+    // The M-CHAT-R/F marks exactly two items as critical: q2 and q5. The classic rule is
+    // 'two or more critical items failed, or any three items failed', so only failing BOTH
+    // escalates; the previous nine-item list inflated almost every screen to moderate risk.
+    const criticalItems = ['q2', 'q5'];
     const criticalFails = concernList.filter(id => criticalItems.includes(id)).length;
-    // If any critical item is failed, score is at least 3 (medium risk)
-    const effectiveScore = criticalFails > 0 ? Math.max(totalScore, 3) : totalScore;
+    // Failing both critical items counts as at least moderate risk, matching the published rule.
+    const effectiveScore = criticalFails >= 2 ? Math.max(totalScore, 3) : totalScore;
     return { totalScore, effectiveScore, concernList, criticalFails };
   };
 
