@@ -37,6 +37,11 @@ FILES = {
   'bmi-girls-5-19': f'{R}/bmi-for-age-(5-19-years)/bmi-girls-perc-who2007-exp.xlsx',
   'wfa-boys-5-10': f'{R}/weight-for-age-(5-10-years)/hfa-boys-perc-who2007-exp_07eb5053-9a09-4910-aa6b-c7fb28012ce6.xlsx',
   'wfa-girls-5-10': f'{R}/weight-for-age-(5-10-years)/hfa-girls-perc-who2007-exp_6040a43e-81da-48fa-a2d4-5c856fe4fe71.xlsx',
+  # weight-for-length (0-2y) and weight-for-height (2-5y), keyed by cm
+  'wfl-boys':  f'{S}/weight-for-length-height/expanded-tables/wfl-boys-zscore-expanded-table.xlsx',
+  'wfl-girls': f'{S}/weight-for-length-height/expanded-tables/wfl-girls-zscore-expanded-table.xlsx',
+  'wfh-boys':  f'{S}/weight-for-length-height/expanded-tables/wfh-boys-zscore-expanded-tables.xlsx',
+  'wfh-girls': f'{S}/weight-for-length-height/expanded-tables/wfh-girls-zscore-expanded-tables.xlsx',
 }
 Z = (-3, -2, 0, 2, 3)
 TOL = 0.051
@@ -72,6 +77,37 @@ def read_lms(path):
         L1,M1,S1 = rows[lo]; L2,M2,S2 = rows[hi]; f = (key-lo)/(hi-lo)
         return (L1+f*(L2-L1), M1+f*(M2-M1), S1+f*(S2-S1))
     return at
+
+def check_wfh():
+    """Weight-for-length/height: compare the shipped SD bands and LMS with the official
+    tables, and assert the bands are consistent with the LMS (z of each band value)."""
+    import pandas as pd
+    ok = True
+    for key, arr, lms_arr in (('wfl-boys','WHO_WFL_BOYS','WHO_WFL_BOYS_LMS'), ('wfl-girls','WHO_WFL_GIRLS','WHO_WFL_GIRLS_LMS'),
+                              ('wfh-boys','WHO_WFH_BOYS','WHO_WFH_BOYS_LMS'), ('wfh-girls','WHO_WFH_GIRLS','WHO_WFH_GIRLS_LMS')):
+        d = pd.read_excel(fetch(key, FILES[key]))
+        cols = {str(c).strip(): c for c in d.columns}
+        keycol = cols.get('Length') or cols.get('Height')
+        off = {}
+        for _, r in d.iterrows():
+            try: cm = round(float(r[keycol]), 1)
+            except Exception: continue
+            off[cm] = ([float(r[cols[c]]) for c in ('SD3neg','SD2neg','SD0','SD2','SD3')],
+                       [float(r[cols[c]]) for c in ('L','M','S')])
+        s = open(os.path.join('src/data', 'whoWFH.ts')).read()
+        m = re.search(r'export const ' + arr + r'[^=]*=\s*\[(.*?)\n\];', s, re.S)
+        rows = {float(x[0]): [float(v) for v in x[1:]] for x in re.findall(r'\[\s*([\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]', m.group(1))}
+        band_bad = sum(1 for cm, vals in rows.items() if cm in off and max(abs(a-b) for a, b in zip(vals, off[cm][0])) > 0.051)
+        # bands must agree with their own LMS
+        lms_bad = 0
+        for cm, vals in rows.items():
+            if cm in off:
+                L, M, S = off[cm][1]
+                for z, band in zip((-3,-2,0,2,3), vals):
+                    if abs(value_at(z, L, M, S) - band) > 0.06: lms_bad += 1
+        print('  %-12s %3d rows | official-band mismatches: %d | LMS-vs-band mismatches: %d' % (arr, len(rows), band_bad, lms_bad))
+        ok = ok and band_bad == 0 and lms_bad == 0
+    return 0 if ok else 1
 
 def value_at(z, L, M, S):
     return M * (1 + L*S*z)**(1/L) if L != 0 else M * math.exp(S*z)
@@ -116,7 +152,9 @@ def main():
               '' if not bad else ' | worst: month %d app %s WHO %s (off %.2f)' % max(bad, key=lambda b: b[3])))
         total += checked; bad_total += len(bad)
     print('\nTOTAL: %d months compared, %d deviations beyond +/-0.05' % (total, bad_total))
-    return 1 if (bad_total or failures) else 0
+    print('\n=== weight-for-length / weight-for-height (by cm) ===')
+    wfh_fail = check_wfh()
+    return 1 if (bad_total or failures or wfh_fail) else 0
 
 if __name__ == '__main__':
     sys.exit(main())
