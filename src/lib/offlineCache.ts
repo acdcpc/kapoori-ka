@@ -46,3 +46,12 @@ export async function readCache<T>(key: string): Promise<T | null> {
 export async function clearCache(key: string): Promise<void> {
   try { await AsyncStorage.removeItem(PREFIX + key); } catch { /* best-effort */ }
 }
+
+/** Drop cached entries, optionally only those whose key starts with `prefix`. */
+export async function invalidateCache(prefix?: string): Promise<void> {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const targets = keys.filter((k) => k.startsWith(PREFIX) && (!prefix || k.slice(PREFIX.length).startsWith(prefix)));
+    if (targets.length) await AsyncStorage.multiRemove(targets);
+  } catch { /* best-effort */ }
+}

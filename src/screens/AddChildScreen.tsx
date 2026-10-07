@@ -9,6 +9,7 @@ import { Palette } from '../theme';
 import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { invalidateCache } from '../lib/offlineCache';
 import { supabase } from '../lib/supabase';
 import { recordProductEvent } from '../lib/featureAnalytics';
 import { uploadChildPhoto, photoErrorText } from '../lib/uploadChildPhoto';
@@ -314,6 +315,9 @@ export default function AddChildScreen({ navigation }: AddChildScreenProps) {
         }
       }
 
+      // The home list is served cache-first, so drop its cache or the new child
+      // stays invisible until the app restarts.
+      await invalidateCache('children:');
       Alert.alert('Success', `${storedName} added!`, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (err: any) {
       if (err?.__offline) {
