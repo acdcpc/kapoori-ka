@@ -1,0 +1,21 @@
+name: Purge old payment screenshots
+
+# Receipts are only needed while a payment is being verified by hand, and storage
+# is the tightest quota on the free tier. Keeps the last week, deletes older.
+on:
+  schedule:
+    - cron: '30 1 * * *'   # daily, an hour after the vaccine reminders
+  workflow_dispatch: {}
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the purge function
+        run: |
+          CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
+            "https://tgnzucqjebnisgrxjfjg.supabase.co/functions/v1/purge-old-screenshots" \
+            -H "x-reminder-secret: ${{ secrets.REMINDER_CRON_SECRET }}")
+          echo "HTTP $CODE"
+          cat /tmp/resp.json
+          test "$CODE" = "200"
