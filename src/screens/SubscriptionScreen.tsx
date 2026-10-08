@@ -16,6 +16,7 @@ import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ESEWA_QR = require('../../assets/esewa-qr.png');
@@ -150,8 +151,22 @@ export default function SubscriptionScreen() {
       Alert.alert(isNe ? 'अनुमति चाहियो' : 'Permission needed', isNe ? 'ग्यालेरी पहुँच अनुमति दिनुहोस्।' : 'Please allow gallery access.');
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsMultipleSelection: false });
-    if (!res.canceled && res.assets?.[0]) setScreenshot(res.assets[0]);
+    // Receipts are read once by the admin for verification, and storage is the
+    // tightest quota: shrink hard rather than uploading a 1 MB photo.
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.5, allowsMultipleSelection: false });
+    if (!res.canceled && res.assets?.[0]) {
+      const asset = res.assets[0];
+      try {
+        const shrunk = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [{ resize: { width: Math.min(asset.width || 1080, 1080) } }],
+          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        setScreenshot({ ...asset, uri: shrunk.uri, width: shrunk.width, height: shrunk.height, mimeType: 'image/jpeg' } as ImagePicker.ImagePickerAsset);
+      } catch {
+        setScreenshot(asset);   // fall back to the picker's own compression
+      }
+    }
   };
 
   const submitPayment = async () => {
