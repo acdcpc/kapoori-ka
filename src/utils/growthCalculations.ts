@@ -90,9 +90,15 @@ export const zFromLMS = (value: number, L: number, M: number, S: number): number
 
 // Standard normal CDF (Abramowitz & Stegun 7.1.26) → percentile 0.1–99.9
 /** Exact weight-for-length/height z from the official WHO LMS (by cm, sex, age-appropriate table). */
-export const wfhZ = (weight: number, heightCm: number, sex: 'male' | 'female'): number => {
+export const wfhZ = (weight: number, heightCm: number, sex: 'male' | 'female', ageMonths: number): number => {
   const cm = Math.round(heightCm * 10) / 10;
-  const lms = sex === 'male' ? (cm < 65 ? WHO_WFL_BOYS_LMS : WHO_WFH_BOYS_LMS) : (cm < 65 ? WHO_WFL_GIRLS_LMS : WHO_WFH_GIRLS_LMS);
+  // The WHO standard switches by AGE, not by length: weight-for-length under 24
+  // months, weight-for-height from 24 to 60. Choosing by centimetres put a 1-year-old
+  // at 75 cm on the 2-5 year table and shifted the z by ~0.2.
+  const useLength = ageMonths < 24;
+  const lms = sex === 'male'
+    ? (useLength ? WHO_WFL_BOYS_LMS : WHO_WFH_BOYS_LMS)
+    : (useLength ? WHO_WFL_GIRLS_LMS : WHO_WFH_GIRLS_LMS);
   let row = lms[0];
   for (const r of lms) { if (r[0] <= cm) row = r; else break; }
   return zFromLMS(weight, row[1], row[2], row[3]);
@@ -212,7 +218,7 @@ export const classifyGrowthStatus = (
   }
 
   if (metric === 'wfh') {
-    const z = weight && height ? wfhZ(weight, height, sex) : NaN;
+    const z = weight && height ? wfhZ(weight, height, sex, ageMonths) : NaN;
     if (isNaN(z)) return { status: 'grey', labelEn: 'Weight and height both needed', labelNe: 'तौल र उचाइ दुवै चाहिन्छ' };
     const band = zBand(z);
     const labels: Record<string, { en: string; ne: string }> = {
