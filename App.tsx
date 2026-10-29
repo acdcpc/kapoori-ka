@@ -7,8 +7,9 @@ import { LanguageContext } from './src/context/LanguageContext';
 import { ThemeContext, ThemeMode } from './src/context/ThemeContext';
 import { makePalette } from './src/theme';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, Platform, useColorScheme, AppState } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, View, Platform, useColorScheme, AppState, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,6 +46,11 @@ function Navigation() {
   const { user, loading, subscription } = useAuth();
   const { language } = useContext(LanguageContext);
   const { palette, isDark } = useContext(ThemeContext);
+  // On web this resolves env(safe-area-inset-top). viewport-fit=cover makes the
+  // page paint edge-to-edge, so without this padding the stack header — and the
+  // back arrow inside it — sits underneath the iPhone status bar whenever the app
+  // runs from the home screen, where there is no browser chrome to fall back on.
+  const insets = useSafeAreaInsets();
 
   const navTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
@@ -72,14 +78,37 @@ function Navigation() {
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View
+        style={{
+          flex: 1,
+          paddingTop: Platform.OS === 'web' ? insets.top : 0,
+          backgroundColor: Platform.OS === 'web' ? palette.surface : undefined,
+        }}
+      >
       <Stack.Navigator
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
           headerStyle: { backgroundColor: palette.surface },
           headerTintColor: palette.text,
           headerTitleStyle: { fontWeight: '700', fontSize: 17, color: palette.text },
           headerShadowVisible: false,
           headerBackTitleVisible: false,
-        }}
+          // A home-screen web install has no browser chrome, so there is no
+          // browser back button to fall back on. Supply one on web; native keeps
+          // its own header-provided arrow and gestures.
+          headerLeft: Platform.OS === 'web'
+            ? () => (navigation.canGoBack() ? (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={language === 'ne' ? 'पछाडि' : 'Back'}
+                  onPress={() => navigation.goBack()}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{ paddingHorizontal: 12, paddingVertical: 4 }}
+                >
+                  <Ionicons name="chevron-back" size={26} color={palette.text} />
+                </TouchableOpacity>
+              ) : null)
+            : undefined,
+        })}
       >
         {user ? (
           <>
@@ -103,6 +132,7 @@ function Navigation() {
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         )}
       </Stack.Navigator>
+      </View>
     </NavigationContainer>
   );
 }
