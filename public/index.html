@@ -3,9 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <!-- viewport-fit=cover lets the app paint edge-to-edge under the notch;
-         App.tsx wraps the tree in SafeAreaProvider, so insets are still honoured. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <!-- Deliberately NOT viewport-fit=cover. With it the page paints underneath the
+         iOS status bar, so the stack header and its back arrow end up hidden in a
+         home-screen install — and because most screens already apply their own top
+         inset via SafeAreaView, cover would also double-pad them. The status bar is
+         opaque (`default`), so content starts below it on its own. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
     <link rel="manifest" href="/manifest.json" />
     <!-- iOS reads these, not the manifest icons. 180 is what iPhone requests,

@@ -7,7 +7,7 @@ import { LanguageContext } from './src/context/LanguageContext';
 import { ThemeContext, ThemeMode } from './src/context/ThemeContext';
 import { makePalette } from './src/theme';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View, Platform, useColorScheme, AppState, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
@@ -46,11 +46,6 @@ function Navigation() {
   const { user, loading, subscription } = useAuth();
   const { language } = useContext(LanguageContext);
   const { palette, isDark } = useContext(ThemeContext);
-  // On web this resolves env(safe-area-inset-top). viewport-fit=cover makes the
-  // page paint edge-to-edge, so without this padding the stack header — and the
-  // back arrow inside it — sits underneath the iPhone status bar whenever the app
-  // runs from the home screen, where there is no browser chrome to fall back on.
-  const insets = useSafeAreaInsets();
 
   const navTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
@@ -78,13 +73,6 @@ function Navigation() {
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <View
-        style={{
-          flex: 1,
-          paddingTop: Platform.OS === 'web' ? insets.top : 0,
-          backgroundColor: Platform.OS === 'web' ? palette.surface : undefined,
-        }}
-      >
       <Stack.Navigator
         screenOptions={({ navigation }) => ({
           headerStyle: { backgroundColor: palette.surface },
@@ -132,7 +120,6 @@ function Navigation() {
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         )}
       </Stack.Navigator>
-      </View>
     </NavigationContainer>
   );
 }
