@@ -104,7 +104,7 @@ export const PremiumGuard: React.FC<PremiumGuardProps> = ({ children, feature = 
       const hasActive = subscription.status === 'active'
         || subscription.plan === 'premium'
         || subscription.plan === 'yearly'
-        || subscription.plan === 'monthly';
+        || subscription.plan === '6months';
       if (hasActive) {
         let expired = false;
         if (subscription.endDate) {

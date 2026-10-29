@@ -21,8 +21,6 @@ import * as ImageManipulator from 'expo-image-manipulator';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ESEWA_QR = require('../../assets/esewa-qr.png');
 
-const MONTHLY_PRICE_NPR = 100;
-const YEARLY_PRICE_NPR = 500;
 
 // Plans shown for purchase (Nepal pricing, 2026-09)
 const PLANS = [
@@ -321,8 +319,8 @@ export default function SubscriptionScreen() {
           <Ionicons name="checkmark-circle" size={28} color={t.green} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.statusActive}>
-              {subscription.plan === 'monthly'
-                ? (isNe ? 'मासिक सदस्यता सक्रिय' : 'Monthly Plan Active')
+              {subscription.plan === '6months'
+                ? (isNe ? '६ महिनाको सदस्यता सक्रिय' : '6-Month Plan Active')
                 : (isNe ? 'वार्षिक सदस्यता सक्रिय' : 'Yearly Plan Active')}
             </Text>
             <Text style={styles.statusExpiry}>

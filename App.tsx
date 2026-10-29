@@ -67,7 +67,7 @@ function Navigation() {
     );
   }
 
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === '6months';
 
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>

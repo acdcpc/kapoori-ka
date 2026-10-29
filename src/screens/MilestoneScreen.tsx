@@ -41,7 +41,7 @@ export default function MilestoneScreen({ route, navigation }: Props) {
   const t = translations[language];
   const isNe = language === 'ne';
   const { subscription, user } = useAuth();
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === '6months';
 
   const ageMonths = getAgeInMonths(child.dateOfBirth, dayjs().format('YYYY-MM-DD'));
   const [achievedIds, setAchievedIds] = useState<Set<string>>(new Set());

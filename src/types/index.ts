@@ -98,7 +98,7 @@ export interface MChatResponse {
 
 export interface SubscriptionStatus {
   userId: string;
-  plan: 'free' | 'beta_free' | 'monthly' | 'yearly' | 'premium';
+  plan: 'free' | 'beta_free' | '6months' | 'yearly' | 'premium';
   status: 'active' | 'expired' | 'cancelled' | 'pending';
   startDate: string;
   endDate: string;

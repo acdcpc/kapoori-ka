@@ -146,7 +146,7 @@ export default function ImmunizationScreen({ route, navigation }: Props) {
   const { subscription, user } = useAuth();
   const t = translations[language];
   const isNe = language === 'ne';
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === '6months';
 
   const [vaccineRecords, setVaccineRecords] = useState<VaccineRecord[]>([]);
   const [loading, setLoading] = useState(true);

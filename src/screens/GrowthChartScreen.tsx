@@ -57,7 +57,7 @@ export default function GrowthChartScreen({ route, navigation }: Props) {
   const { subscription, user } = useAuth();
   const t = translations[language] || translations['en'];
   const isNe = language === 'ne';
-  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === 'monthly';
+  const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === '6months';
 
   const [records, setRecords] = useState<GrowthRecord[]>([]);
   const [loading, setLoading] = useState(true);

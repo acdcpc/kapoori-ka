@@ -7,7 +7,7 @@ export function isPremiumActive(subscription: any): boolean {
   if (!subscription) return false;
   const plan = String(subscription.plan || '').toLowerCase();
   const status = String(subscription.status || '').toLowerCase();
-  const hasPlan = status === 'active' || ['premium', 'yearly', 'monthly', '6months'].includes(plan);
+  const hasPlan = status === 'active' || ['premium', 'yearly', '6months'].includes(plan);
   if (!hasPlan) return false;
 
   const raw = subscription.endDate ?? subscription.end_date;

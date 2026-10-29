@@ -24,7 +24,7 @@ export interface UserProfile {
 
 export interface PremiumInfo {
   active: boolean;
-  plan: 'monthly' | 'yearly' | 'premium';
+  plan: '6months' | 'yearly' | 'premium';
   activatedAt?: Date;
   expiresAt?: Date;
   verifiedBy?: string;
@@ -33,7 +33,7 @@ export interface PremiumInfo {
 
 export interface Subscription {
   status: 'active' | 'expired' | 'cancelled' | 'free' | 'pending';
-  plan: 'free' | 'monthly' | 'yearly' | 'premium';
+  plan: 'free' | '6months' | 'yearly' | 'premium';
   startDate?: Date;
   endDate?: Date;
   autoRenew: boolean;
@@ -55,7 +55,7 @@ export interface PaymentRecord {
   currency: string;
   screenshotUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
-  plan: 'monthly' | 'yearly';
+  plan: '6months' | 'yearly';
   createdAt: Date;
   verifiedAt?: Date | null;
   verifiedBy?: string | null;
@@ -66,7 +66,7 @@ export interface PaymentRecord {
 export interface ActivationCode {
   code: string;
   status: 'valid' | 'used';
-  plan: 'monthly' | 'yearly';
+  plan: '6months' | 'yearly';
   amount: number;
   originalTransactionId?: string;
   createdAt?: Date;

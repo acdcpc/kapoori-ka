@@ -31,7 +31,7 @@ export const usePremiumGuard = () => {
     const hasActive = subscription.status === 'active'
       || subscription.plan === 'premium'
       || subscription.plan === 'yearly'
-      || subscription.plan === 'monthly';
+      || subscription.plan === '6months';
     if (!hasActive) return false;
     // Must not be expired
     if (subscription.endDate) {
