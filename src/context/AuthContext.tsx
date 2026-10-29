@@ -335,8 +335,13 @@ function parseUrlParams(url: string): URLSearchParams {
     setError(null); setLoading(true);
     try {
       const isWeb = Platform.OS === 'web';
-      // makeRedirectUri returns the native scheme on native and window.location.origin on web.
-      const redirectTo = makeRedirectUri({ scheme: 'com.kapoori.ka', path: 'auth/callback' });
+      // On web the return MUST land on this origin. makeRedirectUri is handed the
+      // native scheme, and anything resolving to com.kapoori.ka: inside Safari is a
+      // dead end on a device with no native app installed — the browser sits on an
+      // unresolvable scheme and the user is never signed in. Use the real origin.
+      const redirectTo = isWeb && typeof window !== 'undefined'
+        ? window.location.origin
+        : makeRedirectUri({ scheme: 'com.kapoori.ka', path: 'auth/callback' });
       console.log('[AuthContext] Google sign-in redirect URL:', redirectTo);
 
       if (!isWeb) {
@@ -359,7 +364,10 @@ function parseUrlParams(url: string): URLSearchParams {
           provider: 'google',
           options: {
             redirectTo,
-            queryParams: { access_type: 'offline', prompt: 'consent' },
+            // No prompt:'consent' on web. It forced a full consent screen on every
+            // single sign-in (the long pause before the redirect), and the browser
+            // client does not need an offline refresh token — Supabase manages the
+            // session and refreshes it with its own credentials.
           },
         });
         if (e) {
