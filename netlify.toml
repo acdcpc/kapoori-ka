@@ -1,12 +1,17 @@
 # Netlify config — Kapoori Ka web pages (payment + admin + guide)
 [build]
-  # No build step: these are static HTML files served straight from netlify/
-  command = ""
-  publish = "netlify"
+  # Ship the Expo web export. `expo export` writes the app AND everything in
+  # public/ into dist/ (payment.html, admin/, vendor/, manifest.json,
+  # service-worker.js, _redirects, _headers), so a single deploy covers both the
+  # installable PWA and the static payment pages.
+  command = "npx expo export -p web"
+  publish = "dist"
 
-# Make the bare root URL land on the public payment page instead of 404ing
+# `/` now serves the app itself — that is the point: a visitor on an iPhone must
+# be able to open the site and install it. The payment page keeps working at
+# /payment.html; this alias keeps older shared /payment links alive.
 [[redirects]]
-  from = "/"
+  from = "/payment"
   to = "/payment.html"
   status = 200
 

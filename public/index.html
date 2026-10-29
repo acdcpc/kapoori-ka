@@ -3,11 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <!-- viewport-fit=cover lets the app paint edge-to-edge under the notch;
+         App.tsx wraps the tree in SafeAreaProvider, so insets are still honoured. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>%WEB_TITLE%</title>
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- iOS reads these, not the manifest icons. 180 is what iPhone requests,
+         167 is iPad. Sizes are declared so iOS picks the right one instead of
+         stretching whichever link comes last. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Kapoori Ka" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
