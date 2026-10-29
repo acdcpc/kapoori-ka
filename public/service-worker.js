@@ -1,7 +1,7 @@
 // Kapoori Ka — versioned, app-shell-only service worker.
 // Bump VERSION on each deploy to invalidate stale caches.
 const CACHE_PREFIX = 'kapoori-ka';
-const VERSION = 'v3'; // v3: merged Web Push handling (single root worker)
+const VERSION = 'v4'; // v4: header/back-button + Alert shim release; bump forces a clean cache
 const CACHE = `${CACHE_PREFIX}-${VERSION}`;
 
 // App shell to pre-cache.
