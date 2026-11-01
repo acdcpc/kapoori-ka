@@ -4,8 +4,12 @@
   # public/ into dist/ (payment.html, admin/, vendor/, manifest.json,
   # service-worker.js, _redirects, _headers), so a single deploy covers both the
   # installable PWA and the static payment pages.
-  command = "npx expo export -p web"
+  command = "npx expo export -p web && node scripts/fix-web-assets.mjs"
   publish = "dist"
+  # The repair step relocates dependency assets out of /assets/node_modules/.pnpm/…
+  # (a dot-directory path the host does not serve) to /assets/vendor/, rewrites the
+  # references, and injects the icon @font-face rules. Without it every Ionicons
+  # glyph and the navigation back arrow render as empty boxes on the PWA.
 
 # `/` now serves the app itself — that is the point: a visitor on an iPhone must
 # be able to open the site and install it. The payment page keeps working at
@@ -23,6 +27,12 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+[[headers]]
+  # Content-hashed filenames (fonts, images) — safe to cache forever.
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/vendor/*"

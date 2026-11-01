@@ -1,1 +1,8 @@
+# A missing asset must fail loudly. Without this rule the SPA fallback below
+# answers 200 with index.html, so a broken font/image is silently parsed as HTML
+# and every icon paints as an empty box (the bug this protects against).
+/assets/*  /404.html  404
+/fonts/*   /404.html  404
+
+# SPA fallback for app routes.
 /* /index.html 200

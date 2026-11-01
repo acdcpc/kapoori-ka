@@ -67,7 +67,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "expo export -p web",
+    "build:web": "expo export -p web && node scripts/fix-web-assets.mjs",
     "serve:web": "expo serve",
     "validate:release-security": "node scripts/validate-release-security.mjs",
     "validate:hc-calculations": "node scripts/validate-hc-calculations.mjs",
