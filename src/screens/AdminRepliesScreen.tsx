@@ -54,6 +54,7 @@ export default function AdminRepliesScreen({ navigation }: any) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const call = useCallback(async (payload: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('admin-messages', { body: payload });
@@ -72,7 +73,12 @@ export default function AdminRepliesScreen({ navigation }: any) {
       if (!admin) { setLoading(false); return; }
       const result = await call({ action: 'list' });
       setThreads(result?.broadcasts ?? []);
-    } catch {
+      setError(null);
+    } catch (e: any) {
+      // Never fail silently: an empty list and a broken call look identical to
+      // the admin otherwise.
+      console.warn('[admin-replies] could not load messages:', e?.message ?? e);
+      setError(e?.message ?? tr('लोड गर्न सकिएन', 'Could not load messages'));
       setThreads([]);
     } finally {
       setLoading(false);
@@ -172,7 +178,15 @@ export default function AdminRepliesScreen({ navigation }: any) {
         </>
       ) : (
         <>
-          {threads.length === 0 ? (
+          {error && (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={load} style={styles.retryBtn}>
+            <Text style={styles.retryText}>{tr('फेरि प्रयास गर्नुहोस्', 'Retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {threads.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="chatbubble-ellipses-outline" size={44} color={t.border} />
               <Text style={styles.muted}>
@@ -232,6 +246,10 @@ const makeStyles = (t: Palette) =>
     cardMeta: { fontSize: 12, color: t.muted2, marginTop: 3 },
     badge: { minWidth: 24, height: 24, borderRadius: 12, backgroundColor: t.clay, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },
     badgeText: { color: t.onAccent, fontWeight: '800', fontSize: 12 },
+    errorCard: { backgroundColor: t.redLight, borderWidth: 1, borderColor: t.red, borderRadius: 12, padding: 12, marginBottom: 12 },
+    errorText: { fontSize: 13, color: t.redDark },
+    retryBtn: { marginTop: 10, alignSelf: 'flex-start', backgroundColor: t.red, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+    retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
     backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 },
     backText: { color: t.clay, fontWeight: '700', fontSize: 13 },
     threadTitle: { fontSize: 18, fontWeight: '800', color: t.text, lineHeight: 25 },
