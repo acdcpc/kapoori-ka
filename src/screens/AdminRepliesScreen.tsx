@@ -29,6 +29,7 @@ type Thread = {
   created_at: string;
   reply_count: number;
   unread_reply_count: number;
+  archived_at?: string | null;
 };
 
 type Reply = {
@@ -101,6 +102,55 @@ export default function AdminRepliesScreen({ navigation }: any) {
     }
   };
 
+  const withdraw = async (id: string) => {
+    try {
+      await call({ action: 'archive', broadcast_id: id });
+      setOpenId(null);
+      setReplies([]);
+      await load();
+    } catch (error: any) {
+      Alert.alert(tr('सकिएन', 'Could not withdraw'), error?.message ?? '');
+    }
+  };
+
+  const restore = async (id: string) => {
+    try {
+      await call({ action: 'restore', broadcast_id: id });
+      setOpenId(null);
+      setReplies([]);
+      await load();
+    } catch (error: any) {
+      Alert.alert(tr('सकिएन', 'Could not restore'), error?.message ?? '');
+    }
+  };
+
+  const removeForever = (id: string) => {
+    Alert.alert(
+      tr('सधैंका लागि मेटाउने?', 'Delete permanently?'),
+      tr(
+        'सन्देश र यसका सबै जवाफ मेटिन्छन्। यो फिर्ता गर्न सकिँदैन।',
+        'The message and every reply to it are deleted. This cannot be undone.',
+      ),
+      [
+        { text: tr('रद्द गर्नुहोस्', 'Cancel'), style: 'cancel' },
+        {
+          text: tr('मेटाउनुहोस्', 'Delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await call({ action: 'delete', broadcast_id: id });
+              setOpenId(null);
+              setReplies([]);
+              await load();
+            } catch (error: any) {
+              Alert.alert(tr('सकिएन', 'Could not delete'), error?.message ?? '');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const markRead = async (id: string) => {
     try {
       await call({ action: 'mark_read', broadcast_id: id });
@@ -169,6 +219,24 @@ export default function AdminRepliesScreen({ navigation }: any) {
             })
           )}
 
+          <View style={styles.manageRow}>
+            {openThreadData.archived_at ? (
+              <TouchableOpacity style={styles.manageBtn} onPress={() => restore(openThreadData.id)}>
+                <Ionicons name="eye-outline" size={15} color={t.clay} />
+                <Text style={styles.manageBtnText}>{tr('फेरि देखाउनुहोस्', 'Put back in inbox')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.manageBtn} onPress={() => withdraw(openThreadData.id)}>
+                <Ionicons name="eye-off-outline" size={15} color={t.clay} />
+                <Text style={styles.manageBtnText}>{tr('इनबक्सबाट हटाउनुहोस्', 'Withdraw from inbox')}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.manageBtn, styles.dangerBtn]} onPress={() => removeForever(openThreadData.id)}>
+              <Ionicons name="trash-outline" size={15} color={t.red} />
+              <Text style={[styles.manageBtnText, { color: t.red }]}>{tr('मेटाउनुहोस्', 'Delete')}</Text>
+            </TouchableOpacity>
+          </View>
+
           {openThreadData.unread_reply_count > 0 && (
             <TouchableOpacity style={styles.markBtn} onPress={() => markRead(openThreadData.id)}>
               <Ionicons name="checkmark-done" size={16} color={t.onAccent} />
@@ -203,6 +271,9 @@ export default function AdminRepliesScreen({ navigation }: any) {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle} numberOfLines={2}>{thread.title}</Text>
+                  {thread.archived_at && (
+                    <Text style={styles.archivedTag}>{tr('हटाइएको', 'withdrawn')}</Text>
+                  )}
                   <Text style={styles.cardMeta}>
                     {dayjs(thread.created_at).format('D MMM')} · {thread.reply_count}{' '}
                     {tr('जवाफ', 'replies')}
@@ -246,6 +317,21 @@ const makeStyles = (t: Palette) =>
     cardMeta: { fontSize: 12, color: t.muted2, marginTop: 3 },
     badge: { minWidth: 24, height: 24, borderRadius: 12, backgroundColor: t.clay, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },
     badgeText: { color: t.onAccent, fontWeight: '800', fontSize: 12 },
+    archivedTag: { fontSize: 10, fontWeight: '800', color: t.muted2, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 3 },
+    manageRow: { flexDirection: 'row', gap: 10, marginTop: 20, flexWrap: 'wrap' },
+    manageBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      backgroundColor: t.surface,
+    },
+    dangerBtn: { borderColor: t.red },
+    manageBtnText: { fontSize: 12, fontWeight: '700', color: t.clay },
     errorCard: { backgroundColor: t.redLight, borderWidth: 1, borderColor: t.red, borderRadius: 12, padding: 12, marginBottom: 12 },
     errorText: { fontSize: 13, color: t.redDark },
     retryBtn: { marginTop: 10, alignSelf: 'flex-start', backgroundColor: t.red, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },

@@ -86,7 +86,7 @@ Deno.serve(async (request) => {
 
     const { data: broadcast } = await adminClient
       .from('broadcasts')
-      .select('id, title, body, title_ne, body_ne, allow_replies, audience, created_at')
+      .select('id, title, body, title_ne, body_ne, allow_replies, audience, created_at, archived_at')
       .eq('id', broadcastId)
       .maybeSingle();
     if (!broadcast) return response({ error: 'Message not found.' }, 404, cors);
@@ -138,6 +138,33 @@ Deno.serve(async (request) => {
       .from('broadcast_replies').update({ read_at: stamp }).eq('broadcast_id', broadcastId).is('read_at', null);
     if (error) return response({ error: 'Could not mark the thread as read.' }, 500, cors);
     return response({ ok: true, broadcast_id: broadcastId }, 200, cors);
+  }
+
+  // Withdraw a message (archive) or remove it for good.
+  // Archiving is the safe default: the row survives for the audit trail and its
+  // replies stay readable, while the user-facing select policy
+  // (archived_at is null) hides it from every inbox at once — including
+  // installed builds that predate this screen.
+  if (action === 'archive' || action === 'restore') {
+    const broadcastId = String(body.broadcast_id ?? '');
+    if (!broadcastId) return response({ error: 'broadcast_id is required.' }, 400, cors);
+    const { error } = await adminClient
+      .from('broadcasts')
+      .update({ archived_at: action === 'archive' ? new Date().toISOString() : null })
+      .eq('id', broadcastId);
+    if (error) return response({ error: 'Could not update the message.' }, 500, cors);
+    console.log(`[admin-messages] ${user.id} ${action} ${broadcastId}`);
+    return response({ ok: true, broadcast_id: broadcastId, archived: action === 'archive' }, 200, cors);
+  }
+
+  if (action === 'delete') {
+    const broadcastId = String(body.broadcast_id ?? '');
+    if (!broadcastId) return response({ error: 'broadcast_id is required.' }, 400, cors);
+    // Replies and read receipts cascade from the foreign keys.
+    const { error } = await adminClient.from('broadcasts').delete().eq('id', broadcastId);
+    if (error) return response({ error: 'Could not delete the message.' }, 500, cors);
+    console.log(`[admin-messages] ${user.id} deleted ${broadcastId}`);
+    return response({ ok: true, deleted: broadcastId }, 200, cors);
   }
 
   return response({ error: 'Unknown action.' }, 400, cors);
