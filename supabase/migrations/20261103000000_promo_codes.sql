@@ -220,7 +220,7 @@ begin
   end if;
 
   return jsonb_build_object('codes', coalesce((
-    select jsonb_agg(row_to_json(t) order by t.created_at desc)
+    select jsonb_agg(row_to_json(t) order by t.last_redeemed_at desc nulls last, t.label)
     from (
       select c.label,
              c.plan,
@@ -228,11 +228,11 @@ begin
              c.max_redemptions,
              c.redemption_count,
              greatest(c.max_redemptions - c.redemption_count, 0) as remaining,
-             c.created_at,
+             c.used_at as last_redeemed_at,
              c.voided_at
       from public.activation_codes c
       where c.max_redemptions > 1 or c.label is not null
-      order by c.created_at desc
+      order by c.used_at desc nulls last, c.label
       limit 50
     ) t
   ), '[]'::jsonb));

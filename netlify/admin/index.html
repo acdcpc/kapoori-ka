@@ -710,8 +710,9 @@
             escapeHtml(c.plan) + ' · used ' + c.redemption_count + ' of ' + c.max_redemptions +
             ' · ' + c.remaining + ' left' +
             (c.voided_at ? ' · <span style="color:#C2410C;">voided</span>' : '') +
-            '<div style="color:#777;font-size:12px;margin-top:3px;">created ' +
-            new Date(c.created_at).toLocaleString() + '</div>';
+            '<div style="color:#777;font-size:12px;margin-top:3px;">' +
+            (c.last_redeemed_at ? 'last redeemed ' + new Date(c.last_redeemed_at).toLocaleString() : 'no redemptions yet') +
+            '</div>';
           list.appendChild(row);
         });
       } catch (e) {
