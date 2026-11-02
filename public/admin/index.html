@@ -147,6 +147,38 @@
       </div>
     </details>
 
+    <!-- Promo codes: one code shared with many users, each redeeming once. -->
+    <details style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;background:#fff;">
+      <summary style="cursor:pointer;font-weight:700;font-size:16px;">🎟️ Promo codes (first N users)</summary>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;max-width:640px;">
+        <input id="promoCode" maxlength="32" placeholder="Code users will type, e.g. FIRST100"
+               style="padding:10px;border:1px solid #ddd;border-radius:8px;text-transform:uppercase;">
+        <input id="promoLabel" maxlength="80" placeholder="Label for your records, e.g. Launch offer"
+               style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#555;">
+            Plan
+            <select id="promoPlan" style="padding:9px;border:1px solid #ddd;border-radius:8px;">
+              <option value="yearly" selected>1 year</option>
+              <option value="6months">6 months</option>
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#555;">
+            How many users can redeem it
+            <input id="promoMax" type="number" min="1" max="100000" value="100"
+                   style="padding:9px;border:1px solid #ddd;border-radius:8px;width:160px;">
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button onclick="createPromo()" style="background:#E8602C;color:#fff;">Create promo code</button>
+          <button onclick="loadPromoCodes()">Refresh list</button>
+          <span id="promoStatus" style="color:#666;"></span>
+        </div>
+        <div id="promoResult" style="font-size:13px;color:#444;white-space:pre-wrap;"></div>
+        <div id="promoList" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </details>
+
     <!-- Replies: every broadcast with its reply counts, and the threads behind them. -->
     <details style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;background:#fff;">
       <summary style="cursor:pointer;font-weight:700;font-size:16px;">💬 Replies from users</summary>
@@ -627,6 +659,64 @@
         host.appendChild(mark);
       } catch (e) {
         host.textContent = 'Could not load the thread: ' + ((e && e.message) || e);
+      }
+    };
+
+    // ---- Promo codes ----
+    window.createPromo = async function () {
+      var status = document.getElementById('promoStatus');
+      var out = document.getElementById('promoResult');
+      var code = (document.getElementById('promoCode').value || '').trim();
+      var label = (document.getElementById('promoLabel').value || '').trim();
+      var plan = document.getElementById('promoPlan').value;
+      var max = parseInt(document.getElementById('promoMax').value || '0', 10);
+      if (code.length < 6) { out.textContent = 'Use at least 6 letters or numbers.'; return; }
+      if (!(max >= 1)) { out.textContent = 'Set how many users can redeem it.'; return; }
+      status.textContent = 'Creating…';
+      out.textContent = '';
+      try {
+        var res = await supabase.rpc('admin_create_promo_code', {
+          p_code: code, p_plan: plan, p_max_redemptions: max, p_label: label || null,
+        });
+        if (res.error) throw res.error;
+        var d = res.data || {};
+        if (d.error) throw new Error(d.error);
+        status.textContent = '';
+        out.textContent = 'Created ' + d.code + ' — ' + d.plan + ', up to ' + d.max_redemptions + ' users.'
+          + String.fromCharCode(10)
+          + 'Share this code with users; each person can redeem it once.';
+        window.loadPromoCodes();
+      } catch (e) {
+        status.textContent = '';
+        out.textContent = 'Could not create: ' + ((e && e.message) || e);
+      }
+    };
+
+    window.loadPromoCodes = async function () {
+      var list = document.getElementById('promoList');
+      var status = document.getElementById('promoStatus');
+      status.textContent = 'Loading…';
+      list.innerHTML = '';
+      try {
+        var res = await supabase.rpc('admin_list_promo_codes');
+        if (res.error) throw res.error;
+        var codes = (res.data && res.data.codes) || [];
+        status.textContent = '';
+        if (!codes.length) { list.textContent = 'No promo codes yet.'; return; }
+        codes.forEach(function (c) {
+          var row = document.createElement('div');
+          row.style.cssText = 'border:1px solid #eee;border-radius:10px;padding:10px;font-size:13px;';
+          row.innerHTML = '<strong>' + escapeHtml(c.label || '(no label)') + '</strong> · ' +
+            escapeHtml(c.plan) + ' · used ' + c.redemption_count + ' of ' + c.max_redemptions +
+            ' · ' + c.remaining + ' left' +
+            (c.voided_at ? ' · <span style="color:#C2410C;">voided</span>' : '') +
+            '<div style="color:#777;font-size:12px;margin-top:3px;">created ' +
+            new Date(c.created_at).toLocaleString() + '</div>';
+          list.appendChild(row);
+        });
+      } catch (e) {
+        status.textContent = '';
+        list.textContent = 'Could not load: ' + ((e && e.message) || e);
       }
     };
 
