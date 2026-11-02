@@ -91,6 +91,19 @@ export default function MessagesScreen({ navigation }: any) {
         />
       }
     >
+      {isAdmin && (
+        <TouchableOpacity style={styles.adminCard} onPress={() => navigation.navigate('AdminReplies')} activeOpacity={0.85}>
+          <Ionicons name="shield-checkmark-outline" size={18} color={t.clay} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.adminCardTitle}>{tr('प्रशासक: जवाफहरू', 'Admin: replies')}</Text>
+            <Text style={styles.adminCardHint}>
+              {tr('प्रयोगकर्ताले पठाएका जवाफ हेर्नुहोस्', 'Read what users replied to your messages')}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={t.shadow} />
+        </TouchableOpacity>
+      )}
+
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="chatbubbles-outline" size={44} color={t.border} />
@@ -183,6 +196,19 @@ const makeStyles = (t: Palette) =>
       paddingVertical: 4,
     },
     replyChipText: { fontSize: 11, color: t.clay, fontWeight: '700' },
+    adminCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: t.surface,
+      borderWidth: 1,
+      borderColor: t.clay,
+      borderRadius: 14,
+      padding: 13,
+      marginBottom: 12,
+    },
+    adminCardTitle: { fontSize: 14, fontWeight: '800', color: t.text },
+    adminCardHint: { fontSize: 12, color: t.muted, marginTop: 2 },
     fab: {
       position: 'absolute',
       right: 20,

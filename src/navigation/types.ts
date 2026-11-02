@@ -22,4 +22,5 @@ export type RootStackParamList = {
   Messages: undefined;
   BroadcastDetail: { broadcastId: string };
   ComposeBroadcast: undefined;
+  AdminReplies: undefined;
 };

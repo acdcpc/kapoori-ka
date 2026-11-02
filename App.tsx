@@ -33,6 +33,7 @@ import PreferencesScreen from './src/screens/PreferencesScreen';
 import MessagesScreen from './src/screens/MessagesScreen';
 import BroadcastDetailScreen from './src/screens/BroadcastDetailScreen';
 import ComposeBroadcastScreen from './src/screens/ComposeBroadcastScreen';
+import AdminRepliesScreen from './src/screens/AdminRepliesScreen';
 import AdminPaymentsScreen from './src/screens/AdminPaymentsScreen';
 import WebsiteScreen from './src/screens/WebsiteScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -146,6 +147,7 @@ function Navigation() {
             <Stack.Screen name="Messages" component={MessagesScreen} options={{ title: 'सन्देश | Messages' }} />
             <Stack.Screen name="BroadcastDetail" component={BroadcastDetailScreen} options={{ title: 'सन्देश | Message' }} />
             <Stack.Screen name="ComposeBroadcast" component={ComposeBroadcastScreen} options={{ title: 'सन्देश पठाउनुहोस् | New message' }} />
+            <Stack.Screen name="AdminReplies" component={AdminRepliesScreen} options={{ title: 'जवाफहरू | Replies' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
