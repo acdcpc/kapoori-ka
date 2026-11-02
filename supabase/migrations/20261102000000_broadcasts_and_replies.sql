@@ -115,3 +115,16 @@ grant all on public.broadcast_replies to service_role;
 comment on table public.broadcasts is 'Admin broadcast messages shown in the app inbox and delivered by push.';
 comment on table public.broadcast_replies is 'Private user replies to a broadcast that allows them.';
 comment on table public.broadcast_reads is 'Per-user read receipts for broadcasts.';
+
+-- Supabase's default privileges hand `authenticated` (and `anon`) a broad ALL on
+-- newly created tables in the public schema, which includes TRUNCATE. TRUNCATE
+-- bypasses RLS entirely, so a signed-in user holding that privilege could empty
+-- these tables regardless of every policy above. Reset to exactly what the
+-- application needs.
+revoke all on public.broadcasts from anon, authenticated;
+revoke all on public.broadcast_reads from anon, authenticated;
+revoke all on public.broadcast_replies from anon, authenticated;
+
+grant select on public.broadcasts to authenticated;
+grant select, insert, update on public.broadcast_reads to authenticated;
+grant select, insert on public.broadcast_replies to authenticated;
