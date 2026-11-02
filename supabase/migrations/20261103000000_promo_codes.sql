@@ -25,16 +25,17 @@ alter table public.activation_codes
 alter table public.activation_codes
   add constraint activation_codes_max_redemptions_check check (max_redemptions between 1 and 100000);
 
+-- activation_codes is keyed by code_hash, not by a surrogate id.
 create table if not exists public.activation_code_redemptions (
   id          uuid primary key default gen_random_uuid(),
-  code_id     uuid not null references public.activation_codes(id) on delete cascade,
+  code_hash   text not null references public.activation_codes(code_hash) on delete cascade,
   user_id     uuid not null references auth.users(id) on delete cascade,
   redeemed_at timestamptz not null default now(),
-  unique (code_id, user_id)
+  unique (code_hash, user_id)
 );
 
 create index if not exists activation_code_redemptions_code_idx
-  on public.activation_code_redemptions (code_id);
+  on public.activation_code_redemptions (code_hash);
 
 alter table public.activation_code_redemptions enable row level security;
 -- No policies on purpose: only the SECURITY DEFINER functions touch this table.
@@ -63,7 +64,9 @@ begin
     return jsonb_build_object('error', 'Must be signed in.');
   end if;
 
-  v_code := upper(regexp_replace(coalesce(p_code, ''), '[^A-Z0-9]', '', 'g'));
+  -- Lowercase input must survive: the old pattern stripped it before the
+  -- upper() call, so 'first-100' collapsed to '100' and was rejected.
+  v_code := upper(regexp_replace(coalesce(p_code, ''), '[^A-Za-z0-9]', '', 'g'));
   if length(v_code) < 6 or length(v_code) > 32 then
     return jsonb_build_object('error', 'Invalid code format.');
   end if;
@@ -109,7 +112,7 @@ begin
 
   if exists (
     select 1 from public.activation_code_redemptions r
-    where r.code_id = v_rec.id and r.user_id = v_user_id
+    where r.code_hash = v_rec.code_hash and r.user_id = v_user_id
   ) then
     return jsonb_build_object('error', 'You have already redeemed this code.');
   end if;
@@ -123,10 +126,10 @@ begin
       used_by = coalesce(used_by, v_user_id),
       used_at = coalesce(used_at, v_now),
       status = case when redemption_count + 1 >= max_redemptions then 'used' else 'valid' end
-  where id = v_rec.id;
+  where code_hash = v_rec.code_hash;
 
-  insert into public.activation_code_redemptions (code_id, user_id)
-  values (v_rec.id, v_user_id);
+  insert into public.activation_code_redemptions (code_hash, user_id)
+  values (v_rec.code_hash, v_user_id);
 
   insert into public.subscriptions (user_id, status, plan, start_date, end_date, auto_renew, price)
   values (
@@ -176,7 +179,9 @@ begin
     return jsonb_build_object('error', 'Not authorized.');
   end if;
 
-  v_code := upper(regexp_replace(coalesce(p_code, ''), '[^A-Z0-9]', '', 'g'));
+  -- Lowercase input must survive: the old pattern stripped it before the
+  -- upper() call, so 'first-100' collapsed to '100' and was rejected.
+  v_code := upper(regexp_replace(coalesce(p_code, ''), '[^A-Za-z0-9]', '', 'g'));
   if length(v_code) < 6 or length(v_code) > 32 then
     return jsonb_build_object('error', 'A code between 6 and 32 letters/numbers is required.');
   end if;
