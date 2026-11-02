@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useContext, useEffect, useState } from 'react';
 import { sheetBottomClearance, sheetMaxHeight } from '../lib/sheetLayout';
+import { countUnreadBroadcasts } from '../data/broadcasts';
 import {
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
   Alert, ActivityIndicator, ScrollView, Dimensions, Pressable,
@@ -99,6 +100,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [missedChildren, setMissedChildren] = useState<{ child: Child; missedVax: { name: string; nameNe: string; ageLabel: string }[] }[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Badge for the inbox row. Refreshed each time the sheet opens rather than on a
+  // timer: cheap, and always current at the moment the user can see it.
+  useEffect(() => {
+    if (!user?.uid) { setUnreadMessages(0); return; }
+    countUnreadBroadcasts(user.uid).then(setUnreadMessages).catch(() => undefined);
+  }, [user?.uid, showSettings]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -535,14 +544,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           accessibilityRole="button"
           accessibilityLabel={isNe ? 'सेटिङ बन्द गर्नुहोस्' : 'Close settings'}
         />
-        // The settings sheet can be taller than the screen on gesture-navigation
-        // phones (Android 16 edge-to-edge). Verified on device: with the panel's
-        // bottom flush to the screen edge, the last rows (Admin, About, Logout)
-        // rendered inside the gesture strip and their taps were swallowed by the
-        // home gesture, and because the content still fitted the max height the
-        // ScrollView never scrolled. The sheet is now lifted by a hard 48dp floor
-        // and its content carries the same padding, so it always scrolls and the
-        // last row always ends above the strip.
+        {/* The settings sheet can be taller than the screen on gesture-navigation phones
+            (Android 16 edge-to-edge). Verified on device: with the panel's bottom flush to the
+            screen edge, the last rows (Admin, About, Logout) rendered inside the gesture strip
+            and their taps were swallowed by the home gesture, and because the content still
+            fitted the max height the ScrollView never scrolled. The sheet is now lifted by a
+            hard 48dp floor and its content carries the same padding, so it always scrolls and
+            the last row always ends above the strip. */}
         <View style={[styles.settingsPanel, {
           // Pinned to the bottom with an absolute edge so the last row can never
           // end up inside the gesture strip, whatever the siblings do. The height
@@ -611,6 +619,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               ))}
             </View>
           </View>
+          <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Messages'); }}>
+            <Ionicons name="chatbubbles-outline" size={18} color={pal.clay} />
+            <Text style={styles.settingsLabel}>{isNe ? 'सन्देशहरू' : 'Messages'}</Text>
+            {unreadMessages > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadMessages > 9 ? '9+' : unreadMessages}</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('Subscription'); }}>
             <Ionicons name="diamond-outline" size={18} color={pal.clay} />
             <Text style={styles.settingsLabel}>{isNe ? 'प्रिमियम सदस्यता' : 'Premium Subscription'}</Text>
@@ -711,6 +729,8 @@ const makeStyles = (pal: Palette) => StyleSheet.create({
   langBtnSmallText: { fontSize: 12, color: pal.muted },
   langBtnSmallTextActive: { color: pal.onAccent, fontWeight: '600' },
   settingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: pal.actionBg, gap: 10 },
+  unreadBadge: { marginLeft: 'auto', minWidth: 22, height: 22, borderRadius: 11, backgroundColor: pal.clay, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  unreadBadgeText: { color: pal.onAccent, fontSize: 11, fontWeight: '800' },
   settingsLabel: { flex: 1, fontSize: 14, color: pal.text },
   settingsValue: { fontSize: 13, color: pal.muted },
   logoutRow: { borderBottomWidth: 0, marginTop: 4 },

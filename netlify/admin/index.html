@@ -130,12 +130,33 @@
           <option value="premium">Premium users only</option>
           <option value="free">Free users only</option>
         </select>
+        <input id="bcTitleNe" maxlength="120" placeholder="नेपाली शीर्षक (optional)"
+               style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <textarea id="bcBodyNe" maxlength="2000" rows="2" placeholder="नेपाली सन्देश (optional)"
+                  style="padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;"></textarea>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px;color:#333;">
+          <input type="checkbox" id="bcAllowReplies" style="width:16px;height:16px;">
+          Let users reply to this message (replies appear under “Replies from users”)
+        </label>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <button onclick="previewBroadcast()">Check audience size</button>
           <button onclick="sendBroadcast()" style="background:#E8602C;color:#fff;">Send now</button>
           <span id="bcStatus" style="color:#666;"></span>
         </div>
         <div id="bcResult" style="font-size:13px;color:#444;white-space:pre-wrap;"></div>
+      </div>
+    </details>
+
+    <!-- Replies: every broadcast with its reply counts, and the threads behind them. -->
+    <details style="margin:16px 0;padding:16px;border:1px solid #eee;border-radius:12px;background:#fff;">
+      <summary style="cursor:pointer;font-weight:700;font-size:16px;">💬 Replies from users</summary>
+      <div style="margin-top:14px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button onclick="loadReplyThreads()">Load messages &amp; replies</button>
+          <span id="mrStatus" style="color:#666;"></span>
+        </div>
+        <div id="mrList" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;"></div>
+        <div id="mrThread" style="margin-top:14px;"></div>
       </div>
     </details>
 
@@ -509,6 +530,106 @@
     }
 
   
+    // ---- Replies to broadcasts ----
+    // Reply bodies are user-supplied, so everything rendered here is escaped.
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    window.loadReplyThreads = async function () {
+      var status = document.getElementById('mrStatus');
+      var list = document.getElementById('mrList');
+      document.getElementById('mrThread').innerHTML = '';
+      status.textContent = 'Loading…';
+      list.innerHTML = '';
+      try {
+        var res = await supabase.functions.invoke('admin-messages', { body: { action: 'list' } });
+        if (res.error) throw res.error;
+        var items = (res.data && res.data.broadcasts) || [];
+        status.textContent = '';
+        if (!items.length) { list.textContent = 'No messages yet. Send an announcement first.'; return; }
+        items.forEach(function (b) {
+          var row = document.createElement('div');
+          row.style.cssText = 'border:1px solid #eee;border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center;';
+          var meta = document.createElement('div');
+          meta.style.flex = '1';
+          meta.innerHTML =
+            '<div style="font-weight:700;">' + escapeHtml(b.title) + '</div>' +
+            '<div style="font-size:12px;color:#777;">' + new Date(b.created_at).toLocaleString() +
+            ' · ' + escapeHtml(b.audience) + (b.allow_replies ? ' · replies open' : ' · replies off') +
+            ' · ' + (b.reply_count || 0) + ' repl' + ((b.reply_count || 0) === 1 ? 'y' : 'ies') +
+            ((b.unread_reply_count || 0) > 0 ? ' · <strong style="color:#C2410C;">' + b.unread_reply_count + ' new</strong>' : '') +
+            '</div>';
+          var button = document.createElement('button');
+          button.textContent = 'View thread';
+          button.onclick = function () { window.openReplyThread(b.id); };
+          row.appendChild(meta);
+          row.appendChild(button);
+          list.appendChild(row);
+        });
+      } catch (e) {
+        status.textContent = '';
+        list.textContent = 'Could not load: ' + ((e && e.message) || e);
+      }
+    };
+
+    window.openReplyThread = async function (broadcastId) {
+      var host = document.getElementById('mrThread');
+      host.innerHTML = 'Loading thread…';
+      try {
+        var res = await supabase.functions.invoke('admin-messages', { body: { action: 'thread', broadcast_id: broadcastId } });
+        if (res.error) throw res.error;
+        var data = res.data || {};
+        var replies = data.replies || [];
+        var bc = data.broadcast || {};
+        host.innerHTML = '';
+
+        var head = document.createElement('div');
+        head.style.cssText = 'border:1px solid #eee;border-radius:10px;padding:12px;background:#fafafa;';
+        head.innerHTML = '<div style="font-weight:800;">' + escapeHtml(bc.title) + '</div>' +
+          '<div style="font-size:13px;color:#555;margin-top:4px;white-space:pre-wrap;">' + escapeHtml(bc.body) + '</div>';
+        host.appendChild(head);
+
+        if (!replies.length) {
+          var empty = document.createElement('div');
+          empty.style.cssText = 'margin-top:10px;color:#777;font-size:13px;';
+          empty.textContent = 'No replies to this message yet.';
+          host.appendChild(empty);
+          return;
+        }
+
+        replies.forEach(function (r) {
+          var bubble = document.createElement('div');
+          bubble.style.cssText = 'margin-top:10px;border:1px solid #eee;border-left:4px solid ' + (r.read_at ? '#ddd' : '#E8602C') + ';border-radius:8px;padding:10px;';
+          var who = (r.user && (r.user.name || r.user.email)) || 'user ' + String(r.user_id).slice(0, 8);
+          bubble.innerHTML = '<div style="font-size:12px;color:#777;">' + escapeHtml(who) + ' · ' +
+            new Date(r.created_at).toLocaleString() + (r.read_at ? ' · read' : ' · <strong style="color:#C2410C;">new</strong>') + '</div>' +
+            '<div style="margin-top:6px;white-space:pre-wrap;">' + escapeHtml(r.body) + '</div>';
+          host.appendChild(bubble);
+        });
+
+        var mark = document.createElement('button');
+        mark.textContent = 'Mark thread as read';
+        mark.style.marginTop = '12px';
+        mark.onclick = async function () {
+          mark.disabled = true;
+          try {
+            await supabase.functions.invoke('admin-messages', { body: { action: 'mark_read', broadcast_id: broadcastId } });
+            mark.textContent = 'Marked read';
+            window.loadReplyThreads();
+          } catch (e) {
+            mark.disabled = false;
+            mark.textContent = 'Could not mark read';
+          }
+        };
+        host.appendChild(mark);
+      } catch (e) {
+        host.textContent = 'Could not load the thread: ' + ((e && e.message) || e);
+      }
+    };
+
     // ---- Announcements (admin broadcast) ----
     window.previewBroadcast = async function () { await broadcastCall(true); };
     window.sendBroadcast = async function () {
@@ -521,6 +642,9 @@
       var title = document.getElementById('bcTitle').value.trim();
       var message = document.getElementById('bcBody').value.trim();
       var audience = document.getElementById('bcAudience').value;
+      var titleNe = (document.getElementById('bcTitleNe').value || '').trim();
+      var messageNe = (document.getElementById('bcBodyNe').value || '').trim();
+      var allowReplies = !!document.getElementById('bcAllowReplies').checked;
       if (title.length < 3 || message.length < 3) {
         out.textContent = 'Please fill in both the title and the message (at least 3 characters each).';
         return;
@@ -529,7 +653,11 @@
       out.textContent = '';
       try {
         var res = await supabase.functions.invoke('admin-broadcast', {
-          body: { title: title, body: message, audience: audience, dry_run: !!dryRun },
+          body: {
+            title: title, body: message, audience: audience,
+            title_ne: titleNe, body_ne: messageNe, allow_replies: allowReplies,
+            dry_run: !!dryRun,
+          },
         });
         if (res.error) throw res.error;
         var d = res.data || {};
@@ -537,8 +665,10 @@
         out.textContent = dryRun
           ? 'Audience: ' + (d.targeted || 0) + ' device(s) would receive this.'
           : 'Targeted ' + (d.targeted || 0) + ' · sent ' + (d.sent || 0) + ' · failed ' + (d.failed || 0)
+            + (d.allow_replies ? ' · replies open' : '')
             + (d.note ? ' · ' + d.note : '')
-            + (d.errors && d.errors.length ? ' · first error: ' + d.errors[0] : '');
+            + (d.errors && d.errors.length ? ' · first error: ' + d.errors[0] : '')
+            + (d.broadcast_id ? '\nbroadcast id: ' + d.broadcast_id : '');
       } catch (e) {
         status.textContent = '';
         out.textContent = 'Could not send: ' + ((e && e.message) || e);

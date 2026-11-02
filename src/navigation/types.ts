@@ -19,4 +19,6 @@ export type RootStackParamList = {
   ClinicSummary: { child: Child };
   Preferences: undefined;
   AdminPayments: undefined;
+  Messages: undefined;
+  BroadcastDetail: { broadcastId: string };
 };

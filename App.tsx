@@ -12,6 +12,7 @@ import { ActivityIndicator, View, Platform, useColorScheme, AppState, TouchableO
 import { Ionicons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import AddChildScreen from './src/screens/AddChildScreen';
@@ -29,6 +30,8 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import CaregiverToolsScreen from './src/screens/CaregiverToolsScreen';
 import ClinicSummaryScreen from './src/screens/ClinicSummaryScreen';
 import PreferencesScreen from './src/screens/PreferencesScreen';
+import MessagesScreen from './src/screens/MessagesScreen';
+import BroadcastDetailScreen from './src/screens/BroadcastDetailScreen';
 import AdminPaymentsScreen from './src/screens/AdminPaymentsScreen';
 import WebsiteScreen from './src/screens/WebsiteScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -69,6 +72,30 @@ function Navigation() {
   }
 
   const isPremium = subscription?.status === 'active' || subscription?.plan === 'premium' || subscription?.plan === 'yearly' || subscription?.plan === '6months';
+
+  // Tapping a broadcast notification opens that message. Both the warm tap and
+  // the cold start are covered: getLastNotificationResponseAsync holds the tap
+  // that launched the app, and the listener catches taps while it is running.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !user) return;
+    let cancelled = false;
+    const open = (data: Record<string, unknown> | undefined) => {
+      const id = data?.broadcast_id;
+      if (data?.type === 'broadcast' && id && !cancelled) {
+        navigationRef.current?.navigate('BroadcastDetail', { broadcastId: String(id) });
+      }
+    };
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => open(response?.notification?.request?.content?.data as Record<string, unknown> | undefined))
+      .catch(() => undefined);
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      open(response?.notification?.request?.content?.data as Record<string, unknown> | undefined);
+    });
+    return () => {
+      cancelled = true;
+      subscription.remove();
+    };
+  }, [user?.uid]);
 
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>
@@ -115,6 +142,8 @@ function Navigation() {
             <Stack.Screen name="ClinicSummary" component={ClinicSummaryScreen} options={{ title: 'क्लिनिक सारांश | Clinic summary' }} />
             <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'सेटिङ | Settings' }} />
             <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} options={{ title: 'प्रशासन | Admin' }} />
+            <Stack.Screen name="Messages" component={MessagesScreen} options={{ title: 'सन्देश | Messages' }} />
+            <Stack.Screen name="BroadcastDetail" component={BroadcastDetailScreen} options={{ title: 'सन्देश | Message' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
