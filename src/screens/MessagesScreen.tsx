@@ -1,7 +1,7 @@
 // src/screens/MessagesScreen.tsx — the inbox for admin broadcasts.
 // Read-only here; opening a message moves to BroadcastDetail for the full text
 // and, when the message allows it, the reply box.
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import dayjs from 'dayjs';
@@ -11,6 +11,7 @@ import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { Palette } from '../theme';
 import { Broadcast, listBroadcasts, listReadBroadcastIds } from '../data/broadcasts';
+import { supabase } from '../lib/supabase';
 
 export default function MessagesScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -24,6 +25,8 @@ export default function MessagesScreen({ navigation }: any) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Composing is admin-only; the server enforces it too, this just hides the button.
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.uid) {
@@ -41,6 +44,18 @@ export default function MessagesScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('is_app_admin', { p_user_id: user.uid });
+        setIsAdmin(data === true);
+      } catch {
+        setIsAdmin(false);
+      }
+    })();
   }, [user?.uid]);
 
   useFocusEffect(
@@ -61,6 +76,7 @@ export default function MessagesScreen({ navigation }: any) {
   }
 
   return (
+    <View style={styles.container}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -120,6 +136,17 @@ export default function MessagesScreen({ navigation }: any) {
         })
       )}
     </ScrollView>
+    {isAdmin && (
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('ComposeBroadcast')}
+        accessibilityRole="button"
+        accessibilityLabel={tr('नयाँ सन्देश पठाउनुहोस्', 'Send a new message')}
+      >
+        <Ionicons name="add" size={28} color={t.onAccent} />
+      </TouchableOpacity>
+    )}
+    </View>
   );
 }
 
@@ -156,4 +183,20 @@ const makeStyles = (t: Palette) =>
       paddingVertical: 4,
     },
     replyChipText: { fontSize: 11, color: t.clay, fontWeight: '700' },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: t.clay,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 6,
+    },
   });
