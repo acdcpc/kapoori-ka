@@ -5,7 +5,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { sheetBottomClearance, sheetMaxHeight } from '../lib/sheetLayout';
 import {
   View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
-  Alert, ActivityIndicator, ScrollView, Dimensions,
+  Alert, ActivityIndicator, ScrollView, Dimensions, Pressable,
 } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { Palette } from '../theme';
@@ -524,6 +524,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {showSettings && (
+        <>
+        {/* Tapping anywhere outside the sheet dismisses it, the way a native
+            bottom sheet behaves. The backdrop stretches past the SafeAreaView
+            padding so a tap on the status-bar or gesture strip area also
+            counts; it sits above the page content but below the sheet. */}
+        <Pressable
+          style={{ position: 'absolute', left: 0, right: 0, top: -insets.top, bottom: -insets.bottom, zIndex: 20 }}
+          onPress={() => setShowSettings(false)}
+          accessibilityRole="button"
+          accessibilityLabel={isNe ? 'सेटिङ बन्द गर्नुहोस्' : 'Close settings'}
+        />
         // The settings sheet can be taller than the screen on gesture-navigation
         // phones (Android 16 edge-to-edge). Verified on device: with the panel's
         // bottom flush to the screen edge, the last rows (Admin, About, Logout)
@@ -540,6 +551,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           // permissive enough to let the panel grow off-screen without scrolling).
           position: 'absolute', left: 0, right: 0, bottom: sheetClearance,
           maxHeight: sheetHeight,
+          zIndex: 21,
         }]}>
           <View style={styles.settingsHandle} />
           <Text style={styles.settingsTitle}>{isNe ? 'सेटिङ' : 'Settings'}</Text>
@@ -627,6 +639,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </TouchableOpacity>
           </ScrollView>
         </View>
+        </>
       )}
       {showOnboarding && <Onboarding onComplete={() => { setShowOnboarding(false); recordProductEvent(user?.uid, 'onboarding_completed').catch(() => undefined); }} screen="home" />}
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddChild')}>
