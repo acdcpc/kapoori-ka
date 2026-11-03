@@ -22,6 +22,7 @@ import { Palette } from '../theme';
 import { supabase } from '../lib/supabase';
 
 type PromoCode = {
+  id: string;
   label: string | null;
   plan: string;
   status: string;
@@ -32,7 +33,7 @@ type PromoCode = {
   voided_at: string | null;
 };
 
-export default function AdminPromosScreen() {
+export default function AdminPromosScreen({ navigation }: any) {
   const { user } = useAuth();
   const { language } = useContext(LanguageContext);
   const { palette: t } = useContext(ThemeContext);
@@ -124,7 +125,14 @@ export default function AdminPromosScreen() {
           const total = code.max_redemptions;
           const pct = total > 0 ? Math.min(used / total, 1) : 0;
           return (
-            <View key={`${code.label ?? 'code'}-${index}`} style={styles.card}>
+            <TouchableOpacity
+              key={`${code.label ?? 'code'}-${index}`}
+              style={styles.card}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('PromoRedemptions', { codeId: code.id, label: code.label ?? '' })}
+              accessibilityRole="button"
+              accessibilityLabel={tr('कसले प्रयोग गर्यो हेर्नुहोस्', 'See who redeemed')}
+            >
               <View style={styles.cardHead}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
                   {code.label || tr('प्रोमो कोड', 'Promo code')}
@@ -157,6 +165,7 @@ export default function AdminPromosScreen() {
                 <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
               </View>
 
+              <View style={styles.cardFoot}>
               <Text style={styles.cardMeta}>
                 {code.last_redeemed_at
                   ? tr(
@@ -165,7 +174,9 @@ export default function AdminPromosScreen() {
                     )
                   : tr('अझै कसैले प्रयोग गरेन', 'no redemptions yet')}
               </Text>
-            </View>
+              <Ionicons name="chevron-forward" size={16} color={t.shadow} />
+              </View>
+            </TouchableOpacity>
           );
         })
       )}
@@ -206,7 +217,8 @@ const makeStyles = (t: Palette) =>
     statLabel: { fontSize: 11, color: t.muted2, marginTop: 2 },
     progressTrack: { height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 14, overflow: 'hidden' },
     progressFill: { height: 6, borderRadius: 3, backgroundColor: t.clay },
-    cardMeta: { fontSize: 12, color: t.muted, marginTop: 10 },
+    cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+    cardMeta: { fontSize: 12, color: t.muted },
     footnote: { fontSize: 12, color: t.muted2, marginTop: 14, lineHeight: 18 },
     errorCard: { backgroundColor: t.redLight, borderWidth: 1, borderColor: t.red, borderRadius: 12, padding: 12, marginBottom: 12 },
     errorText: { fontSize: 13, color: t.redDark },

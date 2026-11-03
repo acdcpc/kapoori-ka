@@ -24,4 +24,5 @@ export type RootStackParamList = {
   ComposeBroadcast: undefined;
   AdminReplies: undefined;
   AdminPromos: undefined;
+  PromoRedemptions: { codeId: string; label: string };
 };
