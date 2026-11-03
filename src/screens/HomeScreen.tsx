@@ -646,6 +646,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
             </TouchableOpacity>
           )}
+          {isAdmin && (
+            <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('AdminPromos'); }}>
+              <Ionicons name="pricetags-outline" size={18} color={pal.clay} />
+              <Text style={styles.settingsLabel}>{isNe ? 'प्रोमो कोड' : 'Promo codes'}</Text>
+              <Ionicons name="chevron-forward" size={16} color={pal.shadow} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.settingsRow} onPress={() => { setShowSettings(false); navigation.navigate('About'); }}>
             <Ionicons name="information-circle-outline" size={18} color={pal.muted} />
             <Text style={styles.settingsLabel}>{t.about}</Text>
